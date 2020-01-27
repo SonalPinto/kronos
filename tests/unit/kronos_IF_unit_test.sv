@@ -1,0 +1,145 @@
+`include "vunit_defines.svh"
+
+module tb_kronos_IF_ut;
+
+import kronos_types::*;
+
+logic clk;
+logic rstz;
+logic [31:0] instr_addr;
+logic [31:0] instr_data;
+logic instr_req;
+logic instr_gnt;
+pipeIFID_t pipe_IFID;
+logic pipe_vld;
+logic pipe_rdy;
+logic [31:0] branch_target;
+logic branch;
+
+logic miss;
+
+kronos_IF u_dut (
+    .clk          (clk          ),
+    .rstz         (rstz         ),
+    .instr_addr   (instr_addr   ),
+    .instr_data   (instr_data   ),
+    .instr_req    (instr_req    ),
+    .instr_gnt    (instr_gnt & ~miss),
+    .pipe_IFID    (pipe_IFID    ),
+    .pipe_vld     (pipe_vld     ),
+    .pipe_rdy     (pipe_rdy     ),
+    .branch_target(branch_target),
+    .branch       (branch       )
+);
+
+spsram32_model #(.DEPTH(256)) u_imem (
+    .clk (clk       ),
+    .rstz(rstz      ),
+    .addr(instr_addr),
+    .data(instr_data),
+    .req (instr_req ),
+    .gnt (instr_gnt )
+);
+// ------------------------------------------------------------
+
+default clocking cb @(posedge clk);
+    default input #10s output #10ps;
+    input pipe_IFID, pipe_vld, instr_req;
+    output negedge pipe_rdy;
+endclocking
+
+`TEST_SUITE begin
+    `TEST_SUITE_SETUP begin
+        clk = 0;
+        rstz = 0;
+        miss = 0;
+
+        branch = 0;
+        branch_target = 0;
+        pipe_rdy = 0;
+
+        for(int i=0; i<256; i++)
+            u_imem.MEM[i] = $urandom;
+
+        fork 
+            forever #1ns clk = ~clk;
+        join_none
+
+        ##4 rstz = 1;
+    end
+
+    `TEST_CASE("typical") begin
+        logic [31:0] expected_pc;
+        
+        expected_pc = 0;
+        pipe_rdy = 1;
+
+        repeat(128) begin
+            @(cb iff pipe_vld) begin        
+                $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
+                assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
+                assert(expected_pc == pipe_IFID.pc);
+                expected_pc += 4;
+            end
+        end
+        ##64;
+    end
+
+    `TEST_CASE("stall") begin
+        // backpressure from ID, i.e. stall
+        logic [31:0] expected_pc;
+
+        expected_pc = 0;
+        repeat(128) begin
+            @(cb iff pipe_vld) begin
+                // random chance of backpressure from memory
+                if ($urandom_range(0,1)) begin
+                    cb.pipe_rdy <= 0;
+                    ##($urandom_range(1,4));
+                end
+                cb.pipe_rdy <= 1;
+
+                $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
+                assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
+                assert(expected_pc == pipe_IFID.pc);
+                expected_pc += 4;
+            end
+        end
+        ##64;
+    end
+
+    `TEST_CASE("miss") begin
+        // backpressure from memory, i.e. miss
+        logic [31:0] expected_pc;
+
+        expected_pc = 0;
+        pipe_rdy = 1;
+
+        fork
+            forever @(negedge clk) begin
+                if ($urandom_range(0,1)) begin
+                    miss = 1;
+                    ##($urandom_range(1,4));
+                end
+                @(negedge clk);
+                miss = 0;
+            end
+
+            repeat(128) begin
+                @(cb iff pipe_vld) begin        
+                    $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
+                    assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
+                    assert(expected_pc == pipe_IFID.pc);
+                    expected_pc += 4;
+                end
+            end
+        join_any
+        ##64;
+    end
+end
+
+`WATCHDOG(10us);
+
+// ------------------------------------------------------------
+
+endmodule
