@@ -18,7 +18,8 @@ logic branch;
 
 logic miss;
 
-kronos_IF u_dut (
+kronos_IF2 u_dut (
+// kronos_IF u_dut (
     .clk          (clk          ),
     .rstz         (rstz         ),
     .instr_addr   (instr_addr   ),
@@ -68,7 +69,7 @@ endclocking
         ##4 rstz = 1;
     end
 
-    `TEST_CASE("typical") begin
+    `TEST_CASE("ideal") begin
         logic [31:0] expected_pc;
         
         expected_pc = 0;
@@ -117,6 +118,7 @@ endclocking
 
         fork
             forever @(negedge clk) begin
+                // random chance of miss (arbitration loss or miss)
                 if ($urandom_range(0,1)) begin
                     miss = 1;
                     ##($urandom_range(1,4));
@@ -134,11 +136,49 @@ endclocking
                 end
             end
         join_any
+
+        ##64;
+    end
+
+    `TEST_CASE("miss_and_stall") begin
+        // backpressure from memory, i.e. miss
+        logic [31:0] expected_pc;
+
+        expected_pc = 0;
+
+        fork
+            forever @(negedge clk) begin
+                // random chance of miss (arbitration loss or miss)
+                if ($urandom_range(0,1)) begin
+                    miss = 1;
+                    ##($urandom_range(1,4));
+                end
+                @(negedge clk);
+                miss = 0;
+            end
+
+            repeat(128) begin
+                @(cb iff pipe_vld) begin
+                     // random chance of backpressure from memory
+                    if ($urandom_range(0,1)) begin
+                        cb.pipe_rdy <= 0;
+                        ##($urandom_range(1,4));
+                    end
+                    cb.pipe_rdy <= 1;
+
+                    $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
+                    assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
+                    assert(expected_pc == pipe_IFID.pc);
+                    expected_pc += 4;
+                end
+            end
+        join_any
+
         ##64;
     end
 end
 
-`WATCHDOG(10us);
+`WATCHDOG(100us);
 
 // ------------------------------------------------------------
 

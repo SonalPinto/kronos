@@ -32,6 +32,7 @@ logic fetch_vld;
 // Fancier techniques could have been employed 
 //  say, addr skid buffers, where the fetch loop fetches every cycle and the addr is updated
 //  and reverted upon miss/stall
+//  as done in kronos_IF2
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pc <= PC_START;
