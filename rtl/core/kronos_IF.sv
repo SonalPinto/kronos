@@ -1,17 +1,17 @@
 /*
-   Copyright (c) 2020 Sonal Pinto <sonalpinto@gmail.com>
+    Copyright (c) 2020 Sonal Pinto <sonalpinto@gmail.com>
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
 
-       http://www.apache.org/licenses/LICENSE-2.0
+        http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
 */
 
 // Simple Pipelined Instruction Fetch
@@ -33,8 +33,8 @@ module kronos_IF
     input  logic        instr_gnt,
     // IF/ID interface
     output pipeIFID_t   pipe_IFID,
-    output logic        pipe_vld,
-    input  logic        pipe_rdy,
+    output logic        pipe_out_vld,
+    input  logic        pipe_out_rdy,
     // BRANCH
     input logic [31:0]  branch_target,
     input logic         branch
@@ -103,19 +103,19 @@ always_ff @(posedge clk or negedge rstz) begin
             pipe_IFID.ir <= instr_data;
             fetch_vld <= 1'b1;
         end
-        else if (fetch_vld && pipe_rdy) begin
+        else if (fetch_vld && pipe_out_rdy) begin
             fetch_vld <= 1'b0;
         end
     end
 end
 
-assign fetch_rdy = ~fetch_vld | pipe_rdy;
+assign fetch_rdy = ~fetch_vld | pipe_out_rdy;
 
 // Memory Interface
 assign instr_addr = (next_state != FETCH) ? pc_last : pc;
 assign instr_req = fetch_rdy;
 
 // Next Stage pipe interface
-assign pipe_vld = fetch_vld;
+assign pipe_out_vld = fetch_vld;
 
 endmodule
