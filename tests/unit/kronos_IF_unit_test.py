@@ -30,7 +30,6 @@ lib = vu.add_library('lib')
 source_files = [
     "../rtl/core/kronos_types.sv",
     "../rtl/core/kronos_IF.sv",
-    "../rtl/core/kronos_IF2.sv",
     "../rtl/memory/spsram32_model.sv",
     "../tests/unit/kronos_IF_unit_test.sv"
 ]

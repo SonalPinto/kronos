@@ -34,8 +34,7 @@ logic branch;
 
 logic miss;
 
-kronos_IF2 u_dut (
-// kronos_IF u_dut (
+kronos_IF u_dut (
     .clk          (clk          ),
     .rstz         (rstz         ),
     .instr_addr   (instr_addr   ),

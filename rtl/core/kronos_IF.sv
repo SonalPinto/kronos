@@ -15,8 +15,11 @@
 */
 
 // Simple Pipelined Instruction Fetch
+//  High Throughput, One Block Lookahead fetch
+//
+// FIXME: Critical paths on memory access - use skid buffers
 
-module kronos_IF 
+module kronos_IF
     import kronos_types::*;
 #(
     parameter PC_START = 32'h0
@@ -37,29 +40,67 @@ module kronos_IF
     input logic         branch
 );
 
-logic [31:0] pc;
-logic fetch_vld;
+logic [31:0] pc, pc_last;
+logic update_pc;
+logic fetch_rdy, fetch_vld;
+
+enum logic [1:0] {
+    INIT,
+    FETCH,
+    STALL
+} state, next_state;
+
 
 // ============================================================
 // Program Counter (PC) Generation
-//  & Instruction Fetch
-
-// This is a two-cycle fetch, as the memory data/gnt is valid a cycle after the request
-// Fancier techniques could have been employed 
-//  say, addr skid buffers, where the fetch loop fetches every cycle and the addr is updated
-//  and reverted upon miss/stall
-//  as done in kronos_IF2
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pc <= PC_START;
+        pc_last <= '0;
+    end
+    else begin
+        if (update_pc) begin
+            pc <= branch ? branch_target : (pc + 32'h4);
+            pc_last <= pc;
+        end
+    end
+end
+
+assign update_pc = next_state == FETCH;
+
+// ============================================================
+//  Instruction Fetch
+
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) state <= INIT;
+    else state <= next_state;
+end
+
+always_comb begin
+    next_state = state;
+    case (state)
+        INIT: next_state = FETCH;
+
+        FETCH:
+            if (instr_gnt && fetch_rdy) next_state = FETCH;
+            else next_state = STALL;
+
+        STALL:
+            if (instr_gnt && fetch_rdy) next_state = FETCH;
+
+    endcase // state
+end
+
+// FIXME - Swap this out to a skid buffer
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
         pipe_IFID <= '0;
         fetch_vld <= '0;
     end
     else begin
-        if (instr_gnt) begin
-            pipe_IFID.pc <= instr_addr;
+        if (instr_gnt && fetch_rdy) begin
+            pipe_IFID.pc <= pc_last;
             pipe_IFID.ir <= instr_data;
-            pc <= branch ? branch_target : (pc + 32'h4);
             fetch_vld <= 1'b1;
         end
         else if (fetch_vld && pipe_rdy) begin
@@ -68,9 +109,11 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
+assign fetch_rdy = ~fetch_vld | pipe_rdy;
+
 // Memory Interface
-assign instr_addr = pc;
-assign instr_req = ~instr_gnt && (~fetch_vld | pipe_rdy);
+assign instr_addr = (next_state != FETCH) ? pc_last : pc;
+assign instr_req = fetch_rdy;
 
 // Next Stage pipe interface
 assign pipe_vld = fetch_vld;
