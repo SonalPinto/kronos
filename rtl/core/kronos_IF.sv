@@ -1,23 +1,20 @@
 /*
-    Copyright (c) 2020 Sonal Pinto <sonalpinto@gmail.com>
+   Copyright (c) 2020 Sonal Pinto <sonalpinto@gmail.com>
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-        http://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
-// Simple Pipelined Instruction Fetch
-//  High Throughput, One Block Lookahead fetch
-//
-// FIXME: Critical paths on memory access - use skid buffers
+// Simple Pipelined Instruction Fetch - Lite
 
 module kronos_IF
     import kronos_types::*;
@@ -33,89 +30,49 @@ module kronos_IF
     input  logic        instr_gnt,
     // IF/ID interface
     output pipeIFID_t   pipe_IFID,
-    output logic        pipe_out_vld,
-    input  logic        pipe_out_rdy,
+    output logic        pipe_vld,
+    input  logic        pipe_rdy,
     // BRANCH
     input logic [31:0]  branch_target,
     input logic         branch
 );
 
-logic [31:0] pc, pc_last;
-logic update_pc;
-logic fetch_rdy, fetch_vld;
-
-enum logic [1:0] {
-    INIT,
-    FETCH,
-    STALL
-} state, next_state;
-
+logic [31:0] pc;
+logic fetch_vld;
 
 // ============================================================
 // Program Counter (PC) Generation
+//  & Instruction Fetch
+
+// This is a simple two-cycle fetch,
+//  as the memory data/gnt is valid a cycle after the request
+//  The halved throughput compared to kronos_IF is acceptable
+//  because the simple kronos_ID decode stage takes 2 cycles
+//  as it uses block ram for the register file
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pc <= PC_START;
-        pc_last <= '0;
-    end
-    else begin
-        if (update_pc) begin
-            pc <= branch ? branch_target : (pc + 32'h4);
-            pc_last <= pc;
-        end
-    end
-end
-
-assign update_pc = next_state == FETCH;
-
-// ============================================================
-//  Instruction Fetch
-
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= INIT;
-    else state <= next_state;
-end
-
-always_comb begin
-    next_state = state;
-    case (state)
-        INIT: next_state = FETCH;
-
-        FETCH:
-            if (instr_gnt && fetch_rdy) next_state = FETCH;
-            else next_state = STALL;
-
-        STALL:
-            if (instr_gnt && fetch_rdy) next_state = FETCH;
-
-    endcase // state
-end
-
-// FIXME - Swap this out to a skid buffer
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
         pipe_IFID <= '0;
         fetch_vld <= '0;
     end
     else begin
-        if (instr_gnt && fetch_rdy) begin
-            pipe_IFID.pc <= pc_last;
+        if (instr_gnt) begin
+            pipe_IFID.pc <= instr_addr;
             pipe_IFID.ir <= instr_data;
+            pc <= branch ? branch_target : (pc + 32'h4);
             fetch_vld <= 1'b1;
         end
-        else if (fetch_vld && pipe_out_rdy) begin
+        else if (fetch_vld && pipe_rdy) begin
             fetch_vld <= 1'b0;
         end
     end
 end
 
-assign fetch_rdy = ~fetch_vld | pipe_out_rdy;
-
 // Memory Interface
-assign instr_addr = (next_state != FETCH) ? pc_last : pc;
-assign instr_req = fetch_rdy;
+assign instr_addr = pc;
+assign instr_req = ~instr_gnt && (~fetch_vld | pipe_rdy);
 
 // Next Stage pipe interface
-assign pipe_out_vld = fetch_vld;
+assign pipe_vld = fetch_vld;
 
 endmodule

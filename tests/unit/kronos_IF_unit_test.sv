@@ -58,13 +58,14 @@ spsram32_model #(.DEPTH(256)) u_imem (
     .req (instr_req ),
     .gnt (instr_gnt )
 );
-// ------------------------------------------------------------
 
 default clocking cb @(posedge clk);
     default input #10s output #10ps;
     input pipe_IFID, pipe_out_vld, instr_req;
     output negedge pipe_out_rdy;
 endclocking
+
+// ============================================================
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -196,7 +197,5 @@ endclocking
 end
 
 `WATCHDOG(100us);
-
-// ------------------------------------------------------------
 
 endmodule

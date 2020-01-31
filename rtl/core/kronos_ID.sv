@@ -59,49 +59,50 @@ logic [6:0] opcode;
 logic [1:0] opcode_HIGH;
 logic [2:0] opcode_LOW;
 logic [4:0] opcode_type;
-logic rs1, rs2;
+logic [4:0] rs1, rs2;
 
-logic [4:0] rs1_sel, rs2_sel;
-logic rs1_required, rs2_required, read_rs2;
-logic [31:0] regrd_data;
+logic [31:0] regrd_rs1, regrd_rs2;
+logic [31:0] immediate;
 
-logic is_illegal_cond1;
+logic is_illegal;
 
 enum logic [1:0] {
-    IDLE,
-    READRS1,
-    READRS2
+    ID1,
+    ID2
 } state, next_state;
 
 
 // ============================================================
-/* 
-Integer Registers
------------------
+// Integer Registers
+
+// FIXME - Make the regfile a separate module
+/*
 Note: Since this ID module is geared towards FPGA, 
     Dual-Port Embedded Block Ram will be used to implement the 32x32 registers.
-    Register (EBR) access takes a cycle. Hence, an instr requiring 
-    both rs1 and rs2 would take 3 cycles to decode (cascading two reg access 
-    and one output buffer write)
+    Register (EBR) access takes a cycle. We need to read two registers on 
+    the same cycle (or have the decode stage take an extra cycle, reading
+    one register at a time).
 
-    In the iCE40UP5K this would take two EBR (each being 16x256)
+    In the iCE40UP5K this would inefficiently take 4 EBR (each being 16x256)
 */
 
-logic [31:0] REG [32];
-
-// FIXME - see if timing will close for  negedge read clocking.
-//  If so, then the decoder latency will be 1~2 cycles, instead of 
-//  2~3
+logic [31:0] REG1 [32];
+logic [31:0] REG2 [32];
 
 // REG read
 always_ff @(posedge clk) begin
-    if (state == IDLE && rs1_required) regrd_data <= REG[rs1];
-    else if (state == READRS1 && read_rs2) regrd_data <= REG[rs2]; 
+    if (state == ID1 && next_state == ID2) begin
+        regrd_rs1 <= REG1[rs1];
+        regrd_rs2 <= REG2[rs2];
+    end
 end
 
 // REG Write
 always_ff @(posedge clk) begin
-    if (regwr_en) REG[regwr_sel] <= regwr_data; 
+    if (regwr_en) begin
+        REG1[regwr_sel] <= regwr_data;
+        REG2[regwr_sel] <= regwr_data;
+    end
 end
 
 
@@ -117,54 +118,28 @@ assign opcode_type = {opcode_HIGH, opcode_LOW};
 assign rs1 = pipe_IFID.ir[19:15];
 assign rs2 = pipe_IFID.ir[24:20];
 
-// Check if register read is required
-// FIXME: Account for x0 !!
-assign rs1_required = opcode_type == type__OPIMM || opcode_type == type__OP;
-assign rs2_required = opcode_type == type__OP;
+// Instruction is illegal if the opcode is all ones or zeros
+assign is_illegal = (opcode == '0) || (opcode == '1);
 
-// Instruction is illegal if the LSB 2b of the opcode are not 2'b11
-//  or the opcode is all ones or zeros
-assign is_illegal_cond1 = (opcode[1:0] != 2'b11)
-                    || (opcode == '0)
-                    || (opcode == '1);
 
+// ============================================================
+// Immediate Decoder
+assign immediate = '0;
 
 // ============================================================
 // Instruction Decode Sequencer
 
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= IDLE;
+    if (~rstz) state <= ID1;
     else state <= next_state;
 end
 
 always_comb begin
     next_state = state;
     case (state)
-        IDLE: 
-            if (pipe_in_vld && pipe_in_rdy) begin
-                if(rs1_required) next_state = READRS1;
-                else next_state = IDLE;
-            end
-
-        READRS1: 
-            if (read_rs2) next_state = READRS2;
-            else next_state = IDLE;
-
-        READRS2:
-            next_state = IDLE
+        ID1: if (pipe_in_vld && pipe_in_rdy) next_state = ID2;
+        ID2: next_state = ID1;
     endcase // state
-end
-
-// buffer in rs2 requirement
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        read_rs2 <= 1'b0;
-        rs2_sel <= '0;
-    end
-    else if (state == IDLE) begin
-        read_rs2 <= rs2_required;
-        rs2_sel <= rs2;
-    end
 end
 
 // Output pipe (decoded instruction)
@@ -174,35 +149,42 @@ always_ff @(posedge clk or negedge rstz) begin
         pipe_out_vld <= 1'b0;
     end
     else begin
-        case (state)
-            IDLE: begin
-                if (pipe_in_vld && pipe_in_rdy) begin
-                    // aluop
-                    // controls
-                    pipe_IDEX.op1 <= pipe_IFID.pc; // | ZERO FIXME
-                    // op2 <= imm | ZERO FIXME
-                    if (rs1_required) pipe_out_vld <= 1'b0;
-                    else pipe_out_vld <= 1'b1;
-                end
-                else if (pipe_out_vld && pipe_out_rdy) begin
-                    pipe_out_vld <= 1'b0;
-                end
-            end
-            
-            READRS1: begin
-                pipe_IDEX.op1 <= regrd_data;
-                if (~read_rs2) pipe_out_vld <= 1'b1;
-            end
+        if (state == ID1) begin
+            if(pipe_in_vld && pipe_in_rdy) begin
+                pipe_out_vld <= 1'b0;
 
-            READRS2: begin
-                pipe_IDEX.op2 <= regrd_data;
-                pipe_out_vld <= 1'b1;
+                // aluop ----------
+
+                // controls -------
+                pipe_IDEX.rs1_read <= (rs1 != '0)
+                        && (opcode_type == type__OPIMM || opcode_type == type__OP);
+
+                pipe_IDEX.rs2_read <= (rs2 != '0)
+                        && opcode_type == type__OP;
+
+                pipe_IDEX.rs1 <= rs1;
+                pipe_IDEX.rs2 <= rs2;
+
+                // Buffer PC into OP1 temporarily, and clear out OP2
+                pipe_IDEX.op1 <= (rs1 != '0) ? pipe_IFID.pc : '0;
+                pipe_IDEX.op2 <= '0;
             end
-        endcase
+            else if (pipe_out_vld && pipe_out_rdy) begin
+                pipe_out_vld <= 1'b0;
+            end
+        end
+        else if (state == ID2) begin
+            pipe_out_vld <= 1'b1;
+
+            // Conclude decoding OP1 and OP2, now that rs1/rs2 data is ready
+            // and the sign-extended immediate is decoded
+            if (pipe_IDEX.rs1_read) pipe_IDEX.op1 <= regrd_rs1;
+            pipe_IDEX.op2 <= (pipe_IDEX.rs2_read) ? regrd_rs2 : immediate;
+        end
     end
 end
 
-// handoff can only happen in the IDLE state
-assign pipe_in_rdy = (state == IDLE) && (~pipe_out_vld | pipe_out_rdy);
+// Pipethru can only happen in the ID1 state
+assign pipe_in_rdy = (state == ID1) && (~pipe_out_vld | pipe_out_rdy);
 
 endmodule

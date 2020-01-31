@@ -1,4 +1,4 @@
-/*
+"""
     Copyright (c) 2020 Sonal Pinto <sonalpinto@gmail.com>
 
     Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +12,29 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+"""
 
-package kronos_types;
+from vunit import VUnitCLI
+from vunit.verilog import VUnit
 
-typedef struct packed {
-    logic [31:0] pc;
-    logic [31:0] ir;
-} pipeIFID_t;
+test_name = "kronos_id_unit_test"
 
-typedef struct packed {
-    logic [31:0] op1;
-    logic [31:0] op2;
-    logic        rs1_read;
-    logic        rs2_read;
-    logic [4:0]  rs1;
-    logic [4:0]  rs2;
-} pipeIDEX_t;
+cli = VUnitCLI()
+args = cli.parse_args()
+args.output_path = "./tests/"+test_name
 
-endpackage
+vu = VUnit.from_args(args=args)
+
+lib = vu.add_library('lib')
+
+source_files = [
+    "../rtl/core/kronos_types.sv",
+    "../rtl/core/kronos_ID.sv",
+    "../tests/unit/kronos_ID_unit_test.sv"
+]
+for f in source_files:
+    lib.add_source_files(f)
+
+vu.set_sim_option("modelsim.vsim_flags", ['-do "add wave -r *"'])
+
+vu.main()
