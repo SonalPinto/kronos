@@ -56,6 +56,7 @@ function(add_hdl_source hdl_file)
 
    set_realpath(ARG_SOURCES)
    set_realpath(ARG_INCLUDES)
+   
 
    # Create source file target and bind it's properties
    # This target doesn't do anything on its own
@@ -79,7 +80,7 @@ function(add_hdl_source hdl_file)
    endforeach()
 
    # Derived Targets
-   # add_hdl_verilator()
+   lint_hdl()
 
 endfunction()
 

@@ -5,7 +5,11 @@
 #
 # Collection of useful macros
 #
-
+# Note: cmake macro/function args are text replacement abstractions
+# 
+# When passing an "arg" to a macro/function, ${arg} will reperesent the variable
+# and ${${arg}} will represent the variable value
+#
 
 macro(init_arg arg val)
     # Set default value for args
@@ -42,7 +46,7 @@ macro(set_realpath arg)
     # Resolve absolute path
     set(paths "")
 
-    foreach (path ${arg})
+    foreach (path ${${arg}})
         get_filename_component(path "${path}" REALPATH)
         list(APPEND paths "${path}")
     endforeach()

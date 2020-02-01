@@ -4,13 +4,16 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(kronos LANGUAGES C CXX)
+project(kronos)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-set(verilator_DIR "/opt/verilator-v4.026/share/verilator")
+# Add Verilator cmake package
+# Note: this will run some c++ compiler flag checks on buil
+set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
 find_package(verilator)
 
+# Add HDL packages
 include(macros)
 include(AddHDL)
 
