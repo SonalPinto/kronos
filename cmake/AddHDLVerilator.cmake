@@ -4,14 +4,13 @@
 # Verilator Rules for HDL sources
 #   lint_hdl- : Lints the HDL source using verilator
 
-
 if(NOT verilator_FOUND)
     return()
 endif()
 
 if (NOT VERILATOR_ENV_SETUP)
-    set(LINT_OUTPUT_DIR "${CMAKE_BINARY_DIR}/lint"
-        CACHE INTERNAL "Lint outpur directory" FORCE)
+    set(LINT_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/lint"
+        CACHE INTERNAL "Lint output directory" FORCE)
     file(MAKE_DIRECTORY "${LINT_OUTPUT_DIR}")
 
     set(VERILATOR_ENV_SETUP 1)
