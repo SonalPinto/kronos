@@ -41,7 +41,6 @@ logic fetch_vld;
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pc <= PC_START;
-        pipe_IFID <= '0;
         fetch_vld <= '0;
     end
     else begin

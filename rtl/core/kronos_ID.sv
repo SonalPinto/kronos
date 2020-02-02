@@ -12,8 +12,18 @@ into a generic form:
 where,
     DEST        : destination of the operation
     OP1, OP2    : ALU operands
-    ALU_OP      : ALU operation and controls
-    CONTROLS    : Auxillary controls
+    ALU_OP      : ALU controls
+    CONTROLS    : Additional controls signals
+
+
+ALU Controls (Check kronos_EX for details)
+    neg         : Negate OP2 for subtraction and comparision
+    rev         : Reverse OP1 for shift-left
+    cin         : Carry In for subtration, comparision and arithmetic shift-right
+    uns         : Unsigned flag for unsigned comparision
+    gte         : Greater than Equal comparision (default is Less Than)
+    sel         : Result Select - ADD, AND, OR, XOR, COMP or SHIFT
+
 */
 
 
@@ -38,21 +48,22 @@ module kronos_ID
 
 localparam logic [31:0] zero   = 32'h0;
 
-// Instruction Types
-localparam logic [4:0] type__OPIMM = 5'b00_100;
-localparam logic [4:0] type__AUIPC = 5'b00_101;
-localparam logic [4:0] type__OP    = 5'b01_100;
-localparam logic [4:0] type__LUI   = 5'b01_101;
 
+
+logic [31:0] IR;
 
 logic [6:0] opcode;
 logic [1:0] opcode_HIGH;
 logic [2:0] opcode_LOW;
 logic [4:0] opcode_type;
 logic [4:0] rs1, rs2;
-logic [31:0] IR;
-logic sign;
+logic [2:0] funct3;
+logic [6:0] funct7;
 
+logic regrd_rs1_en, regrd_rs2_en;
+logic [31:0] regrd_rs1, regrd_rs2;
+
+logic sign;
 logic format_I;
 logic format_J;
 logic format_S;
@@ -73,10 +84,17 @@ logic           ImmD;
 logic [7:0]     ImmE;
 logic [11:0]    ImmF;
 
-logic [31:0] regrd_rs1, regrd_rs2;
 logic [31:0] immediate;
 
-logic rs1_required, rs2_required;
+// ALU controls
+logic [8:0]  aluop;
+logic        alu_neg;
+logic        alu_rev;
+logic        alu_cin;
+logic        alu_uns;
+logic        alu_gte;
+logic [2:0]  alu_sel;
+
 logic is_illegal;
 
 enum logic [1:0] {
@@ -86,9 +104,30 @@ enum logic [1:0] {
 
 
 // ============================================================
+// [rv32i] Instruction Decoder
+
+assign IR = pipe_IFID.ir;
+
+// Aliases to IR segments
+assign opcode = IR[6:0];
+assign opcode_LOW = IR[4:2];
+assign opcode_HIGH = IR[6:5];
+assign opcode_type = {opcode_HIGH, opcode_LOW};
+
+assign rs1 = IR[19:15];
+assign rs2 = IR[24:20];
+
+assign funct3 = IR[14:12];
+assign funct7 = IR[31:25];
+
+// Instruction is illegal if the opcode is all ones or zeros
+assign is_illegal = (opcode == '0) || (opcode == '1);
+
+
+// ============================================================
 // Integer Registers
 
-// FIXME - Make the regfile a separate module
+// FIXME - Make the regfile a separate module ?
 /*
 Note: Since this ID module is geared towards FPGA, 
     Dual-Port Embedded Block Ram will be used to implement the 32x32 registers.
@@ -102,11 +141,14 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32];
 logic [31:0] REG2 [32];
 
+assign regrd_rs1_en = opcode_type == type__OPIMM ||  opcode_type == type__OP;
+assign regrd_rs2_en = opcode_type == type__OP;
+
 // REG read
 always_ff @(posedge clk) begin
     if (state == ID1 && next_state == ID2) begin
-        regrd_rs1 <= (rs1 != '0) ? REG1[rs1] : '0;
-        regrd_rs2 <= (rs2 != '0) ? REG2[rs2] : '0;
+        regrd_rs1 <= (regrd_rs1_en && rs1 != '0) ? REG1[rs1] : '0;
+        regrd_rs2 <= (regrd_rs2_en && rs2 != '0) ? REG2[rs2] : '0;
     end
 end
 
@@ -120,37 +162,21 @@ end
 
 
 // ============================================================
-// [rv32i] Instruction Decoder
-
-// Aliases to IR segments
-assign opcode = pipe_IFID.ir[6:0];
-assign opcode_LOW = pipe_IFID.ir[4:2];
-assign opcode_HIGH = pipe_IFID.ir[6:5];
-assign opcode_type = {opcode_HIGH, opcode_LOW};
-
-assign rs1 = pipe_IFID.ir[19:15];
-assign rs2 = pipe_IFID.ir[24:20];
-
-assign rs1_required = opcode_type == type__OPIMM || opcode_type == type__OP;
-assign rs2_required = opcode_type == type__OP;
-
-// Instruction is illegal if the opcode is all ones or zeros
-assign is_illegal = (opcode == '0) || (opcode == '1);
-
-
-// ============================================================
 // Immediate Decoder
 
 // FIXME - Put Imm Decode Table ASCII art here 
 
-// The instruction from the Fetch stage is buffered into the OP2
-// from which the sign-extened immediate needs to be derived
-assign IR = pipe_IDEX.op2;
-assign sign = pipe_IDEX.op2[31];
+assign sign = IR[31];
 
 always_comb begin
-    // I'm sure the synthesis tool could have handled all of this "optimization"
-    // But, where's the fun in that.
+    // Instruction format --- used to decode Immediate 
+    format_I = opcode_type == type__OPIMM;
+    format_J = 1'b0;
+    format_S = 1'b0;
+    format_B = 1'b0;
+    format_U = opcode_type == type__LUI || opcode_type == type__AUIPC;
+
+    // FIXME - Refactor to case
 
     // Immediate Segment A - [0]
     if (format_I) ImmA = IR[20];
@@ -186,6 +212,59 @@ assign immediate = {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
 
 
 // ============================================================
+// ALU Operation Decoder
+
+assign aluop = {funct7[5], funct3, opcode_type};
+
+always_comb begin
+    // Default ALU Operation: ADD, result from adder
+    alu_neg = 1'b0;
+    alu_rev = 1'b0;
+    alu_cin = 1'b0;
+    alu_uns = 1'b0;
+    alu_gte = 1'b0;
+    alu_sel = ALU_ADDER;
+
+    // ALU Controls are decoded using {funct7[5], funct3, opcode_type}
+    /* verilator lint_off CASEINCOMPLETE */
+    casez(aluop)
+        9'b?_010_00100: begin // SLTI
+            alu_neg = 1'b1;
+            alu_cin = 1'b1;
+            alu_sel = ALU_COMP;
+        end
+        9'b?_011_00100: begin // SLTIU
+            alu_neg = 1'b1;
+            alu_cin = 1'b1;
+            alu_uns = 1'b1;
+            alu_sel = ALU_COMP;
+        end
+        9'b?_100_00100: begin // XORI
+            alu_sel = ALU_XOR;
+        end
+        9'b?_110_00100: begin // ORI
+            alu_sel = ALU_OR;
+        end
+        9'b?_111_00100: begin // ANDI
+            alu_sel = ALU_AND;
+        end
+        9'b?_001_00100: begin // SLLI
+            alu_rev = 1'b1;
+            alu_sel = ALU_SHIFT;
+        end
+        9'b0_101_00100: begin // SRLI
+            alu_sel = ALU_SHIFT;
+        end
+        9'b1_101_00100: begin // SRAI
+            alu_cin = 1'b1;
+            alu_sel = ALU_SHIFT;
+        end
+    endcase //aluop
+    /* verilator lint_on CASEINCOMPLETE */
+end
+
+
+// ============================================================
 // Instruction Decode Sequencer
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -204,42 +283,37 @@ always_comb begin
 end
 
 // Output pipe (decoded instruction)
+// Note: Some segments are registered on the first cycle, and some on the second cycle
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
-        pipe_IDEX <= '0;
         pipe_out_vld <= 1'b0;
-        format_I <= 1'b0;
-        format_J <= 1'b0;
-        format_S <= 1'b0;
-        format_B <= 1'b0;
-        format_U <= 1'b0;
     end
     else begin
         if (state == ID1) begin
             if(pipe_in_vld && pipe_in_rdy) begin
                 pipe_out_vld <= 1'b0;
 
-
-                // format --------- // FIXME
-                format_I <= opcode_type == type__OPIMM;
-                format_J <= 1'b0;
-                format_S <= 1'b0;
-                format_B <= 1'b0;
-                format_U <= opcode_type == type__LUI || opcode_type == type__AUIPC;
-
                 // aluop ----------
+                pipe_IDEX.neg <= alu_neg;
+                pipe_IDEX.rev <= alu_rev;
+                pipe_IDEX.cin <= alu_cin;
+                pipe_IDEX.uns <= alu_uns;
+                pipe_IDEX.gte <= alu_gte;
+                pipe_IDEX.sel <= alu_sel;
 
                 // controls -------
-                pipe_IDEX.rs1_read <= rs1_required;
-                pipe_IDEX.rs2_read <= rs2_required;
+                pipe_IDEX.rs1_read <= regrd_rs1_en;
+                pipe_IDEX.rs2_read <= regrd_rs2_en;
 
-                pipe_IDEX.rs1 <= rs1;
-                pipe_IDEX.rs2 <= rs2;
+                pipe_IDEX.rs1 <= (regrd_rs1_en) ? rs1 : '0;
+                pipe_IDEX.rs2 <= (regrd_rs2_en) ? rs2 : '0;
 
-                // Buffer PC into OP1 and place the IR in OP2, temporarily
-                // FIXME - if critical path, then place IR in a separate buffer
-                pipe_IDEX.op1 <= pipe_IFID.pc;
-                pipe_IDEX.op2 <= pipe_IFID.ir;
+                // Buffer PC into OP1 and Immediate into OP2
+                if (opcode_type == type__LUI) pipe_IDEX.op1 <= '0;
+                else pipe_IDEX.op1 <= pipe_IFID.pc;
+
+                pipe_IDEX.op2 <= immediate;
+
             end
             else if (pipe_out_vld && pipe_out_rdy) begin
                 pipe_out_vld <= 1'b0;
@@ -249,12 +323,8 @@ always_ff @(posedge clk or negedge rstz) begin
             pipe_out_vld <= 1'b1;
 
             // Conclude decoding OP1 and OP2, now that rs1/rs2 data is ready
-            // and the sign-extended immediate is decoded
             if (pipe_IDEX.rs1_read) pipe_IDEX.op1 <= regrd_rs1;
-
             if (pipe_IDEX.rs2_read) pipe_IDEX.op2 <= regrd_rs2;
-            else pipe_IDEX.op2 <= immediate;
-
         end
     end
 end
@@ -263,12 +333,11 @@ end
 assign pipe_in_rdy = (state == ID1) && (~pipe_out_vld | pipe_out_rdy);
 
 
-// ------------------------------------------------------------
-`ifdef verilator
-logic _unused;
-assign _unused = &{1'b0
-    , IR[6:0] // the 7b opcode is the only segment that doesn't contribute to Immediate operand decoding!
-};
-`endif
+// // ------------------------------------------------------------
+// `ifdef verilator
+// logic _unused;
+// assign _unused = &{1'b0
+// };
+// `endif
 
 endmodule

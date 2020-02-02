@@ -44,6 +44,8 @@ endclocking
 
 // ============================================================
 
+logic [31:0] REG [32];
+
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
         clk = 0;
@@ -60,9 +62,11 @@ endclocking
         for(int i=0; i<32; i++) begin
             u_id.REG1[i] = $urandom;
             u_id.REG2[i] = u_id.REG1[i];
+            REG[i] = u_id.REG1[i];
         end
-        u_id.REG1[0] = 0; // x0 is ZERO
-        u_id.REG2[0] = 0; 
+
+        // Zero out TB's REG[0] (x0)
+        REG[0] = 0;
 
         fork 
             forever #1ns clk = ~clk;
@@ -74,11 +78,13 @@ endclocking
     `TEST_CASE("decode") begin
         pipeIFID_t tinstr;
         pipeIDEX_t tdecode, rdecode;
+        string optype;
 
-        repeat (128) begin
+        repeat (1024) begin
 
-            rand_instr(tinstr, tdecode);
+            rand_instr(tinstr, tdecode, optype);
 
+            $display("OPTYPE=%s", optype);
             $display("IFID: PC=%h, IR=%h", tinstr.pc, tinstr.ir);
             $display("Expected IDEX:");
             $display("  op1: %h", tdecode.op1);
@@ -87,6 +93,12 @@ endclocking
             $display("  rs2_read: %h", tdecode.rs2_read);
             $display("  rs1: %h", tdecode.rs1);
             $display("  rs2: %h", tdecode.rs2);
+            $display("  neg: %h", tdecode.neg);
+            $display("  rev: %h", tdecode.rev);
+            $display("  cin: %h", tdecode.cin);
+            $display("  uns: %h", tdecode.uns);
+            $display("  gte: %h", tdecode.gte);
+            $display("  sel: %h", tdecode.sel);
 
             fork 
                 begin
@@ -113,6 +125,12 @@ endclocking
                         $display("  rs2_read: %h", rdecode.rs2_read);
                         $display("  rs1: %h", rdecode.rs1);
                         $display("  rs2: %h", rdecode.rs2);
+                        $display("  neg: %h", rdecode.neg);
+                        $display("  rev: %h", rdecode.rev);
+                        $display("  cin: %h", rdecode.cin);
+                        $display("  uns: %h", rdecode.uns);
+                        $display("  gte: %h", rdecode.gte);
+                        $display("  sel: %h", rdecode.sel);
 
                         cb.pipe_out_rdy <= 1;
                         ##1 cb.pipe_out_rdy <= 0;
@@ -130,13 +148,13 @@ endclocking
 
 end
 
-`WATCHDOG(100us);
+`WATCHDOG(1ms);
 
 // ============================================================
 // METHODS
 // ============================================================
 
-task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode);
+task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, output string optype);
     /*
     Generate constrained-random instr
 
@@ -147,52 +165,196 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode);
         Hence, we get by with just the humble $urandom
     */
 
-    int instr_type;
-    logic [4:0] optype, rs1, rs2;
+    int op;
 
-    instr.ir = $urandom;
+    logic [6:0] opcode;
+    logic [4:0] rs1, rs2, rd;
+    logic [2:0] funct3;
+    logic [6:0] funct7;
+    logic [31:0] imm;
+
+    op = $urandom_range(0,8);
+    imm = $urandom();
+    rs1 = $urandom();
+    rs2 = $urandom();
+    rd = $urandom();
+
     instr.pc = $urandom;
 
-    // setup valid opcode
-    instr_type = $urandom_range(1);
-    case(instr_type)
-        0: optype = 5'b00_100; // OPIMM
-        1: optype = 5'b01_100; // OP
-        default: assert(0);
-    endcase // instr_type
+    // painstakingly build random-valid instructions
+    // and expected decode
+    case(op)
+        0: begin
+            optype = "ADDI";
 
-    instr.ir[0+:7] = {optype, 2'b11};
-    rs1 = instr.ir[15+:5];
-    rs2 = instr.ir[20+:5];
+            instr.ir = {imm[11:0], rs1, 3'b000, rd, 7'b00_100_11};
 
-    // setup expected decode
-    if (optype == 5'b00_100) begin
-        // OPIMM
-        decode.op1 = u_id.REG1[rs1]; // RS1
-        decode.op2 = {
-            {20{instr.ir[31]}},
-            instr.ir[20 +: 12]
-        }; // Immediate Format I
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 0;
+        end
 
-        decode.rs1_read = 1;
-        decode.rs2_read = 0;
-        decode.rs1 = rs1;
-        decode.rs2 = rs2;
-    end
+        1: begin
+            optype = "SLTI";
 
-    if (optype == 5'b01_100) begin
-        // OP
-        // Note: Read from same "REG", because REG1 and REG2 are supposed to have
-        // the same data at any time
-        decode.op1 = u_id.REG1[rs1]; // RS1
-        decode.op2 = u_id.REG1[rs2]; // RS2
+            instr.ir = {imm[11:0], rs1, 3'b010, rd, 7'b00_100_11};
 
-        decode.rs1_read = 1;
-        decode.rs2_read = 1;
-        decode.rs1 = rs1;
-        decode.rs2 = rs2;
-    end 
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 1;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 3'd4;
+        end
 
+        2: begin
+            optype = "SLTIU";
+
+            instr.ir = {imm[11:0], rs1, 3'b011, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 1;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 1;
+            decode.gte = 0;
+            decode.sel = 4;
+        end
+
+        3: begin
+            optype = "XORI";
+
+            instr.ir = {imm[11:0], rs1, 3'b100, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 3;
+        end
+
+        4: begin
+            optype = "ORI";
+
+            instr.ir = {imm[11:0], rs1, 3'b110, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 2;
+        end
+
+        5: begin
+            optype = "ANDI";
+
+            instr.ir = {imm[11:0], rs1, 3'b111, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 1;
+        end
+
+        6: begin
+            optype = "SLLI";
+
+            instr.ir = {7'b0, imm[4:0], rs1, 3'b001, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'({7'b0, imm[4:0]});
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 1;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+
+        7: begin
+            optype = "SRLI";
+
+            instr.ir = {7'b0, imm[4:0], rs1, 3'b101, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'({7'b0,imm[4:0]});
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+
+        8: begin
+            optype = "SRAI";
+
+            instr.ir = {7'b0100000, imm[4:0], rs1, 3'b101, rd, 7'b00_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'({7'b0100000,imm[4:0]});
+            decode.rs1_read = 1;
+            decode.rs2_read = 0;
+            decode.rs1 = rs1;
+            decode.rs2 = 0;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+    endcase // instr
 endtask
 
 endmodule

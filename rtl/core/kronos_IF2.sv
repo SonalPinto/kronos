@@ -82,7 +82,6 @@ end
 // FIXME - Swap this out to a skid buffer ?
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
-        pipe_IFID <= '0;
         fetch_vld <= '0;
     end
     else begin

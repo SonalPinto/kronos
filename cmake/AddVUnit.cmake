@@ -86,6 +86,8 @@ function(add_hdl_unit_test hdl_test_file)
     add_custom_target("test-${ARG_NAME}"
         COMMAND
             ${Python3_EXECUTABLE} ${testrunner_script}
+        WORKING_DIRECTORY
+            ${CMAKE_BINARY_DIR}
     )
 
 endfunction()
