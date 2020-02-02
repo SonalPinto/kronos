@@ -169,9 +169,12 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode);
     if (optype == 5'b00_100) begin
         // OPIMM
         decode.op1 = u_id.REG1[rs1]; // RS1
-        decode.op2 = '0; // Immediate
+        decode.op2 = {
+            {20{instr.ir[31]}},
+            instr.ir[20 +: 12]
+        }; // Immediate Format I
 
-        decode.rs1_read = rs1 != 0;
+        decode.rs1_read = 1;
         decode.rs2_read = 0;
         decode.rs1 = rs1;
         decode.rs2 = rs2;
@@ -184,8 +187,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode);
         decode.op1 = u_id.REG1[rs1]; // RS1
         decode.op2 = u_id.REG1[rs2]; // RS2
 
-        decode.rs1_read = rs1 != 0;
-        decode.rs2_read = rs2 != 0;
+        decode.rs1_read = 1;
+        decode.rs2_read = 1;
         decode.rs1 = rs1;
         decode.rs2 = rs2;
     end 

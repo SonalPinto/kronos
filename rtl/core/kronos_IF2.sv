@@ -63,6 +63,8 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 always_comb begin
+    next_state = state;
+    /* verilator lint_off CASEINCOMPLETE */
     case (state)
         INIT: next_state = FETCH;
 
@@ -73,9 +75,8 @@ always_comb begin
         STALL:
             if (instr_gnt && fetch_rdy) next_state = FETCH;
 
-        default:
-            next_state = state;
     endcase // state
+    /* verilator lint_on CASEINCOMPLETE */
 end
 
 // FIXME - Swap this out to a skid buffer ?
