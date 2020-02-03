@@ -80,7 +80,7 @@ logic [31:0] REG [32];
         pipeIDEX_t tdecode, rdecode;
         string optype;
 
-        repeat (1024) begin
+        repeat (2**12) begin
 
             rand_instr(tinstr, tdecode, optype);
 
@@ -173,7 +173,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [6:0] funct7;
     logic [31:0] imm;
 
-    op = $urandom_range(0,8);
+    op = $urandom_range(0,18);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -353,6 +353,197 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.uns = 0;
             decode.gte = 0;
             decode.sel = 5;
+        end
+
+        9: begin
+            optype = "ADD";
+
+            instr.ir = {7'b0, rs2, rs1, 3'b000, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 0;
+        end
+
+        10: begin
+            optype = "SUB";
+
+            instr.ir = {7'b0100000, rs2, rs1, 3'b000, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 1;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 0;
+        end
+
+        11: begin
+            optype = "SLL";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b001, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 1;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+
+        12: begin
+            optype = "SLL";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b010, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 1;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 4;
+        end
+
+
+        13: begin
+            optype = "SLTU";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b011, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 1;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 1;
+            decode.gte = 0;
+            decode.sel = 4;
+        end
+
+        14: begin
+            optype = "XOR";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b100, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 3;
+        end
+
+        15: begin
+            optype = "SRL";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b101, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+
+        16: begin
+            optype = "SRA";
+
+            instr.ir = {7'b0100000, rs2, rs1, 3'b101, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 1;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 5;
+        end
+
+        17: begin
+            optype = "OR";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b110, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 2;
+        end
+
+        18: begin
+            optype = "AND";
+
+            instr.ir = {7'b0000000, rs2, rs1, 3'b111, rd, 7'b01_100_11};
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.rs1_read = 1;
+            decode.rs2_read = 1;
+            decode.rs1 = rs1;
+            decode.rs2 = rs2;
+            decode.neg = 0;
+            decode.rev = 0;
+            decode.cin = 0;
+            decode.uns = 0;
+            decode.gte = 0;
+            decode.sel = 1;
         end
     endcase // instr
 endtask

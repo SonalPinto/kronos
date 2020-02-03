@@ -50,7 +50,7 @@ localparam logic [31:0] zero   = 32'h0;
 
 
 
-logic [31:0] IR;
+logic [31:0] IR, tIR;
 
 logic [6:0] opcode;
 logic [1:0] opcode_HIGH;
@@ -87,7 +87,7 @@ logic [11:0]    ImmF;
 logic [31:0] immediate;
 
 // ALU controls
-logic [8:0]  aluop;
+logic [5:0]  aluop;
 logic        alu_neg;
 logic        alu_rev;
 logic        alu_cin;
@@ -95,7 +95,7 @@ logic        alu_uns;
 logic        alu_gte;
 logic [2:0]  alu_sel;
 
-logic is_illegal;
+logic is_illegal1, is_illegal2;
 
 enum logic [1:0] {
     ID1,
@@ -121,7 +121,8 @@ assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
 
 // Instruction is illegal if the opcode is all ones or zeros
-assign is_illegal = (opcode == '0) || (opcode == '1);
+assign is_illegal1 = (opcode == '0) || (opcode == '1);
+assign is_illegal2 = opcode[1:0] != 2'b11;
 
 
 // ============================================================
@@ -165,45 +166,37 @@ end
 // Immediate Decoder
 
 // FIXME - Put Imm Decode Table ASCII art here 
-
-assign sign = IR[31];
+assign sign = tIR[31];
 
 always_comb begin
-    // Instruction format --- used to decode Immediate 
-    format_I = opcode_type == type__OPIMM;
-    format_J = 1'b0;
-    format_S = 1'b0;
-    format_B = 1'b0;
-    format_U = opcode_type == type__LUI || opcode_type == type__AUIPC;
-
     // FIXME - Refactor to case
 
     // Immediate Segment A - [0]
-    if (format_I) ImmA = IR[20];
-    else if (format_S) ImmA = IR[7];
+    if (format_I) ImmA = tIR[20];
+    else if (format_S) ImmA = tIR[7];
     else ImmA = 1'b0; // B/J/U
     
     // Immediate Segment B - [4:1]
     if (format_U) ImmB = 4'b0;
-    else if (format_I || format_J) ImmB = IR[24:21];
-    else ImmB = IR[11:8]; // S/B
+    else if (format_I || format_J) ImmB = tIR[24:21];
+    else ImmB = tIR[11:8]; // S/B
 
     // Immediate Segment C - [10:5]
     if (format_U) ImmC = 6'b0;
-    else ImmC = IR[30:25];
+    else ImmC = tIR[30:25];
 
     // Immediate Segment D - [11]
     if (format_U) ImmD = 1'b0;
-    else if (format_B) ImmD = IR[7];
-    else if (format_J) ImmD = IR[20];
+    else if (format_B) ImmD = tIR[7];
+    else if (format_J) ImmD = tIR[20];
     else ImmD = sign;
 
     // Immediate Segment E - [19:12]
-    if (format_U || format_J) ImmE = IR[19:12];
+    if (format_U || format_J) ImmE = tIR[19:12];
     else ImmE = {8{sign}};
     
     // Immediate Segment F - [31:20]
-    if (format_U) ImmF = IR[31:20];
+    if (format_U) ImmF = tIR[31:20];
     else ImmF = {12{sign}};
 end
 
@@ -214,8 +207,6 @@ assign immediate = {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
 // ============================================================
 // ALU Operation Decoder
 
-assign aluop = {funct7[5], funct3, opcode_type};
-
 always_comb begin
     // Default ALU Operation: ADD, result from adder
     alu_neg = 1'b0;
@@ -225,39 +216,77 @@ always_comb begin
     alu_gte = 1'b0;
     alu_sel = ALU_ADDER;
 
-    // ALU Controls are decoded using {funct7[5], funct3, opcode_type}
+    // ALU Controls are decoded using {funct7[5], funct3, opcode_type--encoded}
+    // FIXME - add illegal conditions for SHIFT ops
     /* verilator lint_off CASEINCOMPLETE */
     casez(aluop)
-        9'b?_010_00100: begin // SLTI
+        // OPIMM = [00] ---------------
+        6'b?_010_00: begin // SLTI
             alu_neg = 1'b1;
             alu_cin = 1'b1;
             alu_sel = ALU_COMP;
         end
-        9'b?_011_00100: begin // SLTIU
+        6'b?_011_00: begin // SLTIU
             alu_neg = 1'b1;
             alu_cin = 1'b1;
             alu_uns = 1'b1;
             alu_sel = ALU_COMP;
         end
-        9'b?_100_00100: begin // XORI
+        6'b?_100_00: begin // XORI
             alu_sel = ALU_XOR;
         end
-        9'b?_110_00100: begin // ORI
+        6'b?_110_00: begin // ORI
             alu_sel = ALU_OR;
         end
-        9'b?_111_00100: begin // ANDI
+        6'b?_111_00: begin // ANDI
             alu_sel = ALU_AND;
         end
-        9'b?_001_00100: begin // SLLI
+        6'b?_001_00: begin // SLLI
             alu_rev = 1'b1;
             alu_sel = ALU_SHIFT;
         end
-        9'b0_101_00100: begin // SRLI
+        6'b0_101_00: begin // SRLI
             alu_sel = ALU_SHIFT;
         end
-        9'b1_101_00100: begin // SRAI
+        6'b1_101_00: begin // SRAI
             alu_cin = 1'b1;
             alu_sel = ALU_SHIFT;
+        end
+        // OP = [01] ------------------
+        6'b1_000_01: begin // SUB
+            alu_neg = 1'b1;
+            alu_cin = 1'b1;
+        end
+        6'b?_001_01: begin // SLL
+            alu_rev = 1'b1;
+            alu_sel = ALU_SHIFT;
+        end
+        6'b?_010_01: begin // SLT
+            alu_neg = 1'b1;
+            alu_cin = 1'b1;
+            alu_sel = ALU_COMP;
+        end
+        6'b?_011_01: begin // SLTU
+            alu_neg = 1'b1;
+            alu_cin = 1'b1;
+            alu_uns = 1'b1;
+            alu_sel = ALU_COMP;
+        end
+        6'b?_100_01: begin // XOR
+            alu_sel = ALU_XOR;
+        end
+        6'b0_101_01: begin // SRL
+            alu_sel = ALU_SHIFT;
+        end
+        6'b1_101_01: begin // SRA
+            alu_cin = 1'b1;
+            alu_sel = ALU_SHIFT;
+        end
+        6'b?_110_01: begin // OR
+            alu_sel = ALU_OR;
+        end
+        6'b?_111_01: begin // AND
+            alu_sel = ALU_AND;
         end
     endcase //aluop
     /* verilator lint_on CASEINCOMPLETE */
@@ -282,6 +311,29 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
+// Intermediate buffer to reduce critical paths
+always_ff @(posedge clk) begin
+    // Instruction format --- used to decode Immediate 
+    format_I <= opcode_type == type__OPIMM;
+    format_J <= 1'b0;
+    format_S <= 1'b0;
+    format_B <= 1'b0;
+    format_U <= opcode_type == type__LUI || opcode_type == type__AUIPC;
+
+    tIR <= IR;
+
+    aluop[2+:4] <= {funct7[5], funct3};
+
+    // Opcode type -- used for ALU Operation decoder
+    /* verilator lint_off CASEINCOMPLETE */
+    case(opcode_type)
+        type__OPIMM : aluop[1:0] <= 2'b00;
+        type__OP    : aluop[1:0] <= 2'b01;
+    endcase
+    /* verilator lint_on CASEINCOMPLETE */
+end
+
+
 // Output pipe (decoded instruction)
 // Note: Some segments are registered on the first cycle, and some on the second cycle
 always_ff @(posedge clk or negedge rstz) begin
@@ -293,14 +345,6 @@ always_ff @(posedge clk or negedge rstz) begin
             if(pipe_in_vld && pipe_in_rdy) begin
                 pipe_out_vld <= 1'b0;
 
-                // aluop ----------
-                pipe_IDEX.neg <= alu_neg;
-                pipe_IDEX.rev <= alu_rev;
-                pipe_IDEX.cin <= alu_cin;
-                pipe_IDEX.uns <= alu_uns;
-                pipe_IDEX.gte <= alu_gte;
-                pipe_IDEX.sel <= alu_sel;
-
                 // controls -------
                 pipe_IDEX.rs1_read <= regrd_rs1_en;
                 pipe_IDEX.rs2_read <= regrd_rs2_en;
@@ -308,11 +352,11 @@ always_ff @(posedge clk or negedge rstz) begin
                 pipe_IDEX.rs1 <= (regrd_rs1_en) ? rs1 : '0;
                 pipe_IDEX.rs2 <= (regrd_rs2_en) ? rs2 : '0;
 
-                // Buffer PC into OP1 and Immediate into OP2
+                // Buffer PC into OP1
                 if (opcode_type == type__LUI) pipe_IDEX.op1 <= '0;
                 else pipe_IDEX.op1 <= pipe_IFID.pc;
 
-                pipe_IDEX.op2 <= immediate;
+                pipe_IDEX.op2 <= '0;
 
             end
             else if (pipe_out_vld && pipe_out_rdy) begin
@@ -322,9 +366,19 @@ always_ff @(posedge clk or negedge rstz) begin
         else if (state == ID2) begin
             pipe_out_vld <= 1'b1;
 
+            // aluop ----------
+            pipe_IDEX.neg <= alu_neg;
+            pipe_IDEX.rev <= alu_rev;
+            pipe_IDEX.cin <= alu_cin;
+            pipe_IDEX.uns <= alu_uns;
+            pipe_IDEX.gte <= alu_gte;
+            pipe_IDEX.sel <= alu_sel;
+
             // Conclude decoding OP1 and OP2, now that rs1/rs2 data is ready
             if (pipe_IDEX.rs1_read) pipe_IDEX.op1 <= regrd_rs1;
+
             if (pipe_IDEX.rs2_read) pipe_IDEX.op2 <= regrd_rs2;
+            else pipe_IDEX.op2 <= immediate;
         end
     end
 end
@@ -334,10 +388,11 @@ assign pipe_in_rdy = (state == ID1) && (~pipe_out_vld | pipe_out_rdy);
 
 
 // // ------------------------------------------------------------
-// `ifdef verilator
-// logic _unused;
-// assign _unused = &{1'b0
-// };
-// `endif
+`ifdef verilator
+logic _unused;
+assign _unused = &{1'b0
+    , tIR[6:0]  // the opcode is the only part of the instruction that isn't used to decode the immediate!
+};
+`endif
 
 endmodule
