@@ -185,6 +185,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
     instr.pc = $urandom;
 
+    decode.illegal = 0;
+
     // painstakingly build random-valid instructions
     // and expected decode
     case(op)

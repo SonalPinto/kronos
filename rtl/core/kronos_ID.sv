@@ -89,7 +89,6 @@ logic [11:0]    ImmF;
 logic [31:0] immediate;
 
 // ALU controls
-logic [5:0]  aluop;
 logic        alu_neg;
 logic        alu_rev;
 logic        alu_cin;
@@ -97,7 +96,7 @@ logic        alu_uns;
 logic        alu_gte;
 logic [2:0]  alu_sel;
 
-logic is_illegal1, is_illegal2;
+logic is_illegal1, is_illegal2, is_illegal3;
 
 enum logic [1:0] {
     ID1,
@@ -145,8 +144,8 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32];
 logic [31:0] REG2 [32];
 
-assign regrd_rs1_en = opcode_type == type__OPIMM ||  opcode_type == type__OP;
-assign regrd_rs2_en = opcode_type == type__OP;
+assign regrd_rs1_en = opcode_type == INSTR_OPIMM ||  opcode_type == INSTR_OP;
+assign regrd_rs2_en = opcode_type == INSTR_OP;
 
 assign regwr_rd_en = 1'b1; // opcode != br|st|misc|system
 
@@ -220,80 +219,136 @@ always_comb begin
     alu_uns = 1'b0;
     alu_gte = 1'b0;
     alu_sel = ALU_ADDER;
+    is_illegal3 = 1'b0;
 
-    // ALU Controls are decoded using {funct7[5], funct3, opcode_type--encoded}
-    // FIXME - add illegal conditions for SHIFT ops
+    // ALU Controls are decoded using {funct7, funct3, opcode_type}
     /* verilator lint_off CASEINCOMPLETE */
-    casez(aluop)
-        // OPIMM = [00] ---------------
-        6'b?_010_00: begin // SLTI
-            alu_neg = 1'b1;
-            alu_cin = 1'b1;
-            alu_sel = ALU_COMP;
-        end
-        6'b?_011_00: begin // SLTIU
-            alu_neg = 1'b1;
-            alu_cin = 1'b1;
-            alu_uns = 1'b1;
-            alu_sel = ALU_COMP;
-        end
-        6'b?_100_00: begin // XORI
-            alu_sel = ALU_XOR;
-        end
-        6'b?_110_00: begin // ORI
-            alu_sel = ALU_OR;
-        end
-        6'b?_111_00: begin // ANDI
-            alu_sel = ALU_AND;
-        end
-        6'b?_001_00: begin // SLLI
-            alu_rev = 1'b1;
-            alu_sel = ALU_SHIFT;
-        end
-        6'b0_101_00: begin // SRLI
-            alu_sel = ALU_SHIFT;
-        end
-        6'b1_101_00: begin // SRAI
-            alu_cin = 1'b1;
-            alu_sel = ALU_SHIFT;
-        end
-        // OP = [01] ------------------
-        6'b1_000_01: begin // SUB
-            alu_neg = 1'b1;
-            alu_cin = 1'b1;
-        end
-        6'b?_001_01: begin // SLL
-            alu_rev = 1'b1;
-            alu_sel = ALU_SHIFT;
-        end
-        6'b?_010_01: begin // SLT
-            alu_neg = 1'b1;
-            alu_cin = 1'b1;
-            alu_sel = ALU_COMP;
-        end
-        6'b?_011_01: begin // SLTU
-            alu_neg = 1'b1;
-            alu_cin = 1'b1;
-            alu_uns = 1'b1;
-            alu_sel = ALU_COMP;
-        end
-        6'b?_100_01: begin // XOR
-            alu_sel = ALU_XOR;
-        end
-        6'b0_101_01: begin // SRL
-            alu_sel = ALU_SHIFT;
-        end
-        6'b1_101_01: begin // SRA
-            alu_cin = 1'b1;
-            alu_sel = ALU_SHIFT;
-        end
-        6'b?_110_01: begin // OR
-            alu_sel = ALU_OR;
-        end
-        6'b?_111_01: begin // AND
-            alu_sel = ALU_AND;
-        end
-    endcase //aluop
+
+    // FIXME - Once this is complete, ONLY then optimize for 2 stage if critical path
+    //  candidates: f7==0, f7==32, opcode_types(5b->3b)
+    case(opcode_type)
+    // --------------------------------
+    INSTR_OPIMM: begin
+        case(funct3)
+            3'b010: begin // SLTI
+                alu_neg = 1'b1;
+                alu_cin = 1'b1;
+                alu_sel = ALU_COMP;
+            end
+
+            3'b011: begin // SLTIU
+                alu_neg = 1'b1;
+                alu_cin = 1'b1;
+                alu_uns = 1'b1;
+                alu_sel = ALU_COMP;
+            end
+
+            3'b100: begin // XORI
+                alu_sel = ALU_XOR;
+            end
+
+            3'b110: begin // ORI
+                alu_sel = ALU_OR;
+            end
+
+            3'b111: begin // ANDI
+                alu_sel = ALU_AND;
+            end
+
+            3'b001: begin // SLLI
+                if (funct7 == 7'd0) begin
+                    alu_rev = 1'b1;
+                    alu_sel = ALU_SHIFT;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b101: begin // SRLI/SRAI
+                if (funct7 == 7'd0) begin
+                    alu_sel = ALU_SHIFT;
+                end
+                else if (funct7 == 7'd32) begin
+                    alu_cin = 1'b1;
+                    alu_sel = ALU_SHIFT;
+                end
+                else is_illegal3 = 1'b1;
+            end
+        endcase // funct3
+    end
+    // --------------------------------
+    INSTR_OP: begin
+        case(funct3)
+            3'b000: begin // ADD/SUB
+                if (funct7 == 7'd32) begin
+                    alu_neg = 1'b1;
+                    alu_cin = 1'b1;
+                end
+                else if (funct7 != 7'd0) begin
+                    is_illegal3 = 1'b1;
+                end
+            end
+
+            3'b001: begin // SLL
+                if (funct7 == 7'd0) begin
+                    alu_rev = 1'b1;
+                    alu_sel = ALU_SHIFT;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b010: begin // SLT
+                if (funct7 == 7'd0) begin
+                    alu_neg = 1'b1;
+                    alu_cin = 1'b1;
+                    alu_sel = ALU_COMP;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b011: begin // SLTU
+                if (funct7 == 7'd0) begin
+                    alu_neg = 1'b1;
+                    alu_cin = 1'b1;
+                    alu_uns = 1'b1;
+                    alu_sel = ALU_COMP;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b100: begin // XOR
+                if (funct7 == 7'd0) begin
+                    alu_sel = ALU_XOR;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b101: begin // SRL/SRA
+                if (funct7 == 7'd0) begin
+                    alu_sel = ALU_SHIFT;
+                end
+                else if (funct7 == 7'd32) begin
+                    alu_cin = 1'b1;
+                    alu_sel = ALU_SHIFT;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b110: begin // OR
+                if (funct7 == 7'd0) begin
+                    alu_sel = ALU_OR;
+                end
+                else is_illegal3 = 1'b1;
+            end
+
+            3'b111: begin // AND
+                if (funct7 == 7'd0) begin
+                    alu_sel = ALU_AND;
+                end
+                else is_illegal3 = 1'b1;
+            end
+        endcase // funct3
+    end
+    endcase // opcode_type
     /* verilator lint_on CASEINCOMPLETE */
 end
 
@@ -319,24 +374,13 @@ end
 // Intermediate buffer to reduce critical paths
 always_ff @(posedge clk) begin
     // Instruction format --- used to decode Immediate 
-    format_I <= opcode_type == type__OPIMM;
+    format_I <= opcode_type == INSTR_OPIMM;
     format_J <= 1'b0;
     format_S <= 1'b0;
     format_B <= 1'b0;
-    format_U <= opcode_type == type__LUI || opcode_type == type__AUIPC;
+    format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
 
     tIR <= IR;
-
-    aluop[2+:4] <= {funct7[5], funct3};
-
-    // Opcode type -- used for ALU Operation decoder
-    /* verilator lint_off CASEINCOMPLETE */
-    case(opcode_type)
-        type__OPIMM : aluop[1:0] <= 2'b00;
-        type__OP    : aluop[1:0] <= 2'b01;
-        default     : aluop[1:0] <= 2'b11;
-    endcase
-    /* verilator lint_on CASEINCOMPLETE */
 end
 
 
@@ -351,6 +395,16 @@ always_ff @(posedge clk or negedge rstz) begin
             if(pipe_in_vld && pipe_in_rdy) begin
                 pipe_out_vld <= 1'b0;
 
+                // aluop ----------
+                pipe_IDEX.neg <= alu_neg;
+                pipe_IDEX.rev <= alu_rev;
+                pipe_IDEX.cin <= alu_cin;
+                pipe_IDEX.uns <= alu_uns;
+                pipe_IDEX.gte <= alu_gte;
+                pipe_IDEX.sel <= alu_sel;
+
+                pipe_IDEX.illegal <= is_illegal1 | is_illegal2 | is_illegal3;
+
                 // controls -------
                 pipe_IDEX.rs1_read <= regrd_rs1_en;
                 pipe_IDEX.rs2_read <= regrd_rs2_en;
@@ -363,7 +417,7 @@ always_ff @(posedge clk or negedge rstz) begin
 
 
                 // Buffer PC into OP1
-                if (opcode_type == type__LUI) pipe_IDEX.op1 <= '0;
+                if (opcode_type == INSTR_LUI) pipe_IDEX.op1 <= '0;
                 else pipe_IDEX.op1 <= pipe_IFID.pc;
 
                 pipe_IDEX.op2 <= '0;
@@ -375,14 +429,6 @@ always_ff @(posedge clk or negedge rstz) begin
         end
         else if (state == ID2) begin
             pipe_out_vld <= 1'b1;
-
-            // aluop ----------
-            pipe_IDEX.neg <= alu_neg;
-            pipe_IDEX.rev <= alu_rev;
-            pipe_IDEX.cin <= alu_cin;
-            pipe_IDEX.uns <= alu_uns;
-            pipe_IDEX.gte <= alu_gte;
-            pipe_IDEX.sel <= alu_sel;
 
             // Conclude decoding OP1 and OP2, now that rs1/rs2 data is ready
             if (pipe_IDEX.rs1_read) pipe_IDEX.op1 <= regrd_rs1;

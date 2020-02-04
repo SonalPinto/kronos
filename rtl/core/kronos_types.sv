@@ -24,14 +24,27 @@ typedef struct packed {
     logic        uns;
     logic        gte;
     logic [2:0]  sel;
+    logic        illegal;
 } pipeIDEX_t;
 
 // Instruction Types: {opcode[6:2]}
-parameter logic [4:0] type__OPIMM = 5'b00_100;
-parameter logic [4:0] type__AUIPC = 5'b00_101;
-parameter logic [4:0] type__OP    = 5'b01_100;
-parameter logic [4:0] type__LUI   = 5'b01_101;
+parameter logic [4:0] INSTR_LOAD  = 5'b00_000;
+parameter logic [4:0] INSTR_STORE = 5'b01_000;
+parameter logic [4:0] INSTR_BR    = 5'b11_000;
 
+parameter logic [4:0] INSTR_JALR  = 5'b11_001;
+
+parameter logic [4:0] INSTR_MISC  = 5'b00_011;
+parameter logic [4:0] INSTR_JAL   = 5'b11_011;
+
+parameter logic [4:0] INSTR_OPIMM = 5'b00_100;
+parameter logic [4:0] INSTR_OP    = 5'b01_100;
+parameter logic [4:0] INSTR_SYS   = 5'b11_100;
+
+parameter logic [4:0] INSTR_AUIPC = 5'b00_101;
+parameter logic [4:0] INSTR_LUI   = 5'b01_101;
+
+    
 // ALU Result Select
 parameter logic [2:0] ALU_ADDER = 3'd0;
 parameter logic [2:0] ALU_AND   = 3'd1;
