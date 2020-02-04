@@ -1,7 +1,7 @@
 # Copyright (c) 2020 Sonal Pinto
 # SPDX-License-Identifier: Apache-2.0
 
-
+import os
 from vunit import VUnitCLI
 from vunit.verilog import VUnit
 
@@ -19,6 +19,15 @@ source_files = "@TEST_SOURCES@".split(';')
 for f in source_files:
     lib.add_source_files(f)
 
-vu.set_sim_option("modelsim.vsim_flags", ['-do "add wave -r *"'])
+# Additional runtime config
+dump_wave = '-do "add wave -r *"'
+sv_seed = ''
+
+if 'SV_SEED' in os.environ:
+    seed = os.environ['SV_SEED']
+    print("SV_SEED: ", seed)
+    sv_seed = "-sv_seed {}".format(seed)
+
+vu.set_sim_option("modelsim.vsim_flags", [dump_wave, sv_seed])
 
 vu.main()
