@@ -16,6 +16,8 @@ typedef struct packed {
     logic        rs2_read;
     logic [4:0]  rs1;
     logic [4:0]  rs2;
+    logic [4:0]  rd;
+    logic        rd_write;
     logic        neg;
     logic        rev;
     logic        cin;

@@ -56,12 +56,14 @@ logic [6:0] opcode;
 logic [1:0] opcode_HIGH;
 logic [2:0] opcode_LOW;
 logic [4:0] opcode_type;
-logic [4:0] rs1, rs2;
+logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
 
 logic regrd_rs1_en, regrd_rs2_en;
 logic [31:0] regrd_rs1, regrd_rs2;
+
+logic regwr_rd_en;
 
 logic sign;
 logic format_I;
@@ -116,6 +118,7 @@ assign opcode_type = {opcode_HIGH, opcode_LOW};
 
 assign rs1 = IR[19:15];
 assign rs2 = IR[24:20];
+assign rd  = IR[11: 7];
 
 assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
@@ -144,6 +147,8 @@ logic [31:0] REG2 [32];
 
 assign regrd_rs1_en = opcode_type == type__OPIMM ||  opcode_type == type__OP;
 assign regrd_rs2_en = opcode_type == type__OP;
+
+assign regwr_rd_en = 1'b1; // opcode != br|st|misc|system
 
 // REG read
 always_ff @(posedge clk) begin
@@ -329,6 +334,7 @@ always_ff @(posedge clk) begin
     case(opcode_type)
         type__OPIMM : aluop[1:0] <= 2'b00;
         type__OP    : aluop[1:0] <= 2'b01;
+        default     : aluop[1:0] <= 2'b11;
     endcase
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -351,6 +357,10 @@ always_ff @(posedge clk or negedge rstz) begin
 
                 pipe_IDEX.rs1 <= (regrd_rs1_en) ? rs1 : '0;
                 pipe_IDEX.rs2 <= (regrd_rs2_en) ? rs2 : '0;
+
+                pipe_IDEX.rd_write <= regwr_rd_en;
+                pipe_IDEX.rd  <= (regwr_rd_en) ? rd : '0;
+
 
                 // Buffer PC into OP1
                 if (opcode_type == type__LUI) pipe_IDEX.op1 <= '0;
