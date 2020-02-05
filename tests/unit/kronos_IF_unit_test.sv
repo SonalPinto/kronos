@@ -14,7 +14,7 @@ logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
 logic instr_gnt;
-pipeIFID_t pipe_IFID;
+pipeIFID_t fetch;
 logic pipe_out_vld;
 logic pipe_out_rdy;
 logic [31:0] branch_target;
@@ -25,14 +25,14 @@ logic miss;
 
     
 kronos_IF u_dut (
-// kronos_IF2 u_dut (
+    // kronos_IF2 u_dut (
     .clk          (clk              ),
     .rstz         (rstz             ),
     .instr_addr   (instr_addr       ),
     .instr_data   (instr_data       ),
     .instr_req    (instr_req        ),
     .instr_gnt    (instr_gnt & ~miss),
-    .pipe_IFID    (pipe_IFID        ),
+    .fetch        (fetch            ),
     .pipe_out_vld (pipe_out_vld     ),
     .pipe_out_rdy (pipe_out_rdy     ),
     .branch_target(branch_target    ),
@@ -50,7 +50,7 @@ spsram32_model #(.DEPTH(256)) u_imem (
 
 default clocking cb @(posedge clk);
     default input #10s output #10ps;
-    input pipe_IFID, pipe_out_vld, instr_req;
+    input fetch, pipe_out_vld, instr_req;
     output negedge pipe_out_rdy;
 endclocking
 
@@ -84,9 +84,9 @@ endclocking
 
         repeat(128) begin
             @(cb iff pipe_out_vld) begin        
-                $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
-                assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
-                assert(expected_pc == pipe_IFID.pc);
+                $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
+                assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                assert(expected_pc == fetch.pc);
                 expected_pc += 4;
             end
         end
@@ -107,9 +107,9 @@ endclocking
                 end
                 cb.pipe_out_rdy <= 1;
 
-                $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
-                assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
-                assert(expected_pc == pipe_IFID.pc);
+                $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
+                assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                assert(expected_pc == fetch.pc);
                 expected_pc += 4;
             end
         end
@@ -136,9 +136,9 @@ endclocking
 
             repeat(128) begin
                 @(cb iff pipe_out_vld) begin        
-                    $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
-                    assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
-                    assert(expected_pc == pipe_IFID.pc);
+                    $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
+                    assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                    assert(expected_pc == fetch.pc);
                     expected_pc += 4;
                 end
             end
@@ -173,9 +173,9 @@ endclocking
                     end
                     cb.pipe_out_rdy <= 1;
 
-                    $display("PC=%h, IR=%h", pipe_IFID.pc, pipe_IFID.ir);
-                    assert(pipe_IFID.ir == u_imem.MEM[pipe_IFID.pc[7:0]]);
-                    assert(expected_pc == pipe_IFID.pc);
+                    $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
+                    assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                    assert(expected_pc == fetch.pc);
                     expected_pc += 4;
                 end
             end

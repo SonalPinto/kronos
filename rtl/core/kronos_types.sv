@@ -4,10 +4,12 @@
 
 package kronos_types;
 
+
 typedef struct packed {
     logic [31:0] pc;
     logic [31:0] ir;
 } pipeIFID_t;
+
 
 typedef struct packed {
     logic [31:0] op1;
@@ -27,6 +29,13 @@ typedef struct packed {
     logic        illegal;
 } pipeIDEX_t;
 
+
+typedef struct packed {
+    logic [31:0] result;
+} pipeEXWB_t;
+
+
+// ============================================================
 // Instruction Types: {opcode[6:2]}
 parameter logic [4:0] INSTR_LOAD  = 5'b00_000;
 parameter logic [4:0] INSTR_STORE = 5'b01_000;
@@ -44,7 +53,8 @@ parameter logic [4:0] INSTR_SYS   = 5'b11_100;
 parameter logic [4:0] INSTR_AUIPC = 5'b00_101;
 parameter logic [4:0] INSTR_LUI   = 5'b01_101;
 
-    
+
+// ============================================================
 // ALU Result Select
 parameter logic [2:0] ALU_ADDER = 3'd0;
 parameter logic [2:0] ALU_AND   = 3'd1;

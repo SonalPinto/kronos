@@ -3,10 +3,6 @@
 
 # HDL Unit Test rule using Python3/VUnit
 
-if(NOT Python3_FOUND)
-    return()
-endif()
-
 if(NOT VUNIT_FOUND)
     return()
 endif()

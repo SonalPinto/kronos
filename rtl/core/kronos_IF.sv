@@ -18,7 +18,7 @@ module kronos_IF
     output logic        instr_req,
     input  logic        instr_gnt,
     // IF/ID interface
-    output pipeIFID_t   pipe_IFID,
+    output pipeIFID_t   fetch,
     output logic        pipe_out_vld,
     input  logic        pipe_out_rdy,
     // BRANCH
@@ -45,8 +45,8 @@ always_ff @(posedge clk or negedge rstz) begin
     end
     else begin
         if (instr_gnt) begin
-            pipe_IFID.pc <= instr_addr;
-            pipe_IFID.ir <= instr_data;
+            fetch.pc <= instr_addr;
+            fetch.ir <= instr_data;
             pc <= branch ? branch_target : (pc + 32'h4);
             fetch_vld <= 1'b1;
         end

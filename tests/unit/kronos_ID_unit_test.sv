@@ -10,10 +10,10 @@ import kronos_types::*;
 
 logic clk;
 logic rstz;
-pipeIFID_t pipe_IFID;
+pipeIFID_t fetch;
 logic pipe_in_vld;
 logic pipe_in_rdy;
-pipeIDEX_t pipe_IDEX;
+pipeIDEX_t decode;
 logic pipe_out_vld;
 logic pipe_out_rdy;
 logic [31:0] regwr_data;
@@ -23,10 +23,10 @@ logic regwr_en;
 kronos_ID u_id (
     .clk         (clk         ),
     .rstz        (rstz        ),
-    .pipe_IFID   (pipe_IFID   ),
+    .fetch       (fetch       ),
     .pipe_in_vld (pipe_in_vld ),
     .pipe_in_rdy (pipe_in_rdy ),
-    .pipe_IDEX   (pipe_IDEX   ),
+    .decode      (decode      ),
     .pipe_out_vld(pipe_out_vld),
     .pipe_out_rdy(pipe_out_rdy),
     .regwr_data  (regwr_data  ),
@@ -36,9 +36,9 @@ kronos_ID u_id (
 
 default clocking cb @(posedge clk);
     default input #10s output #10ps;
-    input pipe_out_vld, pipe_IDEX;
+    input pipe_out_vld, decode;
     input negedge pipe_in_rdy;
-    output pipe_in_vld, pipe_IFID;
+    output pipe_in_vld, fetch;
     output negedge pipe_out_rdy;
 endclocking
 
@@ -51,7 +51,7 @@ logic [31:0] REG [32];
         clk = 0;
         rstz = 0;
 
-        pipe_IFID = '0;
+        fetch = '0;
         pipe_in_vld = 0;
         pipe_out_rdy = 0;
         regwr_data = '0;
@@ -105,7 +105,7 @@ logic [31:0] REG [32];
             fork 
                 begin
                     @(cb);
-                    cb.pipe_IFID <= tinstr;
+                    cb.fetch <= tinstr;
                     cb.pipe_in_vld <= 1;
                     repeat (16) begin
                         @(cb) if (cb.pipe_in_rdy) begin
@@ -118,7 +118,7 @@ logic [31:0] REG [32];
                 begin
                     @(cb iff pipe_out_vld) begin
                         //check
-                        rdecode = pipe_IDEX;
+                        rdecode = decode;
 
                         $display("Got IDEX:");
                         $display("  op1: %h", rdecode.op1);

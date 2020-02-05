@@ -30,14 +30,14 @@ ALU Controls (Check kronos_EX for details)
 module kronos_ID
     import kronos_types::*;
 (
-    input  logic    clk,
-    input  logic    rstz,
+    input  logic        clk,
+    input  logic        rstz,
     // IF/ID interface
-    input  pipeIFID_t   pipe_IFID,
+    input  pipeIFID_t   fetch,
     input  logic        pipe_in_vld,
     output logic        pipe_in_rdy,
     // ID/EX interface
-    output pipeIDEX_t   pipe_IDEX,
+    output pipeIDEX_t   decode,
     output logic        pipe_out_vld,
     input  logic        pipe_out_rdy,
     // REG Write
@@ -107,7 +107,7 @@ enum logic [1:0] {
 // ============================================================
 // [rv32i] Instruction Decoder
 
-assign IR = pipe_IFID.ir;
+assign IR = fetch.ir;
 
 // Aliases to IR segments
 assign opcode = IR[6:0];
@@ -396,31 +396,31 @@ always_ff @(posedge clk or negedge rstz) begin
                 pipe_out_vld <= 1'b0;
 
                 // aluop ----------
-                pipe_IDEX.neg <= alu_neg;
-                pipe_IDEX.rev <= alu_rev;
-                pipe_IDEX.cin <= alu_cin;
-                pipe_IDEX.uns <= alu_uns;
-                pipe_IDEX.gte <= alu_gte;
-                pipe_IDEX.sel <= alu_sel;
+                decode.neg <= alu_neg;
+                decode.rev <= alu_rev;
+                decode.cin <= alu_cin;
+                decode.uns <= alu_uns;
+                decode.gte <= alu_gte;
+                decode.sel <= alu_sel;
 
-                pipe_IDEX.illegal <= is_illegal1 | is_illegal2 | is_illegal3;
+                decode.illegal <= is_illegal1 | is_illegal2 | is_illegal3;
 
                 // controls -------
-                pipe_IDEX.rs1_read <= regrd_rs1_en;
-                pipe_IDEX.rs2_read <= regrd_rs2_en;
+                decode.rs1_read <= regrd_rs1_en;
+                decode.rs2_read <= regrd_rs2_en;
 
-                pipe_IDEX.rs1 <= (regrd_rs1_en) ? rs1 : '0;
-                pipe_IDEX.rs2 <= (regrd_rs2_en) ? rs2 : '0;
+                decode.rs1 <= (regrd_rs1_en) ? rs1 : '0;
+                decode.rs2 <= (regrd_rs2_en) ? rs2 : '0;
 
-                pipe_IDEX.rd_write <= regwr_rd_en;
-                pipe_IDEX.rd  <= (regwr_rd_en) ? rd : '0;
+                decode.rd_write <= regwr_rd_en;
+                decode.rd  <= (regwr_rd_en) ? rd : '0;
 
 
                 // Buffer PC into OP1
-                if (opcode_type == INSTR_LUI) pipe_IDEX.op1 <= '0;
-                else pipe_IDEX.op1 <= pipe_IFID.pc;
+                if (opcode_type == INSTR_LUI) decode.op1 <= '0;
+                else decode.op1 <= fetch.pc;
 
-                pipe_IDEX.op2 <= '0;
+                decode.op2 <= '0;
 
             end
             else if (pipe_out_vld && pipe_out_rdy) begin
@@ -431,10 +431,10 @@ always_ff @(posedge clk or negedge rstz) begin
             pipe_out_vld <= 1'b1;
 
             // Conclude decoding OP1 and OP2, now that rs1/rs2 data is ready
-            if (pipe_IDEX.rs1_read) pipe_IDEX.op1 <= regrd_rs1;
+            if (decode.rs1_read) decode.op1 <= regrd_rs1;
 
-            if (pipe_IDEX.rs2_read) pipe_IDEX.op2 <= regrd_rs2;
-            else pipe_IDEX.op2 <= immediate;
+            if (decode.rs2_read) decode.op2 <= regrd_rs2;
+            else decode.op2 <= immediate;
         end
     end
 end
