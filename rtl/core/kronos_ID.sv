@@ -151,10 +151,8 @@ assign regwr_rd_en = (rd != 0); // opcode != br|st|misc|system
 
 // REG read
 always_ff @(posedge clk) begin
-    if (state == ID1 && next_state == ID2) begin
-        regrd_rs1 <= (regrd_rs1_en && rs1 != '0) ? REG1[rs1] : '0;
-        regrd_rs2 <= (regrd_rs2_en && rs2 != '0) ? REG2[rs2] : '0;
-    end
+    regrd_rs1 <= (regrd_rs1_en && rs1 != '0) ? REG1[rs1] : '0;
+    regrd_rs2 <= (regrd_rs2_en && rs2 != '0) ? REG2[rs2] : '0;
 end
 
 // REG Write
@@ -168,6 +166,18 @@ end
 
 // ============================================================
 // Immediate Decoder
+
+// Intermediate buffer to reduce critical paths
+always_ff @(posedge clk) begin
+    // Instruction format --- used to decode Immediate 
+    format_I <= opcode_type == INSTR_OPIMM;
+    format_J <= 1'b0;
+    format_S <= 1'b0;
+    format_B <= 1'b0;
+    format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
+
+    tIR <= IR;
+end
 
 // FIXME - Put Imm Decode Table ASCII art here 
 assign sign = tIR[31];
@@ -370,21 +380,6 @@ always_comb begin
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
-
-// Intermediate buffer to reduce critical paths
-always_ff @(posedge clk) begin
-    if (state == ID1 && next_state == ID2) begin
-        // Instruction format --- used to decode Immediate 
-        format_I <= opcode_type == INSTR_OPIMM;
-        format_J <= 1'b0;
-        format_S <= 1'b0;
-        format_B <= 1'b0;
-        format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
-
-        tIR <= IR;
-    end
-end
-
 
 // Output pipe (decoded instruction)
 // Note: Some segments are registered on the first cycle, and some on the second cycle

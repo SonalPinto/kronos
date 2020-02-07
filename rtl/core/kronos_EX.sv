@@ -92,16 +92,14 @@ assign adder_A = op1;
 assign adder_B = (decode.neg) ? ~op2 : op2;
 
 always_ff @(posedge clk) begin
-    if (state == EX1 && next_state == EX2) begin
-        /* verilator lint_off WIDTH */
-        // Lower Adder Result
-        {cout_RL, adder_RL} <= {1'b0, adder_A[0+:16]} + {1'b0, adder_B[0+:16]} + decode.cin;
-        // Two possible Higher Addder Result, based on the carry
-        //      of the lower half
-        {cout_RH0, adder_RH0} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b0;
-        {cout_RH1, adder_RH1} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b1;
-        /* verilator lint_on WIDTH */
-    end
+    /* verilator lint_off WIDTH */
+    // Lower Adder Result
+    {cout_RL, adder_RL} <= {1'b0, adder_A[0+:16]} + {1'b0, adder_B[0+:16]} + decode.cin;
+    // Two possible Higher Addder Result, based on the carry
+    //      of the lower half
+    {cout_RH0, adder_RH0} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b0;
+    {cout_RH1, adder_RH1} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b1;
+    /* verilator lint_on WIDTH */
 end
 
 // Form full adder result and carry out
@@ -117,16 +115,14 @@ assign r_or     = op1 | op2;
 assign r_xor    = op1 ^ op2;
 
 always_ff @(posedge clk) begin
-    if (state == EX1 && next_state == EX2) begin
-        // Select the logic result, and stow it for stage 2
-        /* verilator lint_off CASEINCOMPLETE */
-        case (decode.sel)
-            ALU_AND : r_logic <= r_and;
-            ALU_OR  : r_logic <= r_or;
-            ALU_XOR : r_logic <= r_xor;
-        endcase
-        /* verilator lint_on CASEINCOMPLETE */
-    end
+    // Select the logic result, and stow it for stage 2
+    /* verilator lint_off CASEINCOMPLETE */
+    case (decode.sel)
+        ALU_AND : r_logic <= r_and;
+        ALU_OR  : r_logic <= r_or;
+        ALU_XOR : r_logic <= r_xor;
+    endcase
+    /* verilator lint_on CASEINCOMPLETE */
 end
 
 
@@ -150,9 +146,7 @@ end
 
 // Intermediate buffer
 always_ff @(posedge clk) begin
-    if (state == EX1 && next_state == EX2) begin
-        result_select <= decode.sel;
-    end
+    result_select <= decode.sel;
 end
 
 // Output pipe (Execute Results)
