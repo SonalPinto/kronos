@@ -31,7 +31,11 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0] result;
+    logic [31:0] result1;
+    logic [31:0] result2;
+    logic [4:0]  rd;
+    logic        rd_write;
+    logic        illegal;
 } pipeEXWB_t;
 
 

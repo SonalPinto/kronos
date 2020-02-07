@@ -127,8 +127,8 @@ logic [31:0] REG [32];
                         $display("  rs2_read: %h", rdecode.rs2_read);
                         $display("  rs1: %h", rdecode.rs1);
                         $display("  rs2: %h", rdecode.rs2);
-                        $display("  rd: %h", tdecode.rd);
-                        $display("  rd_write: %h", tdecode.rd_write);
+                        $display("  rd: %h", rdecode.rd);
+                        $display("  rd_write: %h", rdecode.rd_write);
                         $display("  neg: %h", rdecode.neg);
                         $display("  rev: %h", rdecode.rev);
                         $display("  cin: %h", rdecode.cin);
@@ -165,8 +165,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     Note: This would have been a breeze with SV constraints.
         However, the "free" version of modelsim doesn't support
         that feature (along with many other things, like 
-        coverage, properties, sequenes, etc)
+        coverage, properties, sequences, etc)
         Hence, we get by with just the humble $urandom
+
+        You can do A LOT of things with just $urandom
     */
 
     int op;
@@ -181,7 +183,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
-    rd = $urandom();
+    rd = $urandom_range(1,31);
 
     instr.pc = $urandom;
 

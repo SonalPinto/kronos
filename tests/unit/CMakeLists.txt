@@ -12,3 +12,8 @@ add_hdl_unit_test(kronos_ID_unit_test.sv
     DEPENDS
         kronos_ID
 )
+
+add_hdl_unit_test(kronos_EX_unit_test.sv
+    DEPENDS
+        kronos_EX
+)

@@ -147,7 +147,7 @@ logic [31:0] REG2 [32];
 assign regrd_rs1_en = opcode_type == INSTR_OPIMM ||  opcode_type == INSTR_OP;
 assign regrd_rs2_en = opcode_type == INSTR_OP;
 
-assign regwr_rd_en = 1'b1; // opcode != br|st|misc|system
+assign regwr_rd_en = (rd != 0); // opcode != br|st|misc|system
 
 // REG read
 always_ff @(posedge clk) begin
@@ -373,14 +373,16 @@ end
 
 // Intermediate buffer to reduce critical paths
 always_ff @(posedge clk) begin
-    // Instruction format --- used to decode Immediate 
-    format_I <= opcode_type == INSTR_OPIMM;
-    format_J <= 1'b0;
-    format_S <= 1'b0;
-    format_B <= 1'b0;
-    format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
+    if (state == ID1 && next_state == ID2) begin
+        // Instruction format --- used to decode Immediate 
+        format_I <= opcode_type == INSTR_OPIMM;
+        format_J <= 1'b0;
+        format_S <= 1'b0;
+        format_B <= 1'b0;
+        format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
 
-    tIR <= IR;
+        tIR <= IR;
+    end
 end
 
 
@@ -419,8 +421,6 @@ always_ff @(posedge clk or negedge rstz) begin
                 // Buffer PC into OP1
                 if (opcode_type == INSTR_LUI) decode.op1 <= '0;
                 else decode.op1 <= fetch.pc;
-
-                decode.op2 <= '0;
 
             end
             else if (pipe_out_vld && pipe_out_rdy) begin
