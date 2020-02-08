@@ -10,10 +10,12 @@ Functions
     AND     : r[1] = op1 & op2
     OR      : r[2] = op1 | op2
     XOR     : r[3] = op1 ^ op2
-    LT      : r[4] = (op1 < op2)  ? 32'b1 : 32'b0
-    LTU     : r[4] = (op1 <u op2) ? 32'b1 : 32'b0
-    GE      : r[4] = (op1 >= op2) ? 32'b1 : 32'b0
-    GEU     : r[4] = (op1 >=u op2) ? 32'b1 : 32'b0
+    LT      : r[4] = op1 < op2
+    LTU     : r[4] = op1 <u op2
+    GTE     : r[4] = op1 >= op2
+    GTEU    : r[4] = op1 >=u op2
+    EQ      : r[4] = op1 == op2
+    NEQ     ; r[4] = op1 != op2
     SHL     : r[5] = op1 << op2[4:0]
     SHR     : r[5] = op1 >> op2[4:0]
     SHRA    : r[5] = op1 >>> op2[4:0]
@@ -56,7 +58,7 @@ module kronos_EX
 );
 
 
-logic is_pending;
+logic is_pending, stall;
 logic [4:0] rpend;
 logic rs1_hazard, rs2_hazard;
 logic [31:0] op1, op2;
@@ -78,6 +80,12 @@ logic check_unsigned, check_equality, invert_result;
 logic lt, ltu;
 logic eqH, eqL, eq;
 logic r_comp;
+
+logic [31:0] data, tdata;
+logic [4:0] shamt;
+logic shift_in, tshift_in, shift_rev;
+logic [31:0] p0, p1, p2, p3, p4;
+logic [31:0] r_shift;
 
 enum logic [1:0] {
     EX1,
@@ -194,6 +202,40 @@ end
 
 
 // ============================================================
+// BARREL SHIFTER
+
+// Reverse data to the shifter for SHL operations
+assign data = (decode.rev) ? {<<{op1}} : op1;
+assign shift_in = (decode.uns) ? 1'b0: op1[31];
+
+// The barrel shifter is formed by a 5-level fixed RIGHT-shifter
+// that pipes in the value of the last stage
+// We pipeline the operation across the two cycles
+
+assign p0 = op2[0] ?    {shift_in  , data[31:1]} : data;
+assign p1 = op2[1] ?   {{2{shift_in}}, p0[31:2]} : p0;
+
+always_ff @(posedge clk) begin
+    // Store intermediate result
+    tdata <= p1;
+    tshift_in <= shift_in;
+
+    // Store shift controls value
+    shift_rev <= decode.rev;
+
+    // Only the lower 5b of the op2 forms the shift degree
+    shamt <= op2[4:0];
+end
+
+assign p2 = shamt[2] ? {{ 4{tshift_in}}, tdata[31:4]} : tdata;
+assign p3 = shamt[3] ? {{ 8{tshift_in}}, p2[31:8]}    : p2;
+assign p4 = shamt[4] ? {{16{tshift_in}}, p3[31:16]}   : p3;
+
+// Reverse last to get SHL result
+assign r_shift = (shift_rev) ? {<<{p4}} : p4;
+
+
+// ============================================================
 // Execute Sequencer
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -255,6 +297,8 @@ always_ff @(posedge clk or negedge rstz) begin
                 ALU_XOR     : execute.result1 <= r_logic;
 
                 ALU_COMP    : execute.result1 <= {31'b0, r_comp};
+
+                ALU_SHIFT   : execute.result1 <= r_shift;
             endcase
             /* verilator lint_on CASEINCOMPLETE */
 
@@ -266,8 +310,18 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
+// Stall if there is a hazard, and the forward hasn't arrived
+assign stall = (rs1_hazard | rs2_hazard) & ~fwd_vld;
+
 // Pipethru can only happen in the EX1 state
-assign pipe_in_rdy = (state == EX1) && (~pipe_out_vld | pipe_out_rdy);
+assign pipe_in_rdy = (state == EX1) && (~pipe_out_vld | pipe_out_rdy) && ~stall;
 
 
+// ------------------------------------------------------------
+`ifdef verilator
+logic _unused;
+assign _unused = &{1'b0
+    , shamt[1:0]
+};
+`endif
 endmodule

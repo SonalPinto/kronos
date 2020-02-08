@@ -20,7 +20,7 @@ ALU Controls (Check kronos_EX for details)
     neg         : Negate OP2 for subtraction and comparision
     rev         : Reverse OP1 for shift-left
     cin         : Carry In for subtration, comparision and arithmetic shift-right
-    uns         : Unsigned flag for unsigned comparision
+    uns         : Unsigned flag for unsigned comparision/shift
     eq          : Equality check
     inv         : Invert flag for comparision result inversion
     sel         : Result Select - ADD, AND, OR, XOR, COMP or SHIFT
@@ -271,6 +271,7 @@ always_comb begin
             3'b001: begin // SLLI
                 if (funct7 == 7'd0) begin
                     alu_rev = 1'b1;
+                    alu_uns = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else is_illegal3 = 1'b1;
@@ -278,10 +279,10 @@ always_comb begin
 
             3'b101: begin // SRLI/SRAI
                 if (funct7 == 7'd0) begin
+                    alu_uns = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else if (funct7 == 7'd32) begin
-                    alu_cin = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else is_illegal3 = 1'b1;
@@ -304,6 +305,7 @@ always_comb begin
             3'b001: begin // SLL
                 if (funct7 == 7'd0) begin
                     alu_rev = 1'b1;
+                    alu_uns = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else is_illegal3 = 1'b1;
@@ -337,10 +339,10 @@ always_comb begin
 
             3'b101: begin // SRL/SRA
                 if (funct7 == 7'd0) begin
+                    alu_uns = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else if (funct7 == 7'd32) begin
-                    alu_cin = 1'b1;
                     alu_sel = ALU_SHIFT;
                 end
                 else is_illegal3 = 1'b1;
@@ -442,7 +444,7 @@ end
 assign pipe_in_rdy = (state == ID1) && (~pipe_out_vld | pipe_out_rdy);
 
 
-// // ------------------------------------------------------------
+// ------------------------------------------------------------
 `ifdef verilator
 logic _unused;
 assign _unused = &{1'b0

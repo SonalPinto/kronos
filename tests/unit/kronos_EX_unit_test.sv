@@ -126,12 +126,12 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     int op1, op2; 
     logic [31:0] op1_uns, op2_uns;
 
-    aluop = $urandom_range(0, 10);
+    aluop = $urandom_range(0,13);
     op1 = $urandom();
     op2 = $urandom();
 
-    // 20% chance of operands being the same!
-    if ($urandom_range(0,4) == 0) op2 = op1;
+    // 5% chance of operands being the same!
+    if ($urandom_range(0,19) == 0) op2 = op1;
 
     op1_uns = op1;
     op2_uns = op2;
@@ -238,6 +238,27 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
             decode.sel = ALU_COMP;
 
             execute.result1 = (op1_uns != op2_uns) ? 32'b1 : 32'b0;
+        end
+        11: begin
+            optype = "SHR";
+            decode.uns = 1;
+            decode.sel = ALU_SHIFT;
+
+            execute.result1 = op1 >> op2[4:0];
+        end
+        12: begin
+            optype = "SHRA";
+            decode.sel = ALU_SHIFT;
+
+            execute.result1 = op1 >>> op2[4:0];
+        end
+        13: begin
+            optype = "SHL";
+            decode.rev = 1;
+            decode.uns = 1;
+            decode.sel = ALU_SHIFT;
+
+            execute.result1 = op1 << op2[4:0];
         end
     endcase
 endtask

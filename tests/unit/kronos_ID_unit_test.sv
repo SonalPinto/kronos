@@ -342,7 +342,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.neg = 0;
             decode.rev = 1;
             decode.cin = 0;
-            decode.uns = 0;
+            decode.uns = 1;
             decode.eq  = 0;
             decode.inv = 0;
             decode.sel = 5;
@@ -364,7 +364,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.neg = 0;
             decode.rev = 0;
             decode.cin = 0;
-            decode.uns = 0;
+            decode.uns = 1;
             decode.eq  = 0;
             decode.inv = 0;
             decode.sel = 5;
@@ -385,7 +385,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = 1;
             decode.neg = 0;
             decode.rev = 0;
-            decode.cin = 1;
+            decode.cin = 0;
             decode.uns = 0;
             decode.eq  = 0;
             decode.inv = 0;
@@ -452,14 +452,14 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.neg = 0;
             decode.rev = 1;
             decode.cin = 0;
-            decode.uns = 0;
+            decode.uns = 1;
             decode.eq  = 0;
             decode.inv = 0;
             decode.sel = 5;
         end
 
         12: begin
-            optype = "SLL";
+            optype = "SLT";
 
             instr.ir = {7'b0000000, rs2, rs1, 3'b010, rd, 7'b01_100_11};
 
@@ -541,7 +541,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.neg = 0;
             decode.rev = 0;
             decode.cin = 0;
-            decode.uns = 0;
+            decode.uns = 1;
             decode.eq  = 0;
             decode.inv = 0;
             decode.sel = 5;
@@ -562,7 +562,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = 1;
             decode.neg = 0;
             decode.rev = 0;
-            decode.cin = 1;
+            decode.cin = 0;
             decode.uns = 0;
             decode.eq  = 0;
             decode.inv = 0;
