@@ -123,11 +123,15 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     */
 
     int aluop;
-    int op1, op2; // logic signed [31:0]
+    int op1, op2; 
+    logic [31:0] op1_uns, op2_uns;
 
-    aluop = $urandom_range(0,4);
+    aluop = $urandom_range(0,8);
     op1 = $urandom();
     op2 = $urandom();
+
+    op1_uns = op1;
+    op2_uns = op2;
 
     decode.op1 = op1;
     decode.op2 = op2;
@@ -179,6 +183,42 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
             decode.sel = ALU_XOR;
 
             execute.result1 = op1 ^ op2;
+        end
+        5: begin
+            optype = "LT";
+            decode.neg = 1;
+            decode.cin = 1;
+            decode.sel = ALU_COMP;
+
+            execute.result1 = (op1 < op2) ? 32'b1 : 32'b0;
+        end
+        6: begin
+            optype = "LTU";
+            decode.neg = 1;
+            decode.cin = 1;
+            decode.uns = 1;
+            decode.sel = ALU_COMP;
+
+            execute.result1 = (op1_uns < op2_uns) ? 32'b1 : 32'b0;
+        end
+        7: begin
+            optype = "GTE";
+            decode.neg = 1;
+            decode.cin = 1;
+            decode.gte = 1;
+            decode.sel = ALU_COMP;
+
+            execute.result1 = (op1 >= op2) ? 32'b1 : 32'b0;
+        end
+        8: begin
+            optype = "GTEU";
+            decode.neg = 1;
+            decode.cin = 1;
+            decode.gte = 1;
+            decode.uns = 1;
+            decode.sel = ALU_COMP;
+
+            execute.result1 = (op1_uns >= op2_uns) ? 32'b1 : 32'b0;
         end
     endcase
 endtask

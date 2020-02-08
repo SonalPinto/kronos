@@ -13,6 +13,7 @@ Functions
     LT      : r[4] = (op1 < op2)  ? 32'b1 : 32'b0
     LTU     : r[4] = (op1 <u op2) ? 32'b1 : 32'b0
     GE      : r[4] = (op1 >= op2) ? 32'b1 : 32'b0
+    GEU     : r[4] = (op1 >=u op2) ? 32'b1 : 32'b0
     SHL     : r[5] = op1 << op2[4:0]
     SHR     : r[5] = op1 >> op2[4:0]
     SHRA    : r[5] = op1 >>> op2[4:0]
@@ -62,6 +63,10 @@ logic [2:0] result_select;
 
 logic [31:0] r_and, r_or, r_xor;
 logic [31:0] r_logic;
+
+logic a_sign, b_sign, r_sign;
+logic lt, ltu, uns, gte;
+logic r_comp;
 
 enum logic [1:0] {
     EX1,
@@ -127,6 +132,46 @@ end
 
 
 // ============================================================
+// COMPARATOR
+
+always_ff @(posedge clk) begin
+    // Stow operand signs for second cycle, when the adder result is ready
+    a_sign <= op1[31];
+    b_sign <= op2[31];
+
+    uns <= decode.uns;
+    gte <= decode.gte;
+end
+
+always_comb begin
+    // Use adder to subtract operands: op1(A) - op2(B), 
+    //  and obtain the sign of the result
+    r_sign = r_adder[31];
+
+    // Signed Less Than (LT)
+    // If the operands have the same sign, we use r_sign
+    // The result is negative if op1<op2
+    // Subtraction of two postive or two negative signed integers (2's complement)
+    //  will _never_ overflow
+    case({a_sign, b_sign})
+        2'b00: lt = r_sign; // Check subtraction result
+        2'b01: lt = 1'b0;   // op1 is positive, and op2 is negative
+        2'b10: lt = 1'b1;   // op1 is negative, and op2 is positive
+        2'b11: lt = r_sign; // Check subtraction result
+    endcase
+
+    // Unsigned Less Than (LTU)
+    // Check the carry out on op1-op2
+    ltu = ~cout;
+
+    // Aggregate comparator results as per ALUOP
+    // Greate Than or Equal (GTE) comparision is inverse of the LT result
+    if (uns) r_comp = (gte) ? ~ltu : ltu;
+    else r_comp = (gte) ? ~lt : lt;
+end
+
+
+// ============================================================
 // Execute Sequencer
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -186,6 +231,8 @@ always_ff @(posedge clk or negedge rstz) begin
                 ALU_AND,
                 ALU_OR,
                 ALU_XOR     : execute.result1 <= r_logic;
+
+                ALU_COMP    : execute.result1 <= {31'b0, r_comp};
             endcase
             /* verilator lint_on CASEINCOMPLETE */
 
