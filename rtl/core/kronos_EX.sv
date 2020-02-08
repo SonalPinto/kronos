@@ -25,6 +25,15 @@ Where r[0-5] are the intermediate results of these major functions
     3: XOR
     4: COMPARATOR
     5: BARREL SHIFTER
+
+ALU controls signals:
+    neg         : Negate OP2 for subtraction and comparision
+    rev         : Reverse OP1 for shift-left
+    cin         : Carry In for subtration, comparision and arithmetic shift-right
+    uns         : Unsigned flag for unsigned comparision
+    eq          : Equality check
+    inv         : Invert flag for comparision result inversion
+
 */
 
 
@@ -65,7 +74,9 @@ logic [31:0] r_and, r_or, r_xor;
 logic [31:0] r_logic;
 
 logic a_sign, b_sign, r_sign;
-logic lt, ltu, uns, gte;
+logic check_unsigned, check_equality, invert_result;
+logic lt, ltu;
+logic eqH, eqL, eq;
 logic r_comp;
 
 enum logic [1:0] {
@@ -139,8 +150,14 @@ always_ff @(posedge clk) begin
     a_sign <= op1[31];
     b_sign <= op2[31];
 
-    uns <= decode.uns;
-    gte <= decode.gte;
+    // ALUOP controls needed for the Comparator ops in the second cyle
+    check_unsigned  <= decode.uns;
+    check_equality  <= decode.eq;
+    invert_result   <= decode.inv;
+
+    // Pipelined equality check
+    eqL <= op1[0+:16]   == op2[0+:16];
+    eqH <= op1[16+:16]  == op2[16+:16];
 end
 
 always_comb begin
@@ -149,6 +166,8 @@ always_comb begin
     r_sign = r_adder[31];
 
     // Signed Less Than (LT)
+    // Greater Than or Equal (GTE) comparision is inverse of the LT result
+    // 
     // If the operands have the same sign, we use r_sign
     // The result is negative if op1<op2
     // Subtraction of two postive or two negative signed integers (2's complement)
@@ -164,10 +183,13 @@ always_comb begin
     // Check the carry out on op1-op2
     ltu = ~cout;
 
+    // Equality check
+    eq = eqL & eqH;
+
     // Aggregate comparator results as per ALUOP
-    // Greate Than or Equal (GTE) comparision is inverse of the LT result
-    if (uns) r_comp = (gte) ? ~ltu : ltu;
-    else r_comp = (gte) ? ~lt : lt;
+    if (check_equality) r_comp = (invert_result) ? ~eq : eq;
+    else if (check_unsigned) r_comp = (invert_result) ? ~ltu : ltu;
+    else r_comp = (invert_result) ? ~lt : lt;
 end
 
 

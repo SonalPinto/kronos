@@ -24,7 +24,8 @@ typedef struct packed {
     logic        rev;
     logic        cin;
     logic        uns;
-    logic        gte;
+    logic        eq;
+    logic        inv;
     logic [2:0]  sel;
     logic        illegal;
 } pipeIDEX_t;

@@ -21,7 +21,8 @@ ALU Controls (Check kronos_EX for details)
     rev         : Reverse OP1 for shift-left
     cin         : Carry In for subtration, comparision and arithmetic shift-right
     uns         : Unsigned flag for unsigned comparision
-    gte         : Greater than Equal comparision (default is Less Than)
+    eq          : Equality check
+    inv         : Invert flag for comparision result inversion
     sel         : Result Select - ADD, AND, OR, XOR, COMP or SHIFT
 
 */
@@ -93,7 +94,8 @@ logic        alu_neg;
 logic        alu_rev;
 logic        alu_cin;
 logic        alu_uns;
-logic        alu_gte;
+logic        alu_eq;
+logic        alu_inv;
 logic [2:0]  alu_sel;
 
 logic is_illegal1, is_illegal2, is_illegal3;
@@ -227,7 +229,8 @@ always_comb begin
     alu_rev = 1'b0;
     alu_cin = 1'b0;
     alu_uns = 1'b0;
-    alu_gte = 1'b0;
+    alu_eq  = 1'b0;
+    alu_inv = 1'b0;
     alu_sel = ALU_ADDER;
     is_illegal3 = 1'b0;
 
@@ -397,7 +400,8 @@ always_ff @(posedge clk or negedge rstz) begin
                 decode.rev <= alu_rev;
                 decode.cin <= alu_cin;
                 decode.uns <= alu_uns;
-                decode.gte <= alu_gte;
+                decode.eq  <= alu_eq;
+                decode.inv <= alu_inv;
                 decode.sel <= alu_sel;
 
                 decode.illegal <= is_illegal1 | is_illegal2 | is_illegal3;
