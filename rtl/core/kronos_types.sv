@@ -14,19 +14,33 @@ typedef struct packed {
 typedef struct packed {
     logic [31:0] op1;
     logic [31:0] op2;
+    logic [31:0] op3;
+    logic [31:0] op4;
+    // ------------------------
+    // Hazard checks
     logic        rs1_read;
     logic        rs2_read;
     logic [4:0]  rs1;
     logic [4:0]  rs2;
-    logic [4:0]  rd;
-    logic        rd_write;
+    // ------------------------
+    // EX controls
     logic        neg;
     logic        rev;
     logic        cin;
     logic        uns;
     logic        eq;
     logic        inv;
+    logic        align;
     logic [2:0]  sel;
+    // ------------------------
+    // WB controls
+    logic [4:0]  rd;
+    logic        rd_write;
+    logic        branch;
+    logic        branch_cond;
+    logic [1:0]  ld_size;
+    logic        ld_sign;
+    logic        st;
     logic        illegal;
 } pipeIDEX_t;
 

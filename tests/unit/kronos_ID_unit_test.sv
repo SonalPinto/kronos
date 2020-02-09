@@ -80,28 +80,14 @@ logic [31:0] REG [32];
         pipeIDEX_t tdecode, rdecode;
         string optype;
 
-        repeat (2**12) begin
+        repeat (2**10) begin
 
             rand_instr(tinstr, tdecode, optype);
 
             $display("OPTYPE=%s", optype);
             $display("IFID: PC=%h, IR=%h", tinstr.pc, tinstr.ir);
             $display("Expected IDEX:");
-            $display("  op1: %h", tdecode.op1);
-            $display("  op2: %h", tdecode.op2);
-            $display("  rs1_read: %h", tdecode.rs1_read);
-            $display("  rs2_read: %h", tdecode.rs2_read);
-            $display("  rs1: %h", tdecode.rs1);
-            $display("  rs2: %h", tdecode.rs2);
-            $display("  rd: %h", tdecode.rd);
-            $display("  rd_write: %h", tdecode.rd_write);
-            $display("  neg: %h", tdecode.neg);
-            $display("  rev: %h", tdecode.rev);
-            $display("  cin: %h", tdecode.cin);
-            $display("  uns: %h", tdecode.uns);
-            $display("  eq: %h", tdecode.eq);
-            $display("  inv: %h", tdecode.inv);
-            $display("  sel: %h", tdecode.sel);
+            print_decode(tdecode);
 
             fork 
                 begin
@@ -122,21 +108,7 @@ logic [31:0] REG [32];
                         rdecode = decode;
 
                         $display("Got IDEX:");
-                        $display("  op1: %h", rdecode.op1);
-                        $display("  op2: %h", rdecode.op2);
-                        $display("  rs1_read: %h", rdecode.rs1_read);
-                        $display("  rs2_read: %h", rdecode.rs2_read);
-                        $display("  rs1: %h", rdecode.rs1);
-                        $display("  rs2: %h", rdecode.rs2);
-                        $display("  rd: %h", rdecode.rd);
-                        $display("  rd_write: %h", rdecode.rd_write);
-                        $display("  neg: %h", rdecode.neg);
-                        $display("  rev: %h", rdecode.rev);
-                        $display("  cin: %h", rdecode.cin);
-                        $display("  uns: %h", rdecode.uns);
-                        $display("  eq: %h", rdecode.eq);
-                        $display("  inv: %h", rdecode.inv);
-                        $display("  sel: %h", rdecode.sel);
+                        print_decode(rdecode);
 
                         cb.pipe_out_rdy <= 1;
                         ##1 cb.pipe_out_rdy <= 0;
@@ -160,6 +132,37 @@ end
 // METHODS
 // ============================================================
 
+task automatic print_decode(input pipeIDEX_t d);
+    $display("---- OP --------");
+    $display("  op1: %h",           d.op1);
+    $display("  op2: %h",           d.op2);
+    $display("  op3: %h",           d.op3);
+    $display("  op4: %h",           d.op4);
+    $display("---- HAZARD ----");
+    $display("  rs1_read: %h",      d.rs1_read);
+    $display("  rs2_read: %h",      d.rs2_read);
+    $display("  rs1: %d",           d.rs1);
+    $display("  rs2: %d",           d.rs2);
+    $display("---- EXCTRL ----");
+    $display("  neg: %b",           d.neg);
+    $display("  rev: %b",           d.rev);
+    $display("  cin: %b",           d.cin);
+    $display("  uns: %b",           d.uns);
+    $display("  eq: %b",            d.eq);
+    $display("  inv: %b",           d.inv);
+    $display("  align: %b",         d.align);
+    $display("  sel: %h",           d.sel);
+    $display("---- WBCTRL ----");
+    $display("  rd: %d",            d.rd);
+    $display("  rd_write: %h",      d.rd_write);
+    $display("  branch: %h",        d.branch);
+    $display("  branch_cond: %h",   d.branch_cond);
+    $display("  ld_size: %h",       d.ld_size);    
+    $display("  ld_sign: %h",       d.ld_sign);
+    $display("  st: %h",            d.st);
+    $display("  illegal: %h",       d.illegal);
+endtask
+
 task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, output string optype);
     /*
     Generate constrained-random instr
@@ -181,15 +184,48 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [6:0] funct7;
     logic [31:0] imm;
 
-    op = $urandom_range(0,20);
+    // generate scenario
+    op = $urandom_range(0,8);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
-    rd = $urandom_range(1,31);
+    rd = $urandom_range(1,20);
 
     instr.pc = $urandom;
 
+    // Blank out decode
+    // EX Operands ------------
+    decode.op1 = instr.pc;
+    decode.op2 = 4;
+    decode.op3 = instr.pc;
+    decode.op4 = 0;
+    // ------------------------
+    // Hazard checks
+    decode.rs1_read = 0;
+    decode.rs2_read = 0;
+    decode.rs1 = 0;
+    decode.rs2 = 0;
+    // ------------------------
+    // EX controls
+    decode.neg = 0;
+    decode.rev = 0;
+    decode.cin = 0;
+    decode.uns = 0;
+    decode.eq = 0;
+    decode.inv = 0;
+    decode.align = 0;
+    decode.sel = 0;
+    // ------------------------
+    // WB controls
+    decode.rd = 0;
+    decode.rd_write = 0;
+    decode.branch = 0;
+    decode.branch_cond = 0;
+    decode.ld_size = 0;
+    decode.ld_sign = 0;
+    decode.st = 0;
     decode.illegal = 0;
+
 
     // painstakingly build random-valid instructions
     // and expected decode
@@ -202,18 +238,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 0;
         end
 
         1: begin
@@ -224,18 +251,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
+
             decode.neg = 1;
-            decode.rev = 0;
             decode.cin = 1;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 3'd4;
+            decode.sel = ALU_COMP;
         end
 
         2: begin
@@ -246,18 +268,14 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
+
             decode.neg = 1;
-            decode.rev = 0;
             decode.cin = 1;
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 4;
+            decode.sel = ALU_COMP;
         end
 
         3: begin
@@ -268,18 +286,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 3;
+
+            decode.sel = ALU_XOR;
         end
 
         4: begin
@@ -290,18 +301,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 2;
+
+            decode.sel = ALU_OR;
         end
 
         5: begin
@@ -312,18 +316,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 1;
+
+            decode.sel = ALU_AND;
         end
 
         6: begin
@@ -334,18 +331,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0, imm[4:0]});
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
+
             decode.rev = 1;
-            decode.cin = 0;
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+            decode.sel = ALU_SHIFT;
         end
 
         7: begin
@@ -354,20 +346,14 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             instr.ir = {7'b0, imm[4:0], rs1, 3'b101, rd, 7'b00_100_11};
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'({7'b0,imm[4:0]});
+            decode.op2 = signed'({7'b0, imm[4:0]});
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
+
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+            decode.sel = ALU_SHIFT;
         end
 
         8: begin
@@ -378,18 +364,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0100000,imm[4:0]});
             decode.rs1_read = 1;
-            decode.rs2_read = 0;
             decode.rs1 = rs1;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+
+            decode.sel = ALU_SHIFT;
         end
 
         9: begin
@@ -405,13 +384,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 0;
         end
 
         10: begin
@@ -427,13 +399,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
+
             decode.neg = 1;
-            decode.rev = 0;
             decode.cin = 1;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 0;
         end
 
         11: begin
@@ -449,13 +417,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
+
             decode.rev = 1;
-            decode.cin = 0;
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+            decode.sel = ALU_SHIFT;
         end
 
         12: begin
@@ -471,13 +436,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
+
             decode.neg = 1;
-            decode.rev = 0;
             decode.cin = 1;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 4;
+            decode.sel = ALU_COMP;
         end
 
 
@@ -494,13 +456,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
+
             decode.neg = 1;
-            decode.rev = 0;
             decode.cin = 1;
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 4;
+            decode.sel = ALU_COMP;
         end
 
         14: begin
@@ -516,13 +476,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 3;
+
+            decode.sel = ALU_XOR;
         end
 
         15: begin
@@ -538,13 +493,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
+
             decode.uns = 1;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+            decode.sel = ALU_SHIFT;
         end
 
         16: begin
@@ -560,13 +511,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 5;
+
+            decode.sel = ALU_SHIFT;
         end
 
         17: begin
@@ -582,13 +528,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 2;
+
+            decode.sel = ALU_OR;
         end
 
         18: begin
@@ -604,13 +545,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rs2 = rs2;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 1;
+
+            decode.sel = ALU_AND;
         end
 
         19: begin
@@ -618,21 +554,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             instr.ir = {imm[31:12], rd, 7'b01_101_11};
 
-            decode.op1 = 0;
             decode.op2 = {imm[31:12], 12'b0};
-            decode.rs1_read = 0;
-            decode.rs2_read = 0;
-            decode.rs1 = 0;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 0;
         end
 
         20: begin
@@ -642,19 +566,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = instr.pc;
             decode.op2 = {imm[31:12], 12'b0};
-            decode.rs1_read = 0;
-            decode.rs2_read = 0;
-            decode.rs1 = 0;
-            decode.rs2 = 0;
             decode.rd  = rd;
             decode.rd_write = 1;
-            decode.neg = 0;
-            decode.rev = 0;
-            decode.cin = 0;
-            decode.uns = 0;
-            decode.eq  = 0;
-            decode.inv = 0;
-            decode.sel = 0;
         end
     endcase // instr
 endtask
