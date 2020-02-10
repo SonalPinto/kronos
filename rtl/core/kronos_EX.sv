@@ -2,40 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Two cycle ALU
+Kronos RISC-V 32I Execution Unit
 
-Functions
-    ADD     : r[0] = op1 + op2
-    SUB     : r[0] = op1 - op2
-    AND     : r[1] = op1 & op2
-    OR      : r[2] = op1 | op2
-    XOR     : r[3] = op1 ^ op2
-    LT      : r[4] = op1 < op2
-    LTU     : r[4] = op1 <u op2
-    GTE     : r[4] = op1 >= op2
-    GTEU    : r[4] = op1 >=u op2
-    EQ      : r[4] = op1 == op2
-    NEQ     ; r[4] = op1 != op2
-    SHL     : r[5] = op1 << op2[4:0]
-    SHR     : r[5] = op1 >> op2[4:0]
-    SHRA    : r[5] = op1 >>> op2[4:0]
+Hazard control checks for write-back hazards and forwards clean 
+operands to the Kronos ALU to get two 32b results
 
-Where r[0-5] are the intermediate results of these major functions
-    0: ADDER
-    1: AND
-    2: OR
-    3: XOR
-    4: COMPARATOR
-    5: BARREL SHIFTER
-
-ALU controls signals:
-    neg         : Negate OP2 for subtraction and comparision
-    rev         : Reverse OP1 for shift-left
-    cin         : Carry In for subtration, comparision and arithmetic shift-right
-    uns         : Unsigned flag for unsigned comparision
-    eq          : Equality check
-    inv         : Invert flag for comparision result inversion
-
+HAZARD CHECKS,
+    rs1         : rs1 address
+    rs2         : rs2 address
+    op#_regrd   : op# is a register operand
 */
 
 
@@ -60,206 +35,52 @@ module kronos_EX
 
 logic is_pending, stall;
 logic [4:0] rpend;
-logic rs1_hazard, rs2_hazard;
-logic [31:0] op1, op2;
+logic op1_hazard, op2_hazard, op3_hazard, op4_hazard;
 
-logic [31:0] adder_A, adder_B;
-logic [15:0] adder_RL;
-logic [15:0] adder_RH0, adder_RH1, adder_RH;
-logic cout_RL, cout_RH0, cout_RH1;
-logic cout;
-logic [31:0] r_adder;
-
-logic [2:0] result_select;
-
-logic [31:0] r_and, r_or, r_xor;
-logic [31:0] r_logic;
-
-logic a_sign, b_sign, r_sign;
-logic check_unsigned, check_equality, invert_result;
-logic lt, ltu;
-logic eqH, eqL, eq;
-logic r_comp;
-
-logic [31:0] data, tdata;
-logic [4:0] shamt;
-logic shift_in, tshift_in, shift_rev;
-logic [31:0] p0, p1, p2, p3, p4;
-logic [31:0] r_shift;
-
-enum logic [1:0] {
-    EX1,
-    EX2
-} state, next_state;
-
+logic [31:0] op1, op2, op3, op4;
+logic [31:0] result1;
+logic [31:0] result2;
 
 // ============================================================
 // Hazard Check
 
 // Hazard check for register operands
-assign rs1_hazard = (is_pending && decode.rs1_read && decode.rs1 == rpend);
-assign rs2_hazard = (is_pending && decode.rs2_read && decode.rs2 == rpend);
+// OP1/4 only take RS1 and OP2/3 only take RS2
+assign op1_hazard = is_pending && decode.op1_regrd && decode.rs1 == rpend;
+assign op2_hazard = is_pending && decode.op2_regrd && decode.rs2 == rpend;
+assign op3_hazard = is_pending && decode.op3_regrd && decode.rs2 == rpend;
+assign op4_hazard = is_pending && decode.op4_regrd && decode.rs1 == rpend;
 
 // If there's a hazard, then pick the forwarded register (from the WriteBack stage)
-// instead of the stale rs1 from the Decode stage
-assign op1 = (rs1_hazard) ? fwd_data : decode.op1;
-assign op2 = (rs2_hazard) ? fwd_data : decode.op2;
+// instead of the stale rs1/rs2 from the Decode stage
+assign op1 = (op1_hazard) ? fwd_data : decode.op1;
+assign op2 = (op2_hazard) ? fwd_data : decode.op2;
+assign op3 = (op3_hazard) ? fwd_data : decode.op3;
+assign op4 = (op4_hazard) ? fwd_data : decode.op4;
 
 
 // ============================================================
-// ADDER
-// 2 Stage 32b Carry Select Adder, 16b per stage
-// Hence, the critical is drastically reduced
-
-// OP2 can be negated for subtraction
-assign adder_A = op1;
-assign adder_B = (decode.neg) ? ~op2 : op2;
-
-always_ff @(posedge clk) begin
-    /* verilator lint_off WIDTH */
-    // Lower Adder Result
-    {cout_RL, adder_RL} <= {1'b0, adder_A[0+:16]} + {1'b0, adder_B[0+:16]} + decode.cin;
-    // Two possible Higher Addder Result, based on the carry
-    //      of the lower half
-    {cout_RH0, adder_RH0} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b0;
-    {cout_RH1, adder_RH1} <= {1'b0, adder_A[16+:16]} + {1'b0, adder_B[16+:16]} + 1'b1;
-    /* verilator lint_on WIDTH */
-end
-
-// Form full adder result and carry out
-assign adder_RH = (cout_RL) ? adder_RH1 : adder_RH0;
-assign cout     = (cout_RL) ? cout_RH1  : cout_RH0;
-assign r_adder  = {adder_RH, adder_RL};
+// ALU
+kronos_alu u_alu (
+    .op1    (op1         ),
+    .op2    (op2         ),
+    .op3    (op3         ),
+    .op4    (op4         ),
+    .cin    (decode.cin  ),
+    .rev    (decode.rev  ),
+    .uns    (decode.uns  ),
+    .eq     (decode.eq   ),
+    .inv    (decode.inv  ),
+    .align  (decode.align),
+    .sel    (decode.sel  ),
+    .result1(result1     ),
+    .result2(result2     )
+);
 
 
 // ============================================================
-// LOGIC
-assign r_and    = op1 & op2;
-assign r_or     = op1 | op2;
-assign r_xor    = op1 ^ op2;
+// Execute Output Stage (calculated results)
 
-always_ff @(posedge clk) begin
-    // Select the logic result, and stow it for stage 2
-    /* verilator lint_off CASEINCOMPLETE */
-    case (decode.sel)
-        ALU_AND : r_logic <= r_and;
-        ALU_OR  : r_logic <= r_or;
-        ALU_XOR : r_logic <= r_xor;
-    endcase
-    /* verilator lint_on CASEINCOMPLETE */
-end
-
-
-// ============================================================
-// COMPARATOR
-
-always_ff @(posedge clk) begin
-    // Stow operand signs for second cycle, when the adder result is ready
-    a_sign <= op1[31];
-    b_sign <= op2[31];
-
-    // ALUOP controls needed for the Comparator ops in the second cyle
-    check_unsigned  <= decode.uns;
-    check_equality  <= decode.eq;
-    invert_result   <= decode.inv;
-
-    // Pipelined equality check
-    eqL <= op1[0+:16]   == op2[0+:16];
-    eqH <= op1[16+:16]  == op2[16+:16];
-end
-
-always_comb begin
-    // Use adder to subtract operands: op1(A) - op2(B), 
-    //  and obtain the sign of the result
-    r_sign = r_adder[31];
-
-    // Signed Less Than (LT)
-    // Greater Than or Equal (GTE) comparision is inverse of the LT result
-    // 
-    // If the operands have the same sign, we use r_sign
-    // The result is negative if op1<op2
-    // Subtraction of two postive or two negative signed integers (2's complement)
-    //  will _never_ overflow
-    case({a_sign, b_sign})
-        2'b00: lt = r_sign; // Check subtraction result
-        2'b01: lt = 1'b0;   // op1 is positive, and op2 is negative
-        2'b10: lt = 1'b1;   // op1 is negative, and op2 is positive
-        2'b11: lt = r_sign; // Check subtraction result
-    endcase
-
-    // Unsigned Less Than (LTU)
-    // Check the carry out on op1-op2
-    ltu = ~cout;
-
-    // Equality check
-    eq = eqL & eqH;
-
-    // Aggregate comparator results as per ALUOP
-    if (check_equality) r_comp = (invert_result) ? ~eq : eq;
-    else if (check_unsigned) r_comp = (invert_result) ? ~ltu : ltu;
-    else r_comp = (invert_result) ? ~lt : lt;
-end
-
-
-// ============================================================
-// BARREL SHIFTER
-
-// Reverse data to the shifter for SHL operations
-assign data = (decode.rev) ? {<<{op1}} : op1;
-assign shift_in = (decode.uns) ? 1'b0: op1[31];
-
-// The barrel shifter is formed by a 5-level fixed RIGHT-shifter
-// that pipes in the value of the last stage
-// We pipeline the operation across the two cycles
-
-assign p0 = op2[0] ?    {shift_in  , data[31:1]} : data;
-assign p1 = op2[1] ?   {{2{shift_in}}, p0[31:2]} : p0;
-
-always_ff @(posedge clk) begin
-    // Store intermediate result
-    tdata <= p1;
-    tshift_in <= shift_in;
-
-    // Store shift controls value
-    shift_rev <= decode.rev;
-
-    // Only the lower 5b of the op2 forms the shift degree
-    shamt <= op2[4:0];
-end
-
-assign p2 = shamt[2] ? {{ 4{tshift_in}}, tdata[31:4]} : tdata;
-assign p3 = shamt[3] ? {{ 8{tshift_in}}, p2[31:8]}    : p2;
-assign p4 = shamt[4] ? {{16{tshift_in}}, p3[31:16]}   : p3;
-
-// Reverse last to get SHL result
-assign r_shift = (shift_rev) ? {<<{p4}} : p4;
-
-
-// ============================================================
-// Execute Sequencer
-
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= EX1;
-    else state <= next_state;
-end
-
-always_comb begin
-    next_state = state;
-    /* verilator lint_off CASEINCOMPLETE */
-    case (state)
-        EX1: if (pipe_in_vld && pipe_in_rdy) next_state = EX2;
-        EX2: next_state = EX1;
-    endcase // state
-    /* verilator lint_on CASEINCOMPLETE */
-end
-
-// Intermediate buffer
-always_ff @(posedge clk) begin
-    result_select <= decode.sel;
-end
-
-// Output pipe (Execute Results)
-// Note: Some segments are registered on the first cycle, and some on the second cycle
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pipe_out_vld <= 1'b0;
@@ -267,61 +88,38 @@ always_ff @(posedge clk or negedge rstz) begin
         rpend <= '0;
     end
     else begin
-        if (state == EX1) begin
-            if(pipe_in_vld && pipe_in_rdy) begin
-                pipe_out_vld <= 1'b0;
-
-                // Forward decoded controls
-                execute.rd <= decode.rd;
-                execute.rd_write <= decode.rd_write;
-                execute.illegal <= decode.illegal;
-
-                // Keep track if some register requires a write
-                is_pending <= 1'b0; // decode.rd_write;
-                rpend <= decode.rd;
-
-            end
-            else if (pipe_out_vld && pipe_out_rdy) begin
-                pipe_out_vld <= 1'b0;
-            end
-        end
-        else if (state == EX2) begin
-            // Results from various operations are ready now
-            // Result1 is Register Write Data
-            /* verilator lint_off CASEINCOMPLETE */
-            case(result_select)
-                ALU_ADDER   : execute.result1 <= r_adder;
-
-                ALU_AND,
-                ALU_OR,
-                ALU_XOR     : execute.result1 <= r_logic;
-
-                ALU_COMP    : execute.result1 <= {31'b0, r_comp};
-
-                ALU_SHIFT   : execute.result1 <= r_shift;
-            endcase
-            /* verilator lint_on CASEINCOMPLETE */
-
-            execute.result2 <= '0;
-
-            // Result2 is Branch Target or Memory Write Data
+        if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
+
+            // Forwar WB controls
+            execute.rd          <= decode.rd;
+            execute.rd_write    <= decode.rd_write;
+            execute.branch      <= decode.branch;
+            execute.branch_cond <= decode.branch_cond;
+            execute.ld_size     <= decode.ld_size;
+            execute.ld_sign     <= decode.ld_sign;
+            execute.st          <= decode.st;
+            execute.illegal     <= decode.illegal;
+
+            // Keep track if some register requires a write
+            is_pending <= 1'b0; // decode.rd_write; // FIXME
+            rpend <= decode.rd;
+
+            // Results
+            execute.result1 <= result1;
+            execute.result2 <= result2;
+
+        end
+        else if (pipe_out_vld && pipe_out_rdy) begin
+            pipe_out_vld <= 1'b0;
         end
     end
 end
 
 // Stall if there is a hazard, and the forward hasn't arrived
-assign stall = (rs1_hazard | rs2_hazard) & ~fwd_vld;
+assign stall = |{op1_hazard, op2_hazard, op3_hazard, op4_hazard} & ~fwd_vld;
 
 // Pipethru can only happen in the EX1 state
-assign pipe_in_rdy = (state == EX1) && (~pipe_out_vld | pipe_out_rdy) && ~stall;
+assign pipe_in_rdy = (~pipe_out_vld | pipe_out_rdy) && ~stall;
 
-
-// ------------------------------------------------------------
-`ifdef verilator
-logic _unused;
-assign _unused = &{1'b0
-    , shamt[1:0]
-};
-`endif
 endmodule

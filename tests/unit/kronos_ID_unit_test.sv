@@ -139,14 +139,15 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  op3: %h",           d.op3);
     $display("  op4: %h",           d.op4);
     $display("---- HAZARD ----");
-    $display("  rs1_read: %h",      d.rs1_read);
-    $display("  rs2_read: %h",      d.rs2_read);
     $display("  rs1: %d",           d.rs1);
     $display("  rs2: %d",           d.rs2);
+    $display("  op1_regrd: %d",     d.op1_regrd);
+    $display("  op2_regrd: %d",     d.op2_regrd);
+    $display("  op3_regrd: %d",     d.op3_regrd);
+    $display("  op4_regrd: %d",     d.op4_regrd);
     $display("---- EXCTRL ----");
-    $display("  neg: %b",           d.neg);
-    $display("  rev: %b",           d.rev);
     $display("  cin: %b",           d.cin);
+    $display("  rev: %b",           d.rev);
     $display("  uns: %b",           d.uns);
     $display("  eq: %b",            d.eq);
     $display("  inv: %b",           d.inv);
@@ -185,11 +186,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0,8);
+    op = $urandom_range(0,20);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
-    rd = $urandom_range(1,20);
+    rd = $urandom_range(1,31);
 
     instr.pc = $urandom;
 
@@ -201,15 +202,16 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.op4 = 0;
     // ------------------------
     // Hazard checks
-    decode.rs1_read = 0;
-    decode.rs2_read = 0;
     decode.rs1 = 0;
     decode.rs2 = 0;
+    decode.op1_regrd = 0;
+    decode.op2_regrd = 0;
+    decode.op3_regrd = 0;
+    decode.op4_regrd = 0;
     // ------------------------
     // EX controls
-    decode.neg = 0;
-    decode.rev = 0;
     decode.cin = 0;
+    decode.rev = 0;
     decode.uns = 0;
     decode.eq = 0;
     decode.inv = 0;
@@ -237,8 +239,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
         end
@@ -250,12 +252,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
-            decode.neg = 1;
             decode.cin = 1;
             decode.sel = ALU_COMP;
         end
@@ -267,12 +268,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
-            decode.neg = 1;
             decode.cin = 1;
             decode.uns = 1;
             decode.sel = ALU_COMP;
@@ -285,8 +285,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -300,8 +300,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -315,8 +315,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -330,8 +330,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0, imm[4:0]});
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -347,8 +347,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0, imm[4:0]});
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -363,8 +363,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0100000,imm[4:0]});
-            decode.rs1_read = 1;
             decode.rs1 = rs1;
+            decode.op1_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -378,10 +378,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
         end
@@ -393,14 +393,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
-            decode.neg = 1;
             decode.cin = 1;
         end
 
@@ -411,10 +410,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -430,14 +429,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
-            decode.neg = 1;
             decode.cin = 1;
             decode.sel = ALU_COMP;
         end
@@ -450,14 +448,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
-            decode.neg = 1;
             decode.cin = 1;
             decode.uns = 1;
             decode.sel = ALU_COMP;
@@ -470,10 +467,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -487,10 +484,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -505,10 +502,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -522,10 +519,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -539,10 +536,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
-            decode.rs1_read = 1;
-            decode.rs2_read = 1;
             decode.rs1 = rs1;
             decode.rs2 = rs2;
+            decode.op1_regrd = 1;
+            decode.op2_regrd = 1;
             decode.rd  = rd;
             decode.rd_write = 1;
 
@@ -554,6 +551,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             instr.ir = {imm[31:12], rd, 7'b01_101_11};
 
+            decode.op1 = 0;
             decode.op2 = {imm[31:12], 12'b0};
             decode.rd  = rd;
             decode.rd_write = 1;

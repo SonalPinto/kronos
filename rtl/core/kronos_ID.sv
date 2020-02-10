@@ -3,18 +3,18 @@
 
 
 /*
-RISCV-32I Decoder
+Kronos RISC-V 32I Decoder
 The 32b instruction and PC from the IF stage is decoded
 into a generic form:
 
     RESULT1 = ALU( OP1, OP2 )
     RESULT2 = ADD( OP3, OP4 )
+    HAZARD_CHECKS
     WB_CONTROLS
-    HAZARD_CHECK
 
 where,
     OP1-4       : Operands, where OP1/2 are primary kronos_ALU operands,
-                  and OP3/4 are secondary kronos_adder operands
+                  and OP3/4 are secondary adder operands
                   Each operand can take one of many values as listed below,
                   OP1 <= PC, ZERO, REG[rs1]
                   OP2 <= IMM, FOUR, REG[rs2]
@@ -30,16 +30,12 @@ where,
                   branch target
 
 EX_CTRL,
-    neg         : Negate OP2 for subtraction and comparision
-    rev         : Reverse OP1 for shift-left
-    cin         : Carry In for subtration, comparision and arithmetic shift-right
-    uns         : Unsigned flag for unsigned comparision
-    eq          : Equality check
-    inv         : Invert comparator result
-    align       : blank out the LSB of the secondary adder result
-    sel         : select ALU output for RESULT1
-                  one of ALU.{ADDder, AND, OR, XOR, SHIFTer, COMParator}
-                  RESULT2 always takes the secondary ADDer result
+    cin, rev, uns , eq, inv, align, sel  
+    Check kronos_alu for details
+
+HAZARD CHECKS,
+    rs1, rs2, op#_regrd
+    Check kronos_EX for details
 
 WB_CTRL,
     rd          : register write select
@@ -50,12 +46,7 @@ WB_CTRL,
     ld_sign     : sign extend loaded data
     st          : store
     illegal     : illegal instruction
-
-HAZARD CHECKS,
-    rs1_read    : register rs1 was read
-    rs2_read    : register rs2 was read
-    rs1         : rs1 address
-    rs2         : rs2 address
+    Check kronos_WB for details
 
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
@@ -85,23 +76,21 @@ module kronos_ID
     input  logic        regwr_en
 );
 
-localparam logic [31:0] ZERO   = 32'h0;
-localparam logic [31:0] FOUR   = 32'h4;
+parameter logic [31:0] ZERO   = 32'h0;
+parameter logic [31:0] FOUR   = 32'h4;
 
-logic [31:0] IR;
+logic [31:0] IR, PC;
+logic [4:0] OP;
 logic [6:0] opcode;
-logic [4:0] opcode_type;
 logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
-
-logic [31:0] tIR;
-logic [4:0] tOP;
 
 logic instr_valid;
 logic illegal_opcode;
 
 logic regrd_rs1_en, regrd_rs2_en;
+logic [31:0] regrd_rs1_data, regrd_rs2_data;
 logic [31:0] regrd_rs1, regrd_rs2;
 logic regwr_rd_en;
 
@@ -129,29 +118,24 @@ logic [11:0]    ImmF;
 logic [31:0] immediate;
 
 // Execute Stage controls
-logic       neg;
-logic       rev;
 logic       cin;
+logic       rev;
 logic       uns;
 logic       eq;
 logic       inv;
 logic       align;
 logic [2:0] sel;
 
-enum logic [1:0] {
-    ID1,
-    ID2
-} state, next_state;
-
 
 // ============================================================
 // [rv32i] Instruction Decoder
 
 assign IR = fetch.ir;
+assign PC = fetch.pc;
 
 // Aliases to IR segments
 assign opcode = IR[6:0];
-assign opcode_type = opcode[6:2];
+assign OP = opcode[6:2];
 
 assign rs1 = IR[19:15];
 assign rs2 = IR[24:20];
@@ -170,25 +154,36 @@ assign illegal_opcode = opcode[1:0] != 2'b11;
 /*
 Note: Since this ID module is geared towards FPGA, 
     Dual-Port Embedded Block Ram will be used to implement the 32x32 registers.
-    Register (EBR) access takes a cycle. We need to read two registers on 
-    the same cycle (or have the decode stage take an extra cycle, reading
-    one register at a time).
+    Register (EBR) access is clocked. We need to read two registers on 
+    the off-edge to have it ready by the next active edge.
 
     In the iCE40UP5K this would inefficiently take 4 EBR (each being 16x256)
 */
 
-logic [31:0] REG1 [32];
-logic [31:0] REG2 [32];
+logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
+logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
-assign regrd_rs1_en = opcode_type == INSTR_OPIMM ||  opcode_type == INSTR_OP;
-assign regrd_rs2_en = opcode_type == INSTR_OP;
+assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP;
+assign regrd_rs2_en = OP == INSTR_OP;
 
 assign regwr_rd_en = (rd != 0); // opcode != br|st|misc|system
 
 // REG read
-always_ff @(posedge clk) begin
-    regrd_rs1 <= (regrd_rs1_en && rs1 != '0) ? REG1[rs1] : '0;
-    regrd_rs2 <= (regrd_rs2_en && rs2 != '0) ? REG2[rs2] : '0;
+always_ff @(negedge clk) begin
+    if (regrd_rs1_en) regrd_rs1_data <= REG1[rs1];
+    if (regrd_rs2_en) regrd_rs2_data <= REG2[rs2];
+end
+
+always_comb begin
+    // Forward the latest write-data if requried
+    // Also blank out if x0 is being read
+    if (regrd_rs1_en && rs1 != '0)
+        regrd_rs1 = (regwr_en && regwr_sel == rs1) ? regwr_data : regrd_rs1_data;
+    else regrd_rs1 = '0;
+
+    if (regrd_rs2_en && rs2 != '0)
+        regrd_rs2 = (regwr_en && regwr_sel == rs2) ? regwr_data : regrd_rs2_data;
+    else regrd_rs2 = '0;
 end
 
 // REG Write
@@ -203,49 +198,42 @@ end
 // ============================================================
 // Immediate Decoder
 
-// Intermediate buffer
-always_ff @(posedge clk) begin
-    // Instruction format --- used to decode Immediate 
-    format_I <= opcode_type == INSTR_OPIMM;
-    format_J <= 1'b0;
-    format_S <= 1'b0;
-    format_B <= 1'b0;
-    format_U <= opcode_type == INSTR_LUI || opcode_type == INSTR_AUIPC;
-
-    // Stow fetch for second cycle
-    tIR <= fetch.ir;
-end
-
-assign tOP = tIR[6:2];
-assign sign = tIR[31];
+assign sign = IR[31];
 
 always_comb begin
+    // Instruction format --- used to decode Immediate 
+    format_I = OP == INSTR_OPIMM;
+    format_J = 1'b0;
+    format_S = 1'b0;
+    format_B = 1'b0;
+    format_U = OP == INSTR_LUI || OP == INSTR_AUIPC;
+
     // Immediate Segment A - [0]
-    if (format_I) ImmA = tIR[20];
-    else if (format_S) ImmA = tIR[7];
+    if (format_I) ImmA = IR[20];
+    else if (format_S) ImmA = IR[7];
     else ImmA = 1'b0; // B/J/U
     
     // Immediate Segment B - [4:1]
     if (format_U) ImmB = 4'b0;
-    else if (format_I || format_J) ImmB = tIR[24:21];
-    else ImmB = tIR[11:8]; // S/B
+    else if (format_I || format_J) ImmB = IR[24:21];
+    else ImmB = IR[11:8]; // S/B
 
     // Immediate Segment C - [10:5]
     if (format_U) ImmC = 6'b0;
-    else ImmC = tIR[30:25];
+    else ImmC = IR[30:25];
 
     // Immediate Segment D - [11]
     if (format_U) ImmD = 1'b0;
-    else if (format_B) ImmD = tIR[7];
-    else if (format_J) ImmD = tIR[20];
+    else if (format_B) ImmD = IR[7];
+    else if (format_J) ImmD = IR[20];
     else ImmD = sign;
 
     // Immediate Segment E - [19:12]
-    if (format_U || format_J) ImmE = tIR[19:12];
+    if (format_U || format_J) ImmE = IR[19:12];
     else ImmE = {8{sign}};
     
     // Immediate Segment F - [31:20]
-    if (format_U) ImmF = tIR[31:20];
+    if (format_U) ImmF = IR[31:20];
     else ImmF = {12{sign}};
 end
 
@@ -260,9 +248,8 @@ always_comb begin
     // Default ALU Operation: ADD 
     //  result1 <= ALU.adder
     //  result2 <= unaligned add
-    neg     = 1'b0;
-    rev     = 1'b0;
     cin     = 1'b0;
+    rev     = 1'b0;
     uns     = 1'b0;
     eq      = 1'b0;
     inv     = 1'b0;
@@ -270,12 +257,12 @@ always_comb begin
     sel     = ALU_ADDER;
     instr_valid = 1'b0;
 
-    // ALU Controls are decoded using {funct7, funct3, opcode_type}
+    // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
-
-    // FIXME - Once this is complete, ONLY then optimize for 2 stage if critical path
-    //  candidates: f7==0, f7==32, opcode_types(5b->3b)
-    case(opcode_type)
+    case(OP)
+    // --------------------------------
+    INSTR_LUI,
+    INSTR_AUIPC: instr_valid = 1'b1;
     // --------------------------------
     INSTR_OPIMM: begin
         case(funct3)
@@ -283,14 +270,12 @@ always_comb begin
                 instr_valid = 1'b1;
             end
             3'b010: begin // SLTI
-                neg = 1'b1;
                 cin = 1'b1;
                 sel = ALU_COMP;
                 instr_valid = 1'b1;
             end
 
             3'b011: begin // SLTIU
-                neg = 1'b1;
                 cin = 1'b1;
                 uns = 1'b1;
                 sel = ALU_COMP;
@@ -342,7 +327,6 @@ always_comb begin
                     instr_valid = 1'b1;
                 end
                 else if (funct7 == 7'd32) begin
-                    neg = 1'b1;
                     cin = 1'b1;
                     instr_valid = 1'b1;
                 end
@@ -359,7 +343,6 @@ always_comb begin
 
             3'b010: begin // SLT
                 if (funct7 == 7'd0) begin
-                    neg = 1'b1;
                     cin = 1'b1;
                     sel = ALU_COMP;
                     instr_valid = 1'b1;
@@ -368,7 +351,6 @@ always_comb begin
 
             3'b011: begin // SLTU
                 if (funct7 == 7'd0) begin
-                    neg = 1'b1;
                     cin = 1'b1;
                     uns = 1'b1;
                     sel = ALU_COMP;
@@ -410,84 +392,58 @@ always_comb begin
             end
         endcase // funct3
     end
-    endcase // opcode_type
+    endcase // OP
     /* verilator lint_on CASEINCOMPLETE */
 end
 
 
 // ============================================================
-// Instruction Decode Sequencer
+// Instruction Decode Output Pipe (decoded instruction)
 
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= ID1;
-    else state <= next_state;
-end
-
-always_comb begin
-    next_state = state;
-    /* verilator lint_off CASEINCOMPLETE */
-    case (state)
-        ID1: if (pipe_in_vld && pipe_in_rdy) next_state = ID2;
-        ID2: next_state = ID1;
-    endcase // state
-    /* verilator lint_on CASEINCOMPLETE */
-end
-
-// Output pipe (decoded instruction)
-// Note: Some segments are registered on the first cycle, and some on the second cycle
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pipe_out_vld <= 1'b0;
     end
     else begin
-        if (state == ID1) begin
-            if(pipe_in_vld && pipe_in_rdy) begin
-                pipe_out_vld <= 1'b0;
-
-                // Hazard check
-                decode.rs1_read <= regrd_rs1_en;
-                decode.rs2_read <= regrd_rs2_en;
-                decode.rs1      <= (regrd_rs1_en) ? rs1 : '0;
-                decode.rs2      <= (regrd_rs2_en) ? rs2 : '0;
-
-                // EX controls
-                decode.neg   <= neg;
-                decode.rev   <= rev;
-                decode.cin   <= cin;
-                decode.uns   <= uns;
-                decode.eq    <= eq;
-                decode.inv   <= inv;
-                decode.align <= align;
-                decode.sel   <= sel;
-                
-                // WB controls
-                decode.rd_write     <= regwr_rd_en;
-                decode.rd           <= (regwr_rd_en) ? rd : '0;
-                decode.branch       <= 1'b0;
-                decode.branch_cond  <= 1'b0;
-                decode.ld_size      <= 2'b0;
-                decode.ld_sign      <= 1'b0;
-                decode.st           <= 1'b0;
-                decode.illegal      <= ~(instr_valid) | illegal_opcode;
-
-                // Temporarily store defaults in operands
-                decode.op1 <= fetch.pc;
-                decode.op2 <= FOUR;
-                decode.op3 <= fetch.pc;
-                decode.op4 <= ZERO;
-
-            end
-            else if (pipe_out_vld && pipe_out_rdy) begin
-                pipe_out_vld <= 1'b0;
-            end
-        end
-        else if (state == ID2) begin
+        if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
 
+            // Hazard check
+            decode.rs1          <= (regrd_rs1_en) ? rs1 : '0;
+            decode.rs2          <= (regrd_rs2_en) ? rs2 : '0;
+            decode.op1_regrd    <= 1'b0;
+            decode.op2_regrd    <= 1'b0;
+            decode.op3_regrd    <= 1'b0;
+            decode.op4_regrd    <= 1'b0;
+
+            // EX controls
+            decode.cin   <= cin;
+            decode.rev   <= rev;
+            decode.uns   <= uns;
+            decode.eq    <= eq;
+            decode.inv   <= inv;
+            decode.align <= align;
+            decode.sel   <= sel;
+            
+            // WB controls
+            decode.rd_write     <= regwr_rd_en;
+            decode.rd           <= (regwr_rd_en) ? rd : '0;
+            decode.branch       <= 1'b0;
+            decode.branch_cond  <= 1'b0;
+            decode.ld_size      <= 2'b0;
+            decode.ld_sign      <= 1'b0;
+            decode.st           <= 1'b0;
+            decode.illegal      <= ~(instr_valid) | illegal_opcode;
+
+            // Store defaults in operands
+            decode.op1 <= PC;
+            decode.op2 <= FOUR;
+            decode.op3 <= PC;
+            decode.op4 <= ZERO;
+
             // Fill out OP1-4 as per opcode
-            // now that rs1,rs2 and Immediate are ready
             /* verilator lint_off CASEINCOMPLETE */
-            case(tOP)
+            case(OP)
                 INSTR_LUI   : begin
                     decode.op1 <= ZERO;
                     decode.op2 <= immediate;
@@ -498,27 +454,25 @@ always_ff @(posedge clk or negedge rstz) begin
                 INSTR_OPIMM : begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= immediate;
+                    decode.op1_regrd <= 1'b1;
                 end
                 INSTR_OP    : begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= regrd_rs2;
+                    decode.op1_regrd <= 1'b1;
+                    decode.op2_regrd <= 1'b1;
                 end
             endcase // tOP
             /* verilator lint_off CASEINCOMPLETE */
+
+        end
+        else if (pipe_out_vld && pipe_out_rdy) begin
+            pipe_out_vld <= 1'b0;
         end
     end
 end
 
 // Pipethru can only happen in the ID1 state
-assign pipe_in_rdy = (state == ID1) && (~pipe_out_vld | pipe_out_rdy);
-
-
-// ------------------------------------------------------------
-`ifdef verilator
-logic _unused;
-assign _unused = &{1'b0
-    , tIR[6:0]  // the opcode is the only part of the instruction that isn't used to decode the immediate!
-};
-`endif
+assign pipe_in_rdy = ~pipe_out_vld | pipe_out_rdy;
 
 endmodule

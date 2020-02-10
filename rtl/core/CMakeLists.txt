@@ -8,12 +8,12 @@ add_hdl_source(kronos_IF.sv
         kronos_types
 )
 
-add_hdl_source(kronos_IF2.sv
+add_hdl_source(kronos_ID.sv
     DEPENDS
         kronos_types
 )
 
-add_hdl_source(kronos_ID.sv
+add_hdl_source(kronos_alu.sv
     DEPENDS
         kronos_types
 )
@@ -21,4 +21,5 @@ add_hdl_source(kronos_ID.sv
 add_hdl_source(kronos_EX.sv
     DEPENDS
         kronos_types
+        kronos_alu
 )

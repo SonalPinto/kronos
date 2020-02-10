@@ -1,9 +1,11 @@
 // Copyright (c) 2020 Sonal Pinto
 // SPDX-License-Identifier: Apache-2.0
 
+/*
+Kronos RISC-V 32I Instruction Fetch
 
-// Simple Pipelined Instruction Fetch - Lite
-
+Simple Pipelined Fetch with single cycle throughput, One Block Lookahead fetch
+*/
 
 module kronos_IF
     import kronos_types::*;
@@ -26,28 +28,68 @@ module kronos_IF
     input logic         branch
 );
 
-logic [31:0] pc;
-logic fetch_vld;
+logic [31:0] pc, pc_last;
+logic update_pc;
+logic fetch_rdy, fetch_vld;
+
+enum logic [1:0] {
+    INIT,
+    FETCH,
+    STALL
+} state, next_state;
+
 
 // ============================================================
 // Program Counter (PC) Generation
-//  & Instruction Fetch
-
-// This is a simple two-cycle fetch,
-//  as the memory data/gnt is valid a cycle after the request
-//  The halved throughput compared to kronos_IF is acceptable
-//  because the simple kronos_ID decode stage takes 2 cycles
-//  as it uses block ram for the register file
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         pc <= PC_START;
+        pc_last <= '0;
+    end
+    else begin
+        if (update_pc) begin
+            pc <= branch ? branch_target : (pc + 32'h4);
+            pc_last <= pc;
+        end
+    end
+end
+
+assign update_pc = next_state == FETCH;
+
+// ============================================================
+//  Instruction Fetch
+
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) state <= INIT;
+    else state <= next_state;
+end
+
+always_comb begin
+    next_state = state;
+    /* verilator lint_off CASEINCOMPLETE */
+    case (state)
+        INIT: next_state = FETCH;
+
+        FETCH:
+            if (instr_gnt && fetch_rdy) next_state = FETCH;
+            else next_state = STALL;
+
+        STALL:
+            if (instr_gnt && fetch_rdy) next_state = FETCH;
+
+    endcase // state
+    /* verilator lint_on CASEINCOMPLETE */
+end
+
+// FIXME - Swap this out to a skid buffer ?
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
         fetch_vld <= '0;
     end
     else begin
-        if (instr_gnt) begin
-            fetch.pc <= instr_addr;
+        if (instr_gnt && fetch_rdy) begin
+            fetch.pc <= pc_last;
             fetch.ir <= instr_data;
-            pc <= branch ? branch_target : (pc + 32'h4);
             fetch_vld <= 1'b1;
         end
         else if (fetch_vld && pipe_out_rdy) begin
@@ -56,9 +98,11 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
+assign fetch_rdy = ~fetch_vld | pipe_out_rdy;
+
 // Memory Interface
-assign instr_addr = pc;
-assign instr_req = ~instr_gnt && (~fetch_vld | pipe_out_rdy);
+assign instr_addr = (next_state != FETCH) ? pc_last : pc;
+assign instr_req = fetch_rdy;
 
 // Next Stage pipe interface
 assign pipe_out_vld = fetch_vld;

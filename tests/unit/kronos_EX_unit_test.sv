@@ -123,12 +123,15 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     */
 
     int aluop;
-    int op1, op2; 
+    int op1, op2, op3, op4;
     logic [31:0] op1_uns, op2_uns;
 
-    aluop = $urandom_range(0,13);
+    // Scenario
+    aluop = $urandom_range(0,14);
     op1 = $urandom();
     op2 = $urandom();
+    op3 = $urandom();
+    op4 = $urandom();
 
     // 5% chance of operands being the same!
     if ($urandom_range(0,19) == 0) op2 = op1;
@@ -136,27 +139,54 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     op1_uns = op1;
     op2_uns = op2;
 
+    //=========================
+    // DECODE
+    // EX Operands ------------
     decode.op1 = op1;
     decode.op2 = op2;
-    decode.rs1_read = 1;
-    decode.rs2_read = 1;
-    decode.rs1 = 1;
-    decode.rs2 = 1;
-    decode.rd = $urandom;
-    decode.rd_write = $urandom; 
-    decode.neg = 0;
-    decode.rev = 0;
+    decode.op3 = op3;
+    decode.op4 = op4;
+    // ------------------------
+    // Hazard checks
+    decode.rs1 = 0;
+    decode.rs2 = 0;
+    decode.op1_regrd = 0;
+    decode.op2_regrd = 0;
+    decode.op3_regrd = 0;
+    decode.op4_regrd = 0;
+    // ------------------------
+    // EX controls
     decode.cin = 0;
+    decode.rev = 0;
     decode.uns = 0;
-    decode.eq  = 0;
+    decode.eq = 0;
     decode.inv = 0;
-    decode.sel = ALU_ADDER;
-    decode.illegal = $urandom;
+    decode.align = 0;
+    decode.sel = 0;
+    // ------------------------
+    // WB controls
+    decode.rd = 0;
+    decode.rd_write = 0;
+    decode.branch = 0;
+    decode.branch_cond = 0;
+    decode.ld_size = 0;
+    decode.ld_sign = 0;
+    decode.st = 0;
+    decode.illegal = 0;
 
-    execute.result2 = '0;
-    execute.rd = decode.rd;
-    execute.rd_write = decode.rd_write;
-    execute.illegal = decode.illegal;
+    //=========================
+    // EXECUTE
+    execute.result1 = 0;
+    execute.result2 = op3 + op4;
+
+    execute.rd          = decode.rd;
+    execute.rd_write    = decode.rd_write;
+    execute.branch      = decode.branch;
+    execute.branch_cond = decode.branch_cond;
+    execute.ld_size     = decode.ld_size;
+    execute.ld_sign     = decode.ld_sign;
+    execute.st          = decode.st;
+    execute.illegal     = decode.illegal;
 
     case(aluop)
         0: begin
@@ -165,7 +195,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
         end
         1: begin
             optype = "SUB";
-            decode.neg = 1;
             decode.cin = 1;
 
             execute.result1 = op1 - op2;
@@ -190,7 +219,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
         end
         5: begin
             optype = "LT";
-            decode.neg = 1;
             decode.cin = 1;
             decode.sel = ALU_COMP;
 
@@ -198,7 +226,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
         end
         6: begin
             optype = "LTU";
-            decode.neg = 1;
             decode.cin = 1;
             decode.uns = 1;
             decode.sel = ALU_COMP;
@@ -207,7 +234,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
         end
         7: begin
             optype = "GTE";
-            decode.neg = 1;
             decode.cin = 1;
             decode.inv = 1;
             decode.sel = ALU_COMP;
@@ -216,7 +242,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
         end
         8: begin
             optype = "GTEU";
-            decode.neg = 1;
             decode.cin = 1;
             decode.inv = 1;
             decode.uns = 1;
@@ -259,6 +284,13 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
             decode.sel = ALU_SHIFT;
 
             execute.result1 = op1 << op2[4:0];
+        end
+        14: begin
+            optype = "SADD_ALIGN";
+            decode.align = 1;
+
+            execute.result1 = op1 + op2;
+            execute.result2 = (op3 + op4) & ~1;
         end
     endcase
 endtask
