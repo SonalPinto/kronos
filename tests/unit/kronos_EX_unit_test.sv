@@ -73,8 +73,8 @@ endclocking
             $display("OPTYPE=%s", optype);
             $display("OP1: %d", signed'(tdecode.op1));
             $display("OP2: %d", signed'(tdecode.op2));
-            $display("Expected: ",);
-            $display("  result1: %d", signed'(texecute.result1));
+            $display("Expected: ");
+            print_execute(texecute);
 
             fork 
                 begin
@@ -94,7 +94,7 @@ endclocking
                         //check
                         rexecute = execute;
                         $display("Got:");
-                        $display("  result1: %d", signed'(rexecute.result1));
+                        print_execute(rexecute);
 
                         cb.pipe_out_rdy <= 1;
                         ##1 cb.pipe_out_rdy <= 0;
@@ -116,6 +116,22 @@ end
 // ============================================================
 // METHODS
 // ============================================================
+
+task automatic print_execute(input pipeEXWB_t e);
+    $display("---- RES -------");
+    $display("  result1: %h", e.result1);
+    $display("  result2: %h", e.result2);
+    $display("---- WBCTRL ----");
+    $display("  rd: %d",          e.rd);
+    $display("  rd_write: %h",    e.rd_write);
+    $display("  branch: %h",      e.branch);
+    $display("  branch_cond: %h", e.branch_cond);
+    $display("  ld_size: %h",     e.ld_size);    
+    $display("  ld_sign: %h",     e.ld_sign);
+    $display("  st: %h",          e.st);
+    $display("  illegal: %h",     e.illegal);
+endtask
+
 
 task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t execute, output string optype);
     /*

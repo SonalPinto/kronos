@@ -102,7 +102,7 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.illegal     <= decode.illegal;
 
             // Keep track if some register requires a write
-            is_pending <= 1'b0; // decode.rd_write; // FIXME
+            is_pending <= decode.rd_write;
             rpend <= decode.rd;
 
             // Results

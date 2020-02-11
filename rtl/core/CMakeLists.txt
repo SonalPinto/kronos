@@ -23,3 +23,8 @@ add_hdl_source(kronos_EX.sv
         kronos_types
         kronos_alu
 )
+
+add_hdl_source(kronos_WB.sv
+    DEPENDS
+        kronos_types
+)

@@ -37,16 +37,8 @@ HAZARD CHECKS,
     rs1, rs2, op#_regrd
     Check kronos_EX for details
 
-WB_CTRL,
-    rd          : register write select
-    rd_write    : register write enable
-    branch      : unconditional branch
-    branch_cond : conditional branch
-    ld_size     : memory load size - byte, half-word or word
-    ld_sign     : sign extend loaded data
-    st          : store
-    illegal     : illegal instruction
-    Check kronos_WB for details
+WB_CTRL
+    rd, rd_write, branch, branch_cond, ld_size, ld_sign, st, illegal
 
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
