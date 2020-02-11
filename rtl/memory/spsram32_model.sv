@@ -9,24 +9,27 @@ module spsram32_model #(
     parameter DEPTH = 256
 )(
     input  logic                        clk,
-    input  logic                        rstz,
     input  logic [31:0]                 addr,
-    output logic [31:0]                 data,
-    input  logic                        req,
-    output logic                        gnt
+    input  logic [31:0]                 wdata,
+    output logic [31:0]                 rdata,
+    input  logic                        en,
+    input  logic                        wr_en,
+    input  logic [3:0]                  wr_mask
 );
+
+parameter D = $clog2(DEPTH);
 
 logic [31:0] MEM [DEPTH];
 
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        data <= '1;
-        gnt <= '0;
+always_ff @(posedge clk) begin
+    if (en) begin
+        if (wr_en) begin
+            for (int i=0; i<4; i++) begin
+                if (wr_mask[i]) MEM[addr[D-1:0]][i*8+:8] <= wdata[i*8+:8];
+            end
+        end
+        else rdata <= MEM[addr[D-1:0]];
     end
-    else if (req) begin
-        gnt <= 1'b1;
-        data <= MEM[addr[$clog2(DEPTH)-1:0]];
-    end
-    else gnt <= 1'b0;
 end
+
 endmodule

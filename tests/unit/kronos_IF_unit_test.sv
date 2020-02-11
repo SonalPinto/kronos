@@ -37,13 +37,17 @@ kronos_IF u_dut (
 );
 
 spsram32_model #(.DEPTH(256)) u_imem (
-    .clk (clk       ),
-    .rstz(rstz      ),
-    .addr(instr_addr),
-    .data(instr_data),
-    .req (instr_req ),
-    .gnt (instr_gnt )
+    .clk    (clk       ),
+    .addr   (instr_addr),
+    .wdata  (32'b0     ),
+    .rdata  (instr_data),
+    .en     (instr_req ),
+    .wr_en  (1'b0      ),
+    .wr_mask(4'b0      )
 );
+
+always_ff @(posedge clk) instr_gnt <= instr_req;
+
 
 default clocking cb @(posedge clk);
     default input #10s output #10ps;
@@ -79,7 +83,7 @@ endclocking
         expected_pc = 0;
         pipe_out_rdy = 1;
 
-        repeat(128) begin
+        repeat(1024) begin
             @(cb iff pipe_out_vld) begin        
                 $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
                 assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
@@ -95,7 +99,7 @@ endclocking
         logic [31:0] expected_pc;
 
         expected_pc = 0;
-        repeat(128) begin
+        repeat(1024) begin
             @(cb iff pipe_out_vld) begin
                 // random chance of backpressure from memory
                 if ($urandom_range(0,1)) begin
@@ -131,7 +135,7 @@ endclocking
                 miss = 0;
             end
 
-            repeat(128) begin
+            repeat(1024) begin
                 @(cb iff pipe_out_vld) begin        
                     $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
                     assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
@@ -161,7 +165,7 @@ endclocking
                 miss = 0;
             end
 
-            repeat(128) begin
+            repeat(1024) begin
                 @(cb iff pipe_out_vld) begin
                      // random chance of backpressure from memory
                     if ($urandom_range(0,1)) begin
@@ -182,6 +186,6 @@ endclocking
     end
 end
 
-`WATCHDOG(100us);
+`WATCHDOG(1ms);
 
 endmodule
