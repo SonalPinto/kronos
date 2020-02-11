@@ -17,14 +17,6 @@ typedef struct packed {
     logic [31:0] op3;
     logic [31:0] op4;
     // ------------------------
-    // Hazard checks
-    logic [4:0]  rs1;
-    logic [4:0]  rs2;
-    logic        op1_regrd;
-    logic        op2_regrd;
-    logic        op3_regrd;
-    logic        op4_regrd;
-    // ------------------------
     // EX controls
     logic        cin;
     logic        rev;
@@ -60,6 +52,26 @@ typedef struct packed {
     logic        st;
     logic        illegal;
 } pipeEXWB_t;
+
+
+typedef struct packed {
+    logic [4:0]  rs1;
+    logic [4:0]  rs2;
+    logic [4:0]  rd;
+    logic        rd_write;
+    logic        op1_regrd;
+    logic        op2_regrd;
+    logic        op3_regrd;
+    logic        op4_regrd;
+} IDxHCU_t;
+
+typedef struct packed {
+    logic op1_hazard;
+    logic op2_hazard;
+    logic op3_hazard;
+    logic op4_hazard;
+    logic op_hazard;
+} HCUxEX_t;
 
 
 // ============================================================

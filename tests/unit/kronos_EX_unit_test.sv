@@ -18,6 +18,7 @@ logic pipe_out_vld;
 logic pipe_out_rdy;
 logic [31:0] fwd_data;
 logic fwd_vld;
+HCUxEX_t hcu;
 
 kronos_EX u_ex (
     .clk         (clk         ),
@@ -29,7 +30,8 @@ kronos_EX u_ex (
     .pipe_out_vld(pipe_out_vld),
     .pipe_out_rdy(pipe_out_rdy),
     .fwd_data    (fwd_data    ),
-    .fwd_vld     (fwd_vld     )
+    .fwd_vld     (fwd_vld     ),
+    .hcu         (hcu         )
 );
 
 default clocking cb @(posedge clk);
@@ -53,6 +55,12 @@ endclocking
 
         fwd_vld = 0;
         fwd_data = '0;
+
+        hcu.op_hazard = 0;
+        hcu.op1_hazard = 0;
+        hcu.op2_hazard = 0;
+        hcu.op3_hazard = 0;
+        hcu.op4_hazard = 0;
 
         fork 
             forever #1ns clk = ~clk;
@@ -162,14 +170,6 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     decode.op2 = op2;
     decode.op3 = op3;
     decode.op4 = op4;
-    // ------------------------
-    // Hazard checks
-    decode.rs1 = 0;
-    decode.rs2 = 0;
-    decode.op1_regrd = 0;
-    decode.op2_regrd = 0;
-    decode.op3_regrd = 0;
-    decode.op4_regrd = 0;
     // ------------------------
     // EX controls
     decode.cin = 0;

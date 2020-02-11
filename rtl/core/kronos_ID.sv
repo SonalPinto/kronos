@@ -54,18 +54,20 @@ module kronos_ID
 (
     input  logic        clk,
     input  logic        rstz,
-    // IF/ID interface
+    // IF/ID
     input  pipeIFID_t   fetch,
     input  logic        pipe_in_vld,
     output logic        pipe_in_rdy,
-    // ID/EX interface
+    // ID/EX
     output pipeIDEX_t   decode,
     output logic        pipe_out_vld,
     input  logic        pipe_out_rdy,
     // REG Write
     input  logic [31:0] regwr_data,
     input  logic [4:0]  regwr_sel,
-    input  logic        regwr_en
+    input  logic        regwr_en,
+    // HCU
+    output IDxHCU_t     hcu
 );
 
 parameter logic [31:0] ZERO   = 32'h0;
@@ -390,6 +392,35 @@ end
 
 
 // ============================================================
+// Hazard Check Inputs
+// Inform the HCU about register read status and which ops are
+// going to be register operands
+
+always_comb begin
+    hcu.rs1       = (regrd_rs1_en) ? rs1 : '0;
+    hcu.rs2       = (regrd_rs2_en) ? rs2 : '0;
+    hcu.rd        = (regwr_rd_en) ? rd : '0;
+    hcu.rd_write  = regwr_rd_en;
+    hcu.op1_regrd = 1'b0;
+    hcu.op2_regrd = 1'b0;
+    hcu.op3_regrd = 1'b0;
+    hcu.op4_regrd = 1'b0;
+
+    /* verilator lint_off CASEINCOMPLETE */
+    case(OP)
+        INSTR_OPIMM : begin
+            hcu.op1_regrd = 1'b1;
+        end
+        INSTR_OP    : begin
+            hcu.op1_regrd = 1'b1;
+            hcu.op2_regrd = 1'b1;
+        end
+    endcase // OP
+    /* verilator lint_on CASEINCOMPLETE */
+end
+
+
+// ============================================================
 // Instruction Decode Output Pipe (decoded instruction)
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -399,14 +430,6 @@ always_ff @(posedge clk or negedge rstz) begin
     else begin
         if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
-
-            // Hazard check
-            decode.rs1          <= (regrd_rs1_en) ? rs1 : '0;
-            decode.rs2          <= (regrd_rs2_en) ? rs2 : '0;
-            decode.op1_regrd    <= 1'b0;
-            decode.op2_regrd    <= 1'b0;
-            decode.op3_regrd    <= 1'b0;
-            decode.op4_regrd    <= 1'b0;
 
             // EX controls
             decode.cin   <= cin;
@@ -418,8 +441,8 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.sel   <= sel;
             
             // WB controls
-            decode.rd_write     <= regwr_rd_en;
             decode.rd           <= (regwr_rd_en) ? rd : '0;
+            decode.rd_write     <= regwr_rd_en;
             decode.branch       <= 1'b0;
             decode.branch_cond  <= 1'b0;
             decode.ld_size      <= 2'b0;
@@ -446,15 +469,12 @@ always_ff @(posedge clk or negedge rstz) begin
                 INSTR_OPIMM : begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= immediate;
-                    decode.op1_regrd <= 1'b1;
                 end
                 INSTR_OP    : begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= regrd_rs2;
-                    decode.op1_regrd <= 1'b1;
-                    decode.op2_regrd <= 1'b1;
                 end
-            endcase // tOP
+            endcase // OP
             /* verilator lint_off CASEINCOMPLETE */
 
         end
