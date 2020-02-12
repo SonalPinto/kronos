@@ -35,7 +35,7 @@ kronos_EX u_ex (
 );
 
 default clocking cb @(posedge clk);
-    default input #10s output #10ps;
+    default input #10ps output #10ps;
     input pipe_out_vld, execute;
     input negedge pipe_in_rdy;
     output pipe_in_vld, decode;

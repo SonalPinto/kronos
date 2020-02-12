@@ -37,7 +37,7 @@ kronos_ID u_id (
 );
 
 default clocking cb @(posedge clk);
-    default input #10s output #10ps;
+    default input #10ps output #10ps;
     input pipe_out_vld, decode;
     input negedge pipe_in_rdy;
     output pipe_in_vld, fetch;

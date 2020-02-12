@@ -16,3 +16,9 @@ add_hdl_unit_test(kronos_EX_unit_test.sv
     DEPENDS
         kronos_EX
 )
+
+add_hdl_unit_test(hcu_unit_test.sv
+    DEPENDS
+        spsram32_model
+        kronos_core
+)

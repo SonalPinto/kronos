@@ -40,8 +40,8 @@ assign is_op4_hzd = id.op4_regrd && id.rs1 == rpend;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
-        ex.op_hazard <= 1'b0;
         is_pending <= 1'b0;
+        ex <= '0;
     end
     else if (check) begin
         // Keep track if some register requires a write
@@ -59,7 +59,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
     else if (fwd_vld) begin
         is_pending <= 1'b0;
-        ex.op_hazard  <= 1'b0;
+        ex <= '0;
     end
 end
 

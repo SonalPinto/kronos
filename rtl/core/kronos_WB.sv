@@ -38,7 +38,7 @@ module kronos_WB
 );
 
 
-enum logic {
+enum logic [1:0] {
     WRITE,
     CATCH
 } state, next_state;

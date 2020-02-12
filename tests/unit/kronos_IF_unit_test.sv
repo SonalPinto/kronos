@@ -50,7 +50,7 @@ always_ff @(posedge clk) instr_gnt <= instr_req;
 
 
 default clocking cb @(posedge clk);
-    default input #10s output #10ps;
+    default input #10ps output #10ps;
     input fetch, pipe_out_vld, instr_req;
     output negedge pipe_out_rdy;
 endclocking
