@@ -27,13 +27,10 @@ logic regwr_en;
 logic [31:0] fwd_data;
 logic fwd_vld;
 
-logic hcu_check;
-
 pipeIFID_t fetch;
 pipeIDEX_t decode;
 pipeEXWB_t execute;
-IDxHCU_t hcu_in;
-HCUxEX_t hcu_out;
+hazardEX_t ex_hazard;
 
 logic fetch_vld, fetch_rdy;
 logic decode_vld, decode_rdy;
@@ -56,12 +53,10 @@ kronos_IF u_if (
     .branch       (branch       )
 );
 
-assign branch = 1'b0;
-assign branch_target = '0;
-
 // ============================================================
 // Decode
 // ============================================================
+
 kronos_ID u_id (
     .clk         (clk       ),
     .rstz        (rstz      ),
@@ -69,45 +64,31 @@ kronos_ID u_id (
     .pipe_in_vld (fetch_vld ),
     .pipe_in_rdy (fetch_rdy ),
     .decode      (decode    ),
+    .ex_hazard   (ex_hazard ),
     .pipe_out_vld(decode_vld),
     .pipe_out_rdy(decode_rdy),
     .regwr_data  (regwr_data),
     .regwr_sel   (regwr_sel ),
-    .regwr_en    (regwr_en  ),
-    .hcu         (hcu_in    )
+    .regwr_en    (regwr_en  )
 );
-
-// Hazard Control
-kronos_hcu u_hcu (
-    .clk    (clk      ),
-    .rstz   (rstz     ),
-    .check  (hcu_check),
-    .fwd_vld(fwd_vld  ),
-    .id     (hcu_in   ),
-    .ex     (hcu_out  )
-);
-
-assign hcu_check = fetch_vld && fetch_rdy;
 
 // ============================================================
 // Execute
 // ============================================================
+
 kronos_EX u_ex (
-    .clk         (clk),
-    .rstz        (rstz        ),
-    .decode      (decode      ),
+    .clk         (clk        ),
+    .rstz        (rstz       ),
+    .decode      (decode     ),
+    .ex_hazard   (ex_hazard  ),
     .pipe_in_vld (decode_vld ),
     .pipe_in_rdy (decode_rdy ),
-    .execute     (execute     ),
+    .execute     (execute    ),
     .pipe_out_vld(execute_vld),
     .pipe_out_rdy(execute_rdy),
-    .fwd_data    (fwd_data    ),
-    .fwd_vld     (fwd_vld     ),
-    .hcu         (hcu_out     )
+    .fwd_data    (fwd_data   ),
+    .fwd_vld     (fwd_vld    )
 );
-
-assign fwd_vld = regwr_en;
-assign fwd_data = regwr_data;
 
 // ============================================================
 // Write Back
@@ -122,5 +103,11 @@ kronos_WB u_wb (
     .regwr_sel  (regwr_sel  ),
     .regwr_en   (regwr_en   )
 );
+
+assign fwd_vld = regwr_en;
+assign fwd_data = regwr_data;
+
+assign branch = 1'b0;
+assign branch_target = '0;
 
 endmodule

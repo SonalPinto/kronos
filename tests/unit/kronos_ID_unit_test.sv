@@ -19,7 +19,7 @@ logic pipe_out_rdy;
 logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
-IDxHCU_t hcu;
+hazardEX_t ex_hazard;
 
 kronos_ID u_id (
     .clk         (clk         ),
@@ -33,7 +33,7 @@ kronos_ID u_id (
     .regwr_data  (regwr_data  ),
     .regwr_sel   (regwr_sel   ),
     .regwr_en    (regwr_en    ),
-    .hcu         (hcu         )
+    .ex_hazard   (ex_hazard   )
 );
 
 default clocking cb @(posedge clk);

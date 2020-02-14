@@ -53,25 +53,13 @@ typedef struct packed {
     logic        illegal;
 } pipeEXWB_t;
 
-
-typedef struct packed {
-    logic [4:0]  rs1;
-    logic [4:0]  rs2;
-    logic [4:0]  rd;
-    logic        rd_write;
-    logic        op1_regrd;
-    logic        op2_regrd;
-    logic        op3_regrd;
-    logic        op4_regrd;
-} IDxHCU_t;
-
 typedef struct packed {
     logic op1_hazard;
     logic op2_hazard;
     logic op3_hazard;
     logic op4_hazard;
     logic op_hazard;
-} HCUxEX_t;
+} hazardEX_t;
 
 
 // ============================================================

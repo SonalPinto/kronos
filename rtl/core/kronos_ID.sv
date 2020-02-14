@@ -60,14 +60,13 @@ module kronos_ID
     output logic        pipe_in_rdy,
     // ID/EX
     output pipeIDEX_t   decode,
+    output hazardEX_t   ex_hazard,
     output logic        pipe_out_vld,
     input  logic        pipe_out_rdy,
     // REG Write
     input  logic [31:0] regwr_data,
     input  logic [4:0]  regwr_sel,
-    input  logic        regwr_en,
-    // HCU
-    output IDxHCU_t     hcu
+    input  logic        regwr_en
 );
 
 parameter logic [31:0] ZERO   = 32'h0;
@@ -119,6 +118,14 @@ logic       eq;
 logic       inv;
 logic       align;
 logic [2:0] sel;
+
+// Hazard inputs
+logic [4:0] hcu_rs1, hcu_rs2;
+logic check_hazard;
+logic op1_regrd;
+logic op2_regrd;
+logic op3_regrd;
+logic op4_regrd;
 
 
 // ============================================================
@@ -397,27 +404,45 @@ end
 // going to be register operands
 
 always_comb begin
-    hcu.rs1       = (regrd_rs1_en) ? rs1 : '0;
-    hcu.rs2       = (regrd_rs2_en) ? rs2 : '0;
-    hcu.rd        = (regwr_rd_en) ? rd : '0;
-    hcu.rd_write  = regwr_rd_en;
-    hcu.op1_regrd = 1'b0;
-    hcu.op2_regrd = 1'b0;
-    hcu.op3_regrd = 1'b0;
-    hcu.op4_regrd = 1'b0;
+    hcu_rs1   = (regrd_rs1_en) ? rs1 : '0;
+    hcu_rs2   = (regrd_rs2_en) ? rs2 : '0;
+    op1_regrd = 1'b0;
+    op2_regrd = 1'b0;
+    op3_regrd = 1'b0;
+    op4_regrd = 1'b0;
 
     /* verilator lint_off CASEINCOMPLETE */
     case(OP)
         INSTR_OPIMM : begin
-            hcu.op1_regrd = 1'b1;
+            op1_regrd = 1'b1;
         end
         INSTR_OP    : begin
-            hcu.op1_regrd = 1'b1;
-            hcu.op2_regrd = 1'b1;
+            op1_regrd = 1'b1;
+            op2_regrd = 1'b1;
         end
     endcase // OP
     /* verilator lint_on CASEINCOMPLETE */
 end
+
+// Perform hazard check the same time as decode
+assign check_hazard = pipe_in_vld && pipe_in_rdy;
+
+// Hazard Control
+kronos_hcu u_hcu (
+    .clk      (clk         ),
+    .rstz     (rstz        ),
+    .check    (check_hazard),
+    .fwd_vld  (regwr_en    ),
+    .rd       (decode.rd   ),
+    .rs1      (hcu_rs1     ),
+    .rs2      (hcu_rs2     ),
+    .rd_write (regwr_rd_en ),
+    .op1_regrd(op1_regrd   ),
+    .op2_regrd(op2_regrd   ),
+    .op3_regrd(op3_regrd   ),
+    .op4_regrd(op4_regrd   ),
+    .ex_hazard(ex_hazard   )
+);
 
 
 // ============================================================
