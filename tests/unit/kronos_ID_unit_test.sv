@@ -7,6 +7,7 @@
 module tb_kronos_ID_ut;
 
 import kronos_types::*;
+import rv32_assembler::*;
 
 logic clk;
 logic rstz;
@@ -221,8 +222,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     case(op)
         0: begin
             optype = "ADDI";
-
-            instr.ir = {imm[11:0], rs1, 3'b000, rd, 7'b00_100_11};
+            instr.ir = rv32_addi(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -232,8 +232,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         1: begin
             optype = "SLTI";
-
-            instr.ir = {imm[11:0], rs1, 3'b010, rd, 7'b00_100_11};
+            instr.ir = rv32_slti(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -246,8 +245,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         2: begin
             optype = "SLTIU";
-
-            instr.ir = {imm[11:0], rs1, 3'b011, rd, 7'b00_100_11};
+            instr.ir = rv32_sltiu(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -261,8 +259,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         3: begin
             optype = "XORI";
-
-            instr.ir = {imm[11:0], rs1, 3'b100, rd, 7'b00_100_11};
+            instr.ir = rv32_xori(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -274,8 +271,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         4: begin
             optype = "ORI";
-
-            instr.ir = {imm[11:0], rs1, 3'b110, rd, 7'b00_100_11};
+            instr.ir = rv32_ori(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -287,8 +283,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         5: begin
             optype = "ANDI";
-
-            instr.ir = {imm[11:0], rs1, 3'b111, rd, 7'b00_100_11};
+            instr.ir = rv32_andi(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'(imm[11:0]);
@@ -300,8 +295,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         6: begin
             optype = "SLLI";
-
-            instr.ir = {7'b0, imm[4:0], rs1, 3'b001, rd, 7'b00_100_11};
+            instr.ir = rv32_slli(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0, imm[4:0]});
@@ -315,8 +309,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         7: begin
             optype = "SRLI";
-
-            instr.ir = {7'b0, imm[4:0], rs1, 3'b101, rd, 7'b00_100_11};
+            instr.ir = rv32_srli(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0, imm[4:0]});
@@ -329,8 +322,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         8: begin
             optype = "SRAI";
-
-            instr.ir = {7'b0100000, imm[4:0], rs1, 3'b101, rd, 7'b00_100_11};
+            instr.ir = rv32_srai(rd, rs1, imm);
 
             decode.op1 = REG[rs1];
             decode.op2 = signed'({7'b0100000,imm[4:0]});
@@ -342,8 +334,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         9: begin
             optype = "ADD";
-
-            instr.ir = {7'b0, rs2, rs1, 3'b000, rd, 7'b01_100_11};
+            instr.ir = rv32_add(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -353,8 +344,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         10: begin
             optype = "SUB";
-
-            instr.ir = {7'b0100000, rs2, rs1, 3'b000, rd, 7'b01_100_11};
+            instr.ir = rv32_sub(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -366,8 +356,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         11: begin
             optype = "SLL";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b001, rd, 7'b01_100_11};
+            instr.ir = rv32_sll(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -381,8 +370,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         12: begin
             optype = "SLT";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b010, rd, 7'b01_100_11};
+            instr.ir = rv32_slt(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -396,8 +384,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         13: begin
             optype = "SLTU";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b011, rd, 7'b01_100_11};
+            instr.ir = rv32_sltu(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -411,8 +398,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         14: begin
             optype = "XOR";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b100, rd, 7'b01_100_11};
+            instr.ir = rv32_xor(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -424,8 +410,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         15: begin
             optype = "SRL";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b101, rd, 7'b01_100_11};
+            instr.ir = rv32_srl(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -438,8 +423,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         16: begin
             optype = "SRA";
-
-            instr.ir = {7'b0100000, rs2, rs1, 3'b101, rd, 7'b01_100_11};
+            instr.ir = rv32_sra(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -451,8 +435,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         17: begin
             optype = "OR";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b110, rd, 7'b01_100_11};
+            instr.ir = rv32_or(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -464,8 +447,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         18: begin
             optype = "AND";
-
-            instr.ir = {7'b0000000, rs2, rs1, 3'b111, rd, 7'b01_100_11};
+            instr.ir = rv32_and(rd, rs1, rs2);
 
             decode.op1 = REG[rs1];
             decode.op2 = REG[rs2];
@@ -477,8 +459,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         19: begin
             optype = "LUI";
-
-            instr.ir = {imm[31:12], rd, 7'b01_101_11};
+            instr.ir = rv32_lui(rd, imm);
 
             decode.op1 = 0;
             decode.op2 = {imm[31:12], 12'b0};
@@ -488,8 +469,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
         20: begin
             optype = "AUIPC";
-
-            instr.ir = {imm[31:12], rd, 7'b00_101_11};
+            instr.ir = rv32_auipc(rd, imm);
 
             decode.op1 = instr.pc;
             decode.op2 = {imm[31:12], 12'b0};

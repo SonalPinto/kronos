@@ -4,6 +4,7 @@
 
 package kronos_types;
 
+typedef logic [31:0] instr_t;
 
 typedef struct packed {
     logic [31:0] pc;

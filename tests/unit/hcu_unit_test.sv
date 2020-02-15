@@ -7,6 +7,7 @@
 module tb_hcu_ut;
 
 import kronos_types::*;
+import rv32_assembler::*;
 
 logic clk;
 logic rstz;
@@ -63,7 +64,7 @@ endclocking
 
     `TEST_CASE("doubler") begin
         logic [31:0] PROGRAM [$];
-        logic [31:0] instr;
+        instr_t instr;
         int prog_size, index;
         int data;
         int n;
@@ -75,13 +76,13 @@ endclocking
                 x1 = x1 + x1
         */
         // load 1 in x1
-        instr = {12'd1, 5'd0, 3'b000, 5'd1, 7'b00_100_11}; // addi x1, x0, 1
+        instr = rv32_addi(x1, x0, 1);
         PROGRAM.push_back(instr);
 
         n = $urandom_range(1,31);
         $display("N = %d", n);
         repeat(n) begin
-            instr = {7'b0, 5'd1, 5'd1, 3'b000, 5'd1, 7'b01_100_11}; // add x1, x1, x1
+            instr = rv32_add(x1, x1, x1);
             PROGRAM.push_back(instr);
         end
 
@@ -122,9 +123,9 @@ endclocking
 
     `TEST_CASE("fibonnaci") begin
         logic [31:0] PROGRAM [$];
-        logic [31:0] instr;
+        instr_t instr;
         int prog_size, index;
-        int x1, x2, x3;
+        int reg_x1, reg_x2, reg_x3;
         int a, b, c;
         int n;
 
@@ -138,23 +139,23 @@ endclocking
                 x2 = x3
         */
         // x1 = 0
-        instr = {7'b0, 5'd0, 5'd0, 3'b000, 5'd1, 7'b01_100_11}; // add x1, x1, x1
+        instr = rv32_add(x1, x0, x0);
         PROGRAM.push_back(instr);
         // x2 = 1
-        instr = {12'd1, 5'd0, 3'b000, 5'd2, 7'b00_100_11}; // addi x2, x0, 1
+        instr = rv32_addi(x2, x0, 1);
         PROGRAM.push_back(instr);
 
-        n = $urandom_range(1,32);
+        n = $urandom_range(1, 32);
         $display("N = %d", n);
         repeat(n) begin
             // x3 = x1 + x2
-            instr = {7'b0, 5'd2, 5'd1, 3'b000, 5'd3, 7'b01_100_11}; // add x3, x1, x2
+            instr = rv32_add(x3, x1, x2);
             PROGRAM.push_back(instr);
             // x1 = x2
-            instr = {7'b0, 5'd0, 5'd2, 3'b000, 5'd1, 7'b01_100_11}; // add x1, x2, x0
+            instr = rv32_add(x1, x2, x0);
             PROGRAM.push_back(instr);
             // x2 = x3
-            instr = {7'b0, 5'd0, 5'd3, 3'b000, 5'd2, 7'b01_100_11}; // add x2, x3, x0
+            instr = rv32_add(x2, x3, x0);
             PROGRAM.push_back(instr);
         end
 
@@ -195,15 +196,15 @@ endclocking
             b = c;
         end
 
-        x1 = u_dut.u_id.REG1[1];
-        x2 = u_dut.u_id.REG1[2];
-        x3 = u_dut.u_id.REG1[3];
-        $display("x1=%d vs a=%d", x1, a);
-        $display("x2=%d vs b=%d", x2, b);
-        $display("x3=%d vs c=%d", x3, c);
-        assert(x1 == a);
-        assert(x2 == b);
-        assert(x3 == c);
+        reg_x1 = u_dut.u_id.REG1[1];
+        reg_x2 = u_dut.u_id.REG1[2];
+        reg_x3 = u_dut.u_id.REG1[3];
+        $display("REG[x1]=%d vs a=%d", reg_x1, a);
+        $display("REG[x2]=%d vs b=%d", reg_x2, b);
+        $display("REG[x3]=%d vs c=%d", reg_x3, c);
+        assert(reg_x1 == a);
+        assert(reg_x2 == b);
+        assert(reg_x3 == c);
 
         ##64;
     end

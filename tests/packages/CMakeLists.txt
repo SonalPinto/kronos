@@ -1,5 +1,7 @@
 # Copyright (c) 2020 Sonal Pinto
 # SPDX-License-Identifier: Apache-2.0
 
-add_subdirectory(packages)
-add_subdirectory(unit)
+add_hdl_source(rv32_assembler.sv
+    DEPENDS
+        kronos_types
+)
