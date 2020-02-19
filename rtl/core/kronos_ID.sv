@@ -18,8 +18,8 @@ where,
                   Each operand can take one of many values as listed below,
                   OP1 <= PC, ZERO, REG[rs1]
                   OP2 <= IMM, FOUR, REG[rs2]
-                  OP3 <= REG[rs2], PC
-                  OP4 <= REG[rs1], IMM, ZERO
+                  OP3 <= REG[rs1], PC, ZERO
+                  OP4 <= REG[rs2], IMM
     EX_CTRL     : Execute stage controls
     WB_CTRL     : Write back stage controls which perform an action using
                   RESULT1/2
@@ -35,7 +35,7 @@ EX_CTRL,
 
 HAZARD CHECKS,
     rs1, rs2, op#_regrd
-    Check kronos_EX for details
+    Check kronos_hcu for details
 
 WB_CTRL
     rd, rd_write, branch, branch_cond, ld_size, ld_sign, st, illegal
@@ -68,9 +68,6 @@ module kronos_ID
     input  logic [4:0]  regwr_sel,
     input  logic        regwr_en
 );
-
-parameter logic [31:0] ZERO   = 32'h0;
-parameter logic [31:0] FOUR   = 32'h4;
 
 logic [31:0] IR, PC;
 logic [4:0] OP;
@@ -164,10 +161,15 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
-assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP;
+assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP || OP == INSTR_JALR;
 assign regrd_rs2_en = OP == INSTR_OP;
 
-assign regwr_rd_en = (rd != 0); // opcode != br|st|misc|system
+assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
+                                || OP == INSTR_AUIPC
+                                || OP == INSTR_JAL
+                                || OP == INSTR_JALR
+                                || OP == INSTR_OPIMM 
+                                || OP == INSTR_OP);
 
 // REG read
 always_ff @(negedge clk) begin
@@ -203,10 +205,10 @@ assign sign = IR[31];
 
 always_comb begin
     // Instruction format --- used to decode Immediate 
-    format_I = OP == INSTR_OPIMM;
-    format_J = 1'b0;
-    format_S = 1'b0;
-    format_B = 1'b0;
+    format_I = OP == INSTR_OPIMM || OP == INSTR_JALR || OP == INSTR_LOAD;
+    format_J = OP == INSTR_JAL;
+    format_S = OP == INSTR_STORE;
+    format_B = OP == INSTR_BR;
     format_U = OP == INSTR_LUI || OP == INSTR_AUIPC;
 
     // Immediate Segment A - [0]
@@ -263,7 +265,13 @@ always_comb begin
     case(OP)
     // --------------------------------
     INSTR_LUI,
-    INSTR_AUIPC: instr_valid = 1'b1;
+    INSTR_AUIPC,
+    INSTR_JAL: instr_valid = 1'b1;
+    // --------------------------------
+    INSTR_JALR: if (funct3 == 3'b000) begin
+        align = 1'b1;
+        instr_valid = 1'b1;
+    end
     // --------------------------------
     INSTR_OPIMM: begin
         case(funct3)
@@ -413,6 +421,9 @@ always_comb begin
 
     /* verilator lint_off CASEINCOMPLETE */
     case(OP)
+        INSTR_JALR: begin
+            op3_regrd = 1'b1;
+        end
         INSTR_OPIMM : begin
             op1_regrd = 1'b1;
         end
@@ -468,7 +479,7 @@ always_ff @(posedge clk or negedge rstz) begin
             // WB controls
             decode.rd           <= (regwr_rd_en) ? rd : '0;
             decode.rd_write     <= regwr_rd_en;
-            decode.branch       <= 1'b0;
+            decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR;
             decode.branch_cond  <= 1'b0;
             decode.ld_size      <= 2'b0;
             decode.ld_sign      <= 1'b0;
@@ -490,6 +501,13 @@ always_ff @(posedge clk or negedge rstz) begin
                 end
                 INSTR_AUIPC : begin
                     decode.op2 <= immediate;
+                end
+                INSTR_JAL : begin
+                    decode.op4 <= immediate;
+                end
+                INSTR_JALR : begin
+                    decode.op3 <= regrd_rs1;
+                    decode.op4 <= immediate;
                 end
                 INSTR_OPIMM : begin
                     decode.op1 <= regrd_rs1;

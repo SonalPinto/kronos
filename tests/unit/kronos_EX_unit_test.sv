@@ -20,8 +20,7 @@ logic [31:0] fwd_data;
 logic fwd_vld;
 
 
-
-    hazardEX_t ex_hazard;
+hazardEX_t ex_hazard;
 kronos_EX u_ex (
     .clk         (clk         ),
     .rstz        (rstz        ),

@@ -182,7 +182,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0,20);
+    op = $urandom_range(0,22);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -475,6 +475,36 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = {imm[31:12], 12'b0};
             decode.rd  = rd;
             decode.rd_write = 1;
+        end
+
+        21: begin
+            optype = "JAL";
+            instr.ir = rv32_jal(rd, imm);
+
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[20:1], 1'b0});
+            decode.rd  = rd;
+            decode.rd_write = 1;
+
+            decode.branch = 1;
+        end
+
+        22: begin
+            optype = "JALR";
+            instr.ir = rv32_jalr(rd, rs1, imm);
+
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
+            decode.op3 = REG[rs1];
+            decode.op4 = signed'(imm[11:0]);
+            decode.rd  = rd;
+            decode.rd_write = 1;
+
+            decode.align = 1;
+
+            decode.branch = 1;
         end
     endcase // instr
 endtask

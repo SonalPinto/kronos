@@ -5,8 +5,8 @@
 Kronos Hazard Control Unit
 
 The HCU monitors for hazards at the ID/EX interface
-in a look-ahead manner. When the decode pipe output is valid
-and the execute is ready for a new decoded input, the 
+in a look-ahead manner. When the decode pipe output 
+is ready to latch a new decoded instruction, the 
 hazard status is also latched based on history
 
 The check signal is asserted the same time as the decode is 
@@ -42,8 +42,8 @@ logic is_op1_hzd, is_op2_hzd, is_op3_hzd, is_op4_hzd;
 
 assign is_op1_hzd = op1_regrd && rs1 == rd;
 assign is_op2_hzd = op2_regrd && rs2 == rd;
-assign is_op3_hzd = op3_regrd && rs2 == rd;
-assign is_op4_hzd = op4_regrd && rs1 == rd;
+assign is_op3_hzd = op3_regrd && rs1 == rd;
+assign is_op4_hzd = op4_regrd && rs2 == rd;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin

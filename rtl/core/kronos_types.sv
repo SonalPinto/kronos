@@ -11,7 +11,6 @@ typedef struct packed {
     logic [31:0] ir;
 } pipeIFID_t;
 
-
 typedef struct packed {
     logic [31:0] op1;
     logic [31:0] op2;
@@ -38,7 +37,6 @@ typedef struct packed {
     logic        illegal;
 } pipeIDEX_t;
 
-
 typedef struct packed {
     logic [31:0] result1;
     logic [31:0] result2;
@@ -62,7 +60,6 @@ typedef struct packed {
     logic op_hazard;
 } hazardEX_t;
 
-
 // ============================================================
 // Instruction Types: {opcode[6:2]}
 parameter logic [4:0] INSTR_LOAD  = 5'b00_000;
@@ -81,7 +78,6 @@ parameter logic [4:0] INSTR_SYS   = 5'b11_100;
 parameter logic [4:0] INSTR_AUIPC = 5'b00_101;
 parameter logic [4:0] INSTR_LUI   = 5'b01_101;
 
-
 // ============================================================
 // ALU Result Select
 parameter logic [2:0] ALU_ADDER = 3'd0;
@@ -90,5 +86,10 @@ parameter logic [2:0] ALU_OR    = 3'd2;
 parameter logic [2:0] ALU_XOR   = 3'd3;
 parameter logic [2:0] ALU_COMP  = 3'd4;
 parameter logic [2:0] ALU_SHIFT = 3'd5;
+
+// ============================================================
+// Constants
+parameter logic [31:0] ZERO   = 32'h0;
+parameter logic [31:0] FOUR   = 32'h4;
 
 endpackage
