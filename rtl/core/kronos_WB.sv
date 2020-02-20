@@ -34,20 +34,23 @@ module kronos_WB
     // REG Write
     output logic [31:0] regwr_data,
     output logic [4:0]  regwr_sel,
-    output logic        regwr_en
+    output logic        regwr_en,
+    // Branch
+    output logic [31:0] branch_target,
+    output logic        branch
 );
 
+logic wb_valid;
 
 enum logic [1:0] {
     WRITE,
     CATCH
 } state, next_state;
 
-
 // ============================================================
 // Write Back Sequencer
 // 
-// Register Write and Branch execute in the 1 cycle
+// Register Write and Branch execute in 1 cycle
 // Load/Store take ##-## cycles depending on data alignment
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -67,12 +70,20 @@ always_comb begin
 end
 
 assign pipe_in_rdy = (state == WRITE) && ~execute.illegal;
+assign wb_valid = pipe_in_rdy && pipe_in_vld;
 
 // ============================================================
 // Register Write
 
 assign regwr_data = execute.result1;
 assign regwr_sel = execute.rd;
-assign regwr_en = execute.rd_write && pipe_in_rdy && pipe_in_vld;
+assign regwr_en = wb_valid && execute.rd_write;
+
+// ============================================================
+// Branch
+// Set PC to result2, if unconditional branch or condition valid (result1 from alu comparator is 1)
+
+assign branch_target = execute.result2;
+assign branch = wb_valid && (execute.branch || (execute.branch_cond && execute.result1[0]));
 
 endmodule

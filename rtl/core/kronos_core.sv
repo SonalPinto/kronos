@@ -94,20 +94,19 @@ kronos_EX u_ex (
 // Write Back
 // ============================================================
 kronos_WB u_wb (
-    .clk        (clk        ),
-    .rstz       (rstz       ),
-    .execute    (execute    ),
-    .pipe_in_vld(execute_vld),
-    .pipe_in_rdy(execute_rdy),
-    .regwr_data (regwr_data ),
-    .regwr_sel  (regwr_sel  ),
-    .regwr_en   (regwr_en   )
+    .clk          (clk          ),
+    .rstz         (rstz         ),
+    .execute      (execute      ),
+    .pipe_in_vld  (execute_vld  ),
+    .pipe_in_rdy  (execute_rdy  ),
+    .regwr_data   (regwr_data   ),
+    .regwr_sel    (regwr_sel    ),
+    .regwr_en     (regwr_en     ),
+    .branch_target(branch_target),
+    .branch       (branch       )
 );
 
 assign fwd_vld = regwr_en;
 assign fwd_data = regwr_data;
-
-assign branch = 1'b0;
-assign branch_target = '0;
 
 endmodule
