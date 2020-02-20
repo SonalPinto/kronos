@@ -161,8 +161,8 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
-assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP || OP == INSTR_JALR;
-assign regrd_rs2_en = OP == INSTR_OP;
+assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP || OP == INSTR_JALR || OP == INSTR_BR;
+assign regrd_rs2_en = OP == INSTR_OP || OP == INSTR_BR;
 
 assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
                                 || OP == INSTR_AUIPC
@@ -271,6 +271,46 @@ always_comb begin
     INSTR_JALR: if (funct3 == 3'b000) begin
         align = 1'b1;
         instr_valid = 1'b1;
+    end
+    // --------------------------------
+    INSTR_BR: begin
+        case(funct3)
+            3'b000: begin // BEQ
+                eq = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+            3'b001: begin // BNE
+                eq = 1'b1;
+                inv = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+            3'b100: begin // BLT
+                cin = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+            3'b101: begin // BGE
+                cin = 1'b1;
+                inv = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+            3'b110: begin // BLTU
+                cin = 1'b1;
+                uns = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+            3'b111: begin // BGEU
+                cin = 1'b1;
+                inv = 1'b1;
+                uns = 1'b1;
+                sel = ALU_COMP;
+                instr_valid = 1'b1;
+            end
+        endcase // funct3
     end
     // --------------------------------
     INSTR_OPIMM: begin
@@ -424,6 +464,10 @@ always_comb begin
         INSTR_JALR: begin
             op3_regrd = 1'b1;
         end
+        INSTR_BR: begin
+            op1_regrd = 1'b1;
+            op2_regrd = 1'b1;
+        end
         INSTR_OPIMM : begin
             op1_regrd = 1'b1;
         end
@@ -480,7 +524,7 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.rd           <= (regwr_rd_en) ? rd : '0;
             decode.rd_write     <= regwr_rd_en;
             decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR;
-            decode.branch_cond  <= 1'b0;
+            decode.branch_cond  <= OP == INSTR_BR;
             decode.ld_size      <= 2'b0;
             decode.ld_sign      <= 1'b0;
             decode.st           <= 1'b0;
@@ -507,6 +551,11 @@ always_ff @(posedge clk or negedge rstz) begin
                 end
                 INSTR_JALR : begin
                     decode.op3 <= regrd_rs1;
+                    decode.op4 <= immediate;
+                end
+                INSTR_BR: begin
+                    decode.op1 <= regrd_rs1;
+                    decode.op2 <= regrd_rs2;
                     decode.op4 <= immediate;
                 end
                 INSTR_OPIMM : begin

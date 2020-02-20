@@ -107,7 +107,10 @@ kronos_WB u_wb (
 assign fwd_vld = regwr_en;
 assign fwd_data = regwr_data;
 
-assign branch = 1'b0;
-assign branch_target = '0;
+// assign branch = 1'b0;
+// assign branch_target = '0;
+
+assign branch = regwr_en;
+assign branch_target = regwr_data;
 
 endmodule

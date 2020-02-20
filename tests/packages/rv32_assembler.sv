@@ -71,6 +71,33 @@ function instr_t rv32_jalr(logic [4:0] rd, rs1, logic [31:0] imm);
 endfunction
 
 // ========================================================
+// BR
+// ========================================================
+function instr_t rv32_beq(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b000, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+function instr_t rv32_bne(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b001, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+function instr_t rv32_blt(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b100, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+function instr_t rv32_bge(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b101, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+function instr_t rv32_bltu(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b110, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+function instr_t rv32_bgeu(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[12], imm[10:5], rs2, rs1, 3'b111, imm[4:1], imm[11], 7'b11_000_11};
+endfunction
+
+// ========================================================
 // OPIMM
 // ========================================================
 function instr_t rv32_addi(logic [4:0] rd, rs1, logic [31:0] imm);

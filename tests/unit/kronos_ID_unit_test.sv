@@ -182,7 +182,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0,22);
+    op = $urandom_range(0, 28);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -505,6 +505,101 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.align = 1;
 
             decode.branch = 1;
+        end
+
+        23: begin
+            optype = "BEQ";
+            instr.ir = rv32_beq(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.eq = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
+        end
+
+        24: begin
+            optype = "BNE";
+            instr.ir = rv32_bne(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.eq = 1;
+            decode.inv = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
+        end
+
+        25: begin
+            optype = "BLT";
+            instr.ir = rv32_blt(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.cin = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
+        end
+
+        26: begin
+            optype = "BGE";
+            instr.ir = rv32_bge(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.cin = 1;
+            decode.inv = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
+        end
+
+        27: begin
+            optype = "BLTU";
+            instr.ir = rv32_bltu(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.cin = 1;
+            decode.uns = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
+        end
+
+        28: begin
+            optype = "BGEU";
+            instr.ir = rv32_bgeu(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = REG[rs2];
+            decode.op3 = instr.pc;
+            decode.op4 = signed'({imm[12:1], 1'b0});
+
+            decode.cin = 1;
+            decode.inv = 1;
+            decode.uns = 1;
+            decode.sel = ALU_COMP;
+
+            decode.branch_cond = 1;
         end
     endcase // instr
 endtask
