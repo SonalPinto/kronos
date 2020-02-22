@@ -24,3 +24,11 @@ add_hdl_unit_test(hcu_unit_test.sv
         kronos_core
         rv32_assembler
 )
+
+add_hdl_unit_test(branch_unit_test.sv
+    DEPENDS
+        kronos_ID
+        kronos_EX
+        kronos_WB
+        rv32_assembler
+)

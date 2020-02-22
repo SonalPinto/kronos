@@ -1,7 +1,6 @@
 // Copyright (c) 2020 Sonal Pinto
 // SPDX-License-Identifier: Apache-2.0
 
-
 `include "vunit_defines.svh"
 
 module tb_kronos_EX_ut;
