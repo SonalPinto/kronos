@@ -86,5 +86,15 @@ function(add_hdl_unit_test hdl_test_file)
             ${CMAKE_BINARY_DIR}
     )
 
+    # Bind to global test suite
+    add_test(
+        NAME
+            ${ARG_NAME}
+        COMMAND
+            ${Python3_EXECUTABLE} ${testrunner_script}
+        WORKING_DIRECTORY
+            ${CMAKE_BINARY_DIR}
+    )
+
 endfunction()
 

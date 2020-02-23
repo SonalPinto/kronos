@@ -129,10 +129,11 @@ task automatic print_execute(input pipeEXWB_t e);
     $display("  rd: %d",          e.rd);
     $display("  rd_write: %h",    e.rd_write);
     $display("  branch: %h",      e.branch);
-    $display("  branch_cond: %h", e.branch_cond);
-    $display("  ld_size: %h",     e.ld_size);    
-    $display("  ld_sign: %h",     e.ld_sign);
+    $display("  ld: %h",          e.ld);
     $display("  st: %h",          e.st);
+    $display("  branch_cond: %h", e.branch_cond);
+    $display("  data_size: %h",   e.data_size);    
+    $display("  data_uns: %h",    e.data_uns);
     $display("  illegal: %h",     e.illegal);
 endtask
 
@@ -181,9 +182,10 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     decode.rd_write = 0;
     decode.branch = 0;
     decode.branch_cond = 0;
-    decode.ld_size = 0;
-    decode.ld_sign = 0;
+    decode.ld = 0;
     decode.st = 0;
+    decode.data_size = 0;
+    decode.data_uns = 0;
     decode.illegal = 0;
 
     //=========================
@@ -195,9 +197,10 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.rd_write    = decode.rd_write;
     execute.branch      = decode.branch;
     execute.branch_cond = decode.branch_cond;
-    execute.ld_size     = decode.ld_size;
-    execute.ld_sign     = decode.ld_sign;
+    execute.ld          = decode.ld;
     execute.st          = decode.st;
+    execute.data_size   = decode.data_size;
+    execute.data_uns   = decode.data_uns;
     execute.illegal     = decode.illegal;
 
     case(aluop)

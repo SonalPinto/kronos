@@ -24,9 +24,9 @@ where,
     WB_CTRL     : Write back stage controls which perform an action using
                   RESULT1/2
     RESULT1     : register write data
-                  memory write addr
+                  memory access address
                   branch condition
-    RESULT2     : memory address
+    RESULT2     : memory write data
                   branch target
 
 EX_CTRL,
@@ -38,7 +38,7 @@ HAZARD CHECKS,
     Check kronos_hcu for details
 
 WB_CTRL
-    rd, rd_write, branch, branch_cond, ld_size, ld_sign, st, illegal
+    rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns, illegal
 
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
@@ -124,6 +124,10 @@ logic op2_regrd;
 logic op3_regrd;
 logic op4_regrd;
 
+// Memory access controls
+logic [1:0] mem_access_size;
+logic mem_access_unsigned;
+
 
 // ============================================================
 // [rv32i] Instruction Decoder
@@ -161,15 +165,22 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
-assign regrd_rs1_en = OP == INSTR_OPIMM ||  OP == INSTR_OP || OP == INSTR_JALR || OP == INSTR_BR;
-assign regrd_rs2_en = OP == INSTR_OP || OP == INSTR_BR;
+assign regrd_rs1_en = OP == INSTR_OPIMM 
+                    || OP == INSTR_OP 
+                    || OP == INSTR_JALR 
+                    || OP == INSTR_BR
+                    || OP == INSTR_LOAD;
+
+assign regrd_rs2_en = OP == INSTR_OP 
+                    || OP == INSTR_BR;
 
 assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
                                 || OP == INSTR_AUIPC
                                 || OP == INSTR_JAL
                                 || OP == INSTR_JALR
                                 || OP == INSTR_OPIMM 
-                                || OP == INSTR_OP);
+                                || OP == INSTR_OP
+                                || OP == INSTR_LOAD);
 
 // REG read
 always_ff @(negedge clk) begin
@@ -313,6 +324,17 @@ always_comb begin
         endcase // funct3
     end
     // --------------------------------
+    INSTR_LOAD: begin
+        case(funct3)
+            3'b000, // LB
+            3'b001, // LH
+            3'b010, // LW
+            3'b100, // LBU
+            3'b101: // LHU 
+                instr_valid = 1'b1;
+        endcase // funct3
+    end
+    // --------------------------------
     INSTR_OPIMM: begin
         case(funct3)
             3'b000: begin // ADDI
@@ -447,6 +469,13 @@ end
 
 
 // ============================================================
+// Memory Access
+// Load/Store memory access control
+assign mem_access_size = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[1:0] : '0;
+assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2] : '0;
+
+
+// ============================================================
 // Hazard Check Inputs
 // Inform the HCU about register read status and which ops are
 // going to be register operands
@@ -467,6 +496,9 @@ always_comb begin
         INSTR_BR: begin
             op1_regrd = 1'b1;
             op2_regrd = 1'b1;
+        end
+        INSTR_LOAD: begin
+            op1_regrd = 1'b1;
         end
         INSTR_OPIMM : begin
             op1_regrd = 1'b1;
@@ -525,9 +557,10 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.rd_write     <= regwr_rd_en;
             decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR;
             decode.branch_cond  <= OP == INSTR_BR;
-            decode.ld_size      <= 2'b0;
-            decode.ld_sign      <= 1'b0;
-            decode.st           <= 1'b0;
+            decode.ld           <= OP == INSTR_LOAD;
+            decode.st           <= OP == INSTR_STORE;
+            decode.data_size    <= mem_access_size;
+            decode.data_uns     <= mem_access_unsigned;
             decode.illegal      <= ~(instr_valid) | illegal_opcode;
 
             // Store defaults in operands
@@ -557,6 +590,10 @@ always_ff @(posedge clk or negedge rstz) begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= regrd_rs2;
                     decode.op4 <= immediate;
+                end
+                INSTR_LOAD: begin
+                    decode.op1 <= regrd_rs1;
+                    decode.op2 <= immediate;
                 end
                 INSTR_OPIMM : begin
                     decode.op1 <= regrd_rs1;

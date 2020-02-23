@@ -154,9 +154,10 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  rd_write: %h",      d.rd_write);
     $display("  branch: %h",        d.branch);
     $display("  branch_cond: %h",   d.branch_cond);
-    $display("  ld_size: %h",       d.ld_size);    
-    $display("  ld_sign: %h",       d.ld_sign);
+    $display("  ld: %h",            d.ld);
     $display("  st: %h",            d.st);
+    $display("  data_size: %h",     d.data_size);    
+    $display("  data_uns: %h",      d.data_uns);
     $display("  illegal: %h",       d.illegal);
 endtask
 
@@ -182,7 +183,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0, 28);
+    op = $urandom_range(0, 33);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -211,9 +212,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.rd_write = 0;
     decode.branch = 0;
     decode.branch_cond = 0;
-    decode.ld_size = 0;
-    decode.ld_sign = 0;
+    decode.ld = 0;
     decode.st = 0;
+    decode.data_size = 0;
+    decode.data_uns = 0;
     decode.illegal = 0;
 
 
@@ -600,6 +602,76 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.sel = ALU_COMP;
 
             decode.branch_cond = 1;
+        end
+
+        29: begin
+            optype = "LB";
+            instr.ir = rv32_lb(rd, rs1, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+
+            decode.rd = rd;
+            decode.rd_write = 1;
+            decode.ld = 1;
+            decode.data_size = BYTE;
+            decode.data_uns = 0;
+        end
+
+        30: begin
+            optype = "LH";
+            instr.ir = rv32_lh(rd, rs1, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+
+            decode.rd = rd;
+            decode.rd_write = 1;
+            decode.ld = 1;
+            decode.data_size = HALF;
+            decode.data_uns = 0;
+        end
+
+        31: begin
+            optype = "LW";
+            instr.ir = rv32_lw(rd, rs1, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+
+            decode.rd = rd;
+            decode.rd_write = 1;
+            decode.ld = 1;
+            decode.data_size = WORD;
+            decode.data_uns = 0;
+        end
+
+        32: begin
+            optype = "LBU";
+            instr.ir = rv32_lbu(rd, rs1, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+
+            decode.rd = rd;
+            decode.rd_write = 1;
+            decode.ld = 1;
+            decode.data_size = BYTE;
+            decode.data_uns = 1;
+        end
+
+        33: begin
+            optype = "LHU";
+            instr.ir = rv32_lhu(rd, rs1, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+
+            decode.rd = rd;
+            decode.rd_write = 1;
+            decode.ld = 1;
+            decode.data_size = HALF;
+            decode.data_uns = 1;
         end
     endcase // instr
 endtask

@@ -81,9 +81,10 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.rd_write    <= decode.rd_write;
             execute.branch      <= decode.branch;
             execute.branch_cond <= decode.branch_cond;
-            execute.ld_size     <= decode.ld_size;
-            execute.ld_sign     <= decode.ld_sign;
+            execute.ld          <= decode.ld;
             execute.st          <= decode.st;
+            execute.data_size   <= decode.data_size;
+            execute.data_uns    <= decode.data_uns;
             execute.illegal     <= decode.illegal;
 
             // Results

@@ -98,6 +98,29 @@ function instr_t rv32_bgeu(logic [4:0] rs1, rs2, logic [31:0] imm);
 endfunction
 
 // ========================================================
+// LOAD
+// ========================================================
+function instr_t rv32_lb(logic [4:0] rd, rs1, logic [31:0] imm);
+    return {imm[11:0], rs1, 3'b000, rd, 7'b00_000_11};
+endfunction
+
+function instr_t rv32_lh(logic [4:0] rd, rs1, logic [31:0] imm);
+    return {imm[11:0], rs1, 3'b001, rd, 7'b00_000_11};
+endfunction
+
+function instr_t rv32_lw(logic [4:0] rd, rs1, logic [31:0] imm);
+    return {imm[11:0], rs1, 3'b010, rd, 7'b00_000_11};
+endfunction
+
+function instr_t rv32_lbu(logic [4:0] rd, rs1, logic [31:0] imm);
+    return {imm[11:0], rs1, 3'b100, rd, 7'b00_000_11};
+endfunction
+
+function instr_t rv32_lhu(logic [4:0] rd, rs1, logic [31:0] imm);
+    return {imm[11:0], rs1, 3'b101, rd, 7'b00_000_11};
+endfunction
+
+// ========================================================
 // OPIMM
 // ========================================================
 function instr_t rv32_addi(logic [4:0] rd, rs1, logic [31:0] imm);

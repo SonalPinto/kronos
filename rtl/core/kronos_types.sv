@@ -31,9 +31,10 @@ typedef struct packed {
     logic        rd_write;
     logic        branch;
     logic        branch_cond;
-    logic [1:0]  ld_size;
-    logic        ld_sign;
+    logic        ld;
     logic        st;
+    logic [1:0]  data_size;
+    logic        data_uns;
     logic        illegal;
 } pipeIDEX_t;
 
@@ -46,9 +47,10 @@ typedef struct packed {
     logic        rd_write;
     logic        branch;
     logic        branch_cond;
-    logic [1:0]  ld_size;
-    logic        ld_sign;
+    logic        ld;
     logic        st;
+    logic [1:0]  data_size;
+    logic        data_uns;
     logic        illegal;
 } pipeEXWB_t;
 
@@ -86,6 +88,12 @@ parameter logic [2:0] ALU_OR    = 3'd2;
 parameter logic [2:0] ALU_XOR   = 3'd3;
 parameter logic [2:0] ALU_COMP  = 3'd4;
 parameter logic [2:0] ALU_SHIFT = 3'd5;
+
+// ============================================================
+// Memory Acess Size
+parameter logic [1:0] BYTE      = 2'b00;
+parameter logic [1:0] HALF      = 2'b01;
+parameter logic [1:0] WORD      = 2'b10;
 
 // ============================================================
 // Constants

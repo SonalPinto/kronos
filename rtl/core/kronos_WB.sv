@@ -16,9 +16,10 @@ WB_CTRL
     rd_write    : register write enable
     branch      : unconditional branch
     branch_cond : conditional branch
-    ld_size     : memory load size - byte, half-word or word
-    ld_sign     : sign extend loaded data
+    ld          : load
     st          : store
+    data_size   : memory access size - byte, half-word or word
+    data_sign   : sign extend memory data (only for load)
     illegal     : illegal instruction
 */
 

@@ -6,6 +6,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(kronos)
 
+enable_testing()
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # Add Verilator cmake package
