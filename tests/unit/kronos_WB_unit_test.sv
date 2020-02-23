@@ -43,11 +43,37 @@ kronos_WB u_wb (
     .data_gnt     (data_gnt     )
 );
 
+spsram32_model #(.DEPTH(256)) u_dmem (
+    .clk    (clk                      ),
+    .addr   (data_addr[2+:10]         ),
+    .wdata  (data_wr_data             ),
+    .rdata  (data_rd_data             ),
+    .en     ((data_rd_req|data_wr_req)),
+    .wr_en  (data_wr_req              ),
+    .wr_mask(4'b0                     )
+);
+
+always_ff @(posedge clk) begin
+    if (data_rd_req | data_wr_req) begin
+        data_gnt <= 1;
+        // Confirm that access is always 4B aligned
+        assert(data_addr[1:0] == 2'b00);
+    end
+    else data_gnt <= 0;
+end
+
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
     input negedge execute_rdy;
     output execute_vld, execute;
 endclocking
+
+
+// ============================================================
+`define MEM u_dmem.MEM
+
+logic [31:0] expected_regwr_data;
+logic [4:0] expected_regwr_sel;
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -57,6 +83,9 @@ endclocking
         execute = '0;
         execute_vld = 0;
 
+        for(int i=0; i<256; i++)
+            `MEM[i] = $urandom;
+
         fork 
             forever #1ns clk = ~clk;
         join_none
@@ -65,7 +94,165 @@ endclocking
     end
 
     `TEST_CASE("load") begin
+        string optype;
+        pipeEXWB_t texecute;
+
+        repeat (2**10) begin
+            fork 
+                // Drive stimulus
+                begin
+                    rand_load(texecute, optype);
+                    $display("OPTYPE=%s", optype);
+                    $display("Expected: ");
+                    $display("  regwr_data: %h", expected_regwr_data);
+                    $display("  regwr_sel: %h", expected_regwr_sel);
+                    @(cb);
+                    cb.execute <= texecute;
+                    cb.execute_vld <= 1;
+                    repeat (16) begin
+                        @(cb) if (cb.execute_rdy) begin
+                            cb.execute_vld <= 0;
+                            break;
+                        end
+                    end
+                end
+
+                // REG write back checker
+                forever @(cb) begin
+                    if (regwr_en) begin
+                        $display("GOT");
+                        $display("  regwr_data: %h", regwr_data);
+                        $display("  regwr_sel: %h", regwr_sel);
+                        assert(expected_regwr_data == regwr_data);
+                        assert(expected_regwr_sel == regwr_sel);
+                        break;
+                    end
+                end
+            join
+
+            $display("-----------------\n\n");
+        end
+
         ##64;
     end
 end
+
+// ============================================================
+// METHODS
+// ============================================================
+
+task automatic rand_load(output pipeEXWB_t execute, output string optype);
+    int op;
+    logic [4:0] rd;
+    int maddr;
+
+    logic [7:0][7:0] mem_word;
+    int offset;
+    logic [7:0] dbyte;
+    logic [15:0] dhalf;
+    logic [31:0] dword;
+
+    int aligned_addr;
+
+
+    // generate scenario
+    op = $urandom_range(0,4);
+    rd = $urandom_range(1,31);
+    maddr = $urandom_range(0,252);
+
+    // clear out execute
+    execute = '0;
+
+    // Fetch 4B word and next word from the memory
+    aligned_addr = maddr>>2;
+    offset = maddr & 3;
+    mem_word = {`MEM[aligned_addr+1], `MEM[aligned_addr]};
+    $display("MEMADDR: %h",maddr);
+    $display("MEMWORD: %h",mem_word);
+
+    case(op)
+        0: begin
+            optype = "LB";
+
+            execute.result1 = maddr;
+            execute.rd = rd;
+            execute.rd_write = 1;
+            execute.ld = 1;
+            execute.data_size = BYTE;
+            execute.data_uns = 0;
+
+            dbyte = mem_word[offset];
+            expected_regwr_data = signed'(dbyte);
+            expected_regwr_sel = rd;
+        end
+
+        1: begin
+            optype = "LBU";
+
+            execute.result1 = maddr;
+            execute.rd = rd;
+            execute.rd_write = 1;
+            execute.ld = 1;
+            execute.data_size = BYTE;
+            execute.data_uns = 1;
+
+            dbyte = mem_word[offset];
+            expected_regwr_data = {24'b0, dbyte};
+            expected_regwr_sel = rd;
+        end
+
+        2: begin
+            optype = "LH";
+
+            execute.result1 = maddr;
+            execute.rd = rd;
+            execute.rd_write = 1;
+            execute.ld = 1;
+            execute.data_size = HALF;
+            execute.data_uns = 0;
+
+            expected_regwr_sel = rd;
+
+            dhalf = {mem_word[offset+1], mem_word[offset]};
+            expected_regwr_data = signed'(dhalf);
+            expected_regwr_sel = rd;
+        end
+
+        3: begin
+            optype = "LHU";
+
+            execute.result1 = maddr;
+            execute.rd = rd;
+            execute.rd_write = 1;
+            execute.ld = 1;
+            execute.data_size = HALF;
+            execute.data_uns = 1;
+
+            expected_regwr_sel = rd;
+
+            dhalf = {mem_word[offset+1], mem_word[offset]};
+            expected_regwr_data = {16'b0, dhalf};
+            expected_regwr_sel = rd;
+        end
+
+        4: begin
+            optype = "LW";
+
+            execute.result1 = maddr;
+            execute.rd = rd;
+            execute.rd_write = 1;
+            execute.ld = 1;
+            execute.data_size = WORD;
+            execute.data_uns = 0;
+
+            expected_regwr_sel = rd;
+
+            dword = {mem_word[offset+3], mem_word[offset+2],
+                    mem_word[offset+1], mem_word[offset]};
+            expected_regwr_data = dword;
+            expected_regwr_sel = rd;
+        end
+    endcase // op
+endtask
+
 endmodule
