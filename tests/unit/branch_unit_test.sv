@@ -20,6 +20,13 @@ logic regwr_en;
 logic [31:0] fwd_data;
 logic fwd_vld;
 
+logic [31:0] data_addr;
+logic [31:0] data_rd_data;
+logic [31:0] data_wr_data;
+logic data_rd_req;
+logic data_wr_req;
+logic data_gnt;
+
 pipeIFID_t fetch;
 pipeIDEX_t decode;
 pipeEXWB_t execute;
@@ -59,7 +66,7 @@ kronos_EX u_ex (
 );
 
 kronos_WB u_wb (
-    .clk          (clk          ),
+    .clk          (clk),
     .rstz         (rstz         ),
     .execute      (execute      ),
     .pipe_in_vld  (execute_vld  ),
@@ -68,7 +75,13 @@ kronos_WB u_wb (
     .regwr_sel    (regwr_sel    ),
     .regwr_en     (regwr_en     ),
     .branch_target(branch_target),
-    .branch       (branch       )
+    .branch       (branch       ),
+    .data_addr    (data_addr    ),
+    .data_rd_data (data_rd_data ),
+    .data_wr_data (data_wr_data ),
+    .data_rd_req  (data_rd_req  ),
+    .data_wr_req  (data_wr_req  ),
+    .data_gnt     (data_gnt     )
 );
 
 assign fwd_vld = regwr_en;

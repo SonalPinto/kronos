@@ -18,6 +18,12 @@ add_hdl_unit_test(kronos_EX_unit_test.sv
         kronos_EX
 )
 
+add_hdl_unit_test(kronos_WB_unit_test.sv
+    DEPENDS
+        kronos_WB
+)
+
+
 add_hdl_unit_test(hcu_unit_test.sv
     DEPENDS
         spsram32_model

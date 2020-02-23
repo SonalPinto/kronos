@@ -14,7 +14,7 @@ module kronos_IF
 )(
     input  logic    clk,
     input  logic    rstz,
-    // IMEM interface
+    // Instruction interface
     output logic [31:0] instr_addr,
     input  logic [31:0] instr_data,
     output logic        instr_req,

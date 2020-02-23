@@ -11,10 +11,18 @@ module kronos_core
 (
     input  logic        clk,
     input  logic        rstz,
+    // Instruction interface
     output logic [31:0] instr_addr,
     input  logic [31:0] instr_data,
     output logic        instr_req,
-    input  logic        instr_gnt
+    input  logic        instr_gnt,
+    // Data interface
+    output logic [31:0] data_addr,
+    input  logic [31:0] data_rd_data,
+    output logic [31:0] data_wr_data,
+    output logic        data_rd_req,
+    output logic        data_wr_req,
+    input  logic        data_gnt
 );
 
 logic [31:0] branch_target;
@@ -93,8 +101,9 @@ kronos_EX u_ex (
 // ============================================================
 // Write Back
 // ============================================================
+
 kronos_WB u_wb (
-    .clk          (clk          ),
+    .clk          (clk),
     .rstz         (rstz         ),
     .execute      (execute      ),
     .pipe_in_vld  (execute_vld  ),
@@ -103,7 +112,13 @@ kronos_WB u_wb (
     .regwr_sel    (regwr_sel    ),
     .regwr_en     (regwr_en     ),
     .branch_target(branch_target),
-    .branch       (branch       )
+    .branch       (branch       ),
+    .data_addr    (data_addr    ),
+    .data_rd_data (data_rd_data ),
+    .data_wr_data (data_wr_data ),
+    .data_rd_req  (data_rd_req  ),
+    .data_wr_req  (data_wr_req  ),
+    .data_gnt     (data_gnt     )
 );
 
 assign fwd_vld = regwr_en;
