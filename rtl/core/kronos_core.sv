@@ -20,6 +20,7 @@ module kronos_core
     output logic [31:0] data_addr,
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
+    output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
     input  logic        data_gnt
@@ -32,13 +33,9 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
-logic [31:0] fwd_data;
-logic fwd_vld;
-
 pipeIFID_t fetch;
 pipeIDEX_t decode;
 pipeEXWB_t execute;
-hazardEX_t ex_hazard;
 
 logic fetch_vld, fetch_rdy;
 logic decode_vld, decode_rdy;
@@ -72,7 +69,6 @@ kronos_ID u_id (
     .pipe_in_vld (fetch_vld ),
     .pipe_in_rdy (fetch_rdy ),
     .decode      (decode    ),
-    .ex_hazard   (ex_hazard ),
     .pipe_out_vld(decode_vld),
     .pipe_out_rdy(decode_rdy),
     .regwr_data  (regwr_data),
@@ -88,14 +84,11 @@ kronos_EX u_ex (
     .clk         (clk        ),
     .rstz        (rstz       ),
     .decode      (decode     ),
-    .ex_hazard   (ex_hazard  ),
     .pipe_in_vld (decode_vld ),
     .pipe_in_rdy (decode_rdy ),
     .execute     (execute    ),
     .pipe_out_vld(execute_vld),
-    .pipe_out_rdy(execute_rdy),
-    .fwd_data    (fwd_data   ),
-    .fwd_vld     (fwd_vld    )
+    .pipe_out_rdy(execute_rdy)
 );
 
 // ============================================================
@@ -103,7 +96,7 @@ kronos_EX u_ex (
 // ============================================================
 
 kronos_WB u_wb (
-    .clk          (clk),
+    .clk          (clk          ),
     .rstz         (rstz         ),
     .execute      (execute      ),
     .pipe_in_vld  (execute_vld  ),
@@ -116,12 +109,10 @@ kronos_WB u_wb (
     .data_addr    (data_addr    ),
     .data_rd_data (data_rd_data ),
     .data_wr_data (data_wr_data ),
+    .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
     .data_gnt     (data_gnt     )
 );
-
-assign fwd_vld = regwr_en;
-assign fwd_data = regwr_data;
 
 endmodule

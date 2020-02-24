@@ -11,6 +11,8 @@ This is the last stage of the Kronos pipeline and is responsible for these funct
 - Branch unconditionally
 - Branch conditionally as per value of result1
 
+Unaligned access is handled by the LSU
+
 WB_CTRL
     rd          : register write select
     rd_write    : register write enable
@@ -21,11 +23,6 @@ WB_CTRL
     data_size   : memory access size - byte, half-word or word
     data_sign   : sign extend memory data (only for load)
     illegal     : illegal instruction
-
-Unaligned Access
-----------------
-Unaligned access are handled by the WB stage as two aligned accesses.
-As seen from the outside, the memory access interface is always word aligned.
 
 */
 
@@ -49,13 +46,11 @@ module kronos_WB
     output logic [31:0] data_addr,
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
+    output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
     input  logic        data_gnt
 );
-
-logic wb_valid;
-logic direct_write;
 
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
@@ -94,13 +89,13 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
-assign pipe_in_rdy = (state == WRITE);
-assign wb_valid = (state == WRITE) && pipe_in_vld && ~execute.illegal;
+assign pipe_in_rdy = (state == WRITE) && (next_state != CATCH);
+
 
 // ============================================================
 // Load Store Unit
 
-assign lsu_start = wb_valid && (execute.ld || execute.st);
+assign lsu_start = (state == WRITE) && pipe_in_vld && (execute.ld || execute.st);
 
 kronos_lsu u_lsu (
     .clk         (clk              ),
@@ -120,6 +115,7 @@ kronos_lsu u_lsu (
     .data_addr   (data_addr        ),
     .data_rd_data(data_rd_data     ),
     .data_wr_data(data_wr_data     ),
+    .data_wr_mask(data_wr_mask     ),
     .data_rd_req (data_rd_req      ),
     .data_wr_req (data_wr_req      ),
     .data_gnt    (data_gnt         )
@@ -132,18 +128,41 @@ kronos_lsu u_lsu (
 // Direct writes are commited in 1 cycle
 // Loads will take 2 cycles for aligned access and 3 for unaligned access
 
-// Suppress direct writes for LOAD operations
-assign direct_write = wb_valid && execute.rd_write && ~execute.ld;
-
-assign regwr_data = (load_en) ? load_data : execute.result1;
-assign regwr_sel  = (load_en) ? load_rd   : execute.rd;
-assign regwr_en   = (load_en) ? 1'b1      : direct_write;
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
+        regwr_en <= 1'b0;
+    end
+    else begin
+        if ((state == WRITE) && pipe_in_vld && next_state == WRITE) begin
+            regwr_data <= execute.result1;
+            regwr_sel  <= execute.rd;
+            regwr_en   <= execute.rd_write;
+        end
+        else if (load_en) begin
+            regwr_data <= load_data;
+            regwr_sel  <= load_rd;
+            regwr_en   <= 1'b1;
+        end
+        else begin
+            regwr_en   <= 1'b0;
+        end
+    end
+end 
 
 // ============================================================
 // Branch
 // Set PC to result2, if unconditional branch or condition valid (result1 from alu comparator is 1)
 
-assign branch_target = execute.result2;
-assign branch = wb_valid && (execute.branch || (execute.branch_cond && execute.result1[0]));
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
+        branch <= 1'b0;
+    end
+    else begin
+        if ((state == WRITE) && pipe_in_vld && next_state == WRITE) begin
+            branch_target <= execute.result2;
+            branch <= (execute.branch || (execute.branch_cond && execute.result1[0]));
+        end
+    end
+end 
 
 endmodule

@@ -15,23 +15,16 @@ logic pipe_in_rdy;
 pipeEXWB_t execute;
 logic pipe_out_vld;
 logic pipe_out_rdy;
-logic [31:0] fwd_data;
-logic fwd_vld;
 
-
-hazardEX_t ex_hazard;
 kronos_EX u_ex (
     .clk         (clk         ),
     .rstz        (rstz        ),
     .decode      (decode      ),
-    .ex_hazard   (ex_hazard   ),
     .pipe_in_vld (pipe_in_vld ),
     .pipe_in_rdy (pipe_in_rdy ),
     .execute     (execute     ),
     .pipe_out_vld(pipe_out_vld),
-    .pipe_out_rdy(pipe_out_rdy),
-    .fwd_data    (fwd_data    ),
-    .fwd_vld     (fwd_vld     )
+    .pipe_out_rdy(pipe_out_rdy)
 );
 
 default clocking cb @(posedge clk);
@@ -52,11 +45,6 @@ endclocking
         decode = '0;
         pipe_in_vld = 0;
         pipe_out_rdy = 0;
-
-        fwd_vld = 0;
-        fwd_data = '0;
-
-        ex_hazard = '0;
 
         fork 
             forever #1ns clk = ~clk;

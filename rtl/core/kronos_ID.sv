@@ -9,7 +9,6 @@ into a generic form:
 
     RESULT1 = ALU( OP1, OP2 )
     RESULT2 = ADD( OP3, OP4 )
-    HAZARD_CHECKS
     WB_CONTROLS
 
 where,
@@ -32,10 +31,6 @@ where,
 EX_CTRL,
     cin, rev, uns , eq, inv, align, sel  
     Check kronos_alu for details
-
-HAZARD CHECKS,
-    rs1, rs2, op#_regrd
-    Check kronos_hcu for details
 
 WB_CTRL
     rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns, illegal
@@ -60,7 +55,6 @@ module kronos_ID
     output logic        pipe_in_rdy,
     // ID/EX
     output pipeIDEX_t   decode,
-    output hazardEX_t   ex_hazard,
     output logic        pipe_out_vld,
     input  logic        pipe_out_rdy,
     // REG Write
@@ -116,14 +110,6 @@ logic       inv;
 logic       align;
 logic [2:0] sel;
 
-// Hazard inputs
-logic [4:0] hcu_rs1, hcu_rs2;
-logic check_hazard;
-logic op1_regrd;
-logic op2_regrd;
-logic op3_regrd;
-logic op4_regrd;
-
 // Memory access controls
 logic [1:0] mem_access_size;
 logic mem_access_unsigned;
@@ -169,10 +155,12 @@ assign regrd_rs1_en = OP == INSTR_OPIMM
                     || OP == INSTR_OP 
                     || OP == INSTR_JALR 
                     || OP == INSTR_BR
-                    || OP == INSTR_LOAD;
+                    || OP == INSTR_LOAD
+                    || OP == INSTR_STORE;
 
 assign regrd_rs2_en = OP == INSTR_OP 
-                    || OP == INSTR_BR;
+                    || OP == INSTR_BR
+                    || OP == INSTR_STORE;
 
 assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
                                 || OP == INSTR_AUIPC
@@ -201,7 +189,7 @@ always_comb begin
 end
 
 // REG Write
-always_ff @(posedge clk) begin
+always_ff @(negedge clk) begin
     if (regwr_en) begin
         REG1[regwr_sel] <= regwr_data;
         REG2[regwr_sel] <= regwr_data;
@@ -331,6 +319,15 @@ always_comb begin
             3'b010, // LW
             3'b100, // LBU
             3'b101: // LHU 
+                instr_valid = 1'b1;
+        endcase // funct3
+    end
+    // --------------------------------
+    INSTR_STORE: begin
+        case(funct3)
+            3'b000, // SB
+            3'b001, // SH
+            3'b010: // SW
                 instr_valid = 1'b1;
         endcase // funct3
     end
@@ -476,63 +473,6 @@ assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2]
 
 
 // ============================================================
-// Hazard Check Inputs
-// Inform the HCU about register read status and which ops are
-// going to be register operands
-
-always_comb begin
-    hcu_rs1   = (regrd_rs1_en) ? rs1 : '0;
-    hcu_rs2   = (regrd_rs2_en) ? rs2 : '0;
-    op1_regrd = 1'b0;
-    op2_regrd = 1'b0;
-    op3_regrd = 1'b0;
-    op4_regrd = 1'b0;
-
-    /* verilator lint_off CASEINCOMPLETE */
-    case(OP)
-        INSTR_JALR: begin
-            op3_regrd = 1'b1;
-        end
-        INSTR_BR: begin
-            op1_regrd = 1'b1;
-            op2_regrd = 1'b1;
-        end
-        INSTR_LOAD: begin
-            op1_regrd = 1'b1;
-        end
-        INSTR_OPIMM : begin
-            op1_regrd = 1'b1;
-        end
-        INSTR_OP    : begin
-            op1_regrd = 1'b1;
-            op2_regrd = 1'b1;
-        end
-    endcase // OP
-    /* verilator lint_on CASEINCOMPLETE */
-end
-
-// Perform hazard check the same time as decode
-assign check_hazard = pipe_in_vld && pipe_in_rdy;
-
-// Hazard Control
-kronos_hcu u_hcu (
-    .clk      (clk         ),
-    .rstz     (rstz        ),
-    .check    (check_hazard),
-    .fwd_vld  (regwr_en    ),
-    .rd       (decode.rd   ),
-    .rs1      (hcu_rs1     ),
-    .rs2      (hcu_rs2     ),
-    .rd_write (regwr_rd_en ),
-    .op1_regrd(op1_regrd   ),
-    .op2_regrd(op2_regrd   ),
-    .op3_regrd(op3_regrd   ),
-    .op4_regrd(op4_regrd   ),
-    .ex_hazard(ex_hazard   )
-);
-
-
-// ============================================================
 // Instruction Decode Output Pipe (decoded instruction)
 
 always_ff @(posedge clk or negedge rstz) begin
@@ -594,6 +534,12 @@ always_ff @(posedge clk or negedge rstz) begin
                 INSTR_LOAD: begin
                     decode.op1 <= regrd_rs1;
                     decode.op2 <= immediate;
+                end
+                INSTR_STORE: begin
+                    decode.op1 <= regrd_rs1;
+                    decode.op2 <= immediate;
+                    decode.op3 <= ZERO;
+                    decode.op4 <= regrd_rs2;
                 end
                 INSTR_OPIMM : begin
                     decode.op1 <= regrd_rs1;

@@ -16,43 +16,24 @@ module kronos_EX
     input  logic        rstz,
     // IF/ID
     input  pipeIDEX_t   decode,
-    input  hazardEX_t   ex_hazard,
     input  logic        pipe_in_vld,
     output logic        pipe_in_rdy,
     // EX/WB
     output pipeEXWB_t   execute,
     output logic        pipe_out_vld,
-    input  logic        pipe_out_rdy,
-    // Register Forwarding
-    input  logic [31:0] fwd_data,
-    input  logic        fwd_vld
+    input  logic        pipe_out_rdy
 );
 
-
-logic stall;
-
-logic [31:0] op1, op2, op3, op4;
 logic [31:0] result1;
 logic [31:0] result2;
 
 // ============================================================
-// Hazard Check
-
-// If there's a hazard, then pick the forwarded register (from the WriteBack stage)
-// instead of the stale rs1/rs2 from the Decode stage
-assign op1 = (ex_hazard.op1_hazard) ? fwd_data : decode.op1;
-assign op2 = (ex_hazard.op2_hazard) ? fwd_data : decode.op2;
-assign op3 = (ex_hazard.op3_hazard) ? fwd_data : decode.op3;
-assign op4 = (ex_hazard.op4_hazard) ? fwd_data : decode.op4;
-
-
-// ============================================================
 // ALU
 kronos_alu u_alu (
-    .op1    (op1         ),
-    .op2    (op2         ),
-    .op3    (op3         ),
-    .op4    (op4         ),
+    .op1    (decode.op1  ),
+    .op2    (decode.op2  ),
+    .op3    (decode.op3  ),
+    .op4    (decode.op4  ),
     .cin    (decode.cin  ),
     .rev    (decode.rev  ),
     .uns    (decode.uns  ),
@@ -98,10 +79,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
-// Stall if there is a hazard, and the forward hasn't arrived
-assign stall = ex_hazard.op_hazard & ~fwd_vld;
-
 // Pipethru can only happen in the EX1 state
-assign pipe_in_rdy = (~pipe_out_vld | pipe_out_rdy) && ~stall;
+assign pipe_in_rdy = ~pipe_out_vld | pipe_out_rdy;
 
 endmodule

@@ -54,13 +54,6 @@ typedef struct packed {
     logic        illegal;
 } pipeEXWB_t;
 
-typedef struct packed {
-    logic op1_hazard;
-    logic op2_hazard;
-    logic op3_hazard;
-    logic op4_hazard;
-    logic op_hazard;
-} hazardEX_t;
 
 // ============================================================
 // Instruction Types: {opcode[6:2]}

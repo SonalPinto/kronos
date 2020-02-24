@@ -17,9 +17,6 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
-logic [31:0] fwd_data;
-logic fwd_vld;
-
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
@@ -30,7 +27,6 @@ logic data_gnt;
 pipeIFID_t fetch;
 pipeIDEX_t decode;
 pipeEXWB_t execute;
-hazardEX_t ex_hazard;
 
 logic fetch_vld, fetch_rdy;
 logic decode_vld, decode_rdy;
@@ -43,7 +39,6 @@ kronos_ID u_id (
     .pipe_in_vld (fetch_vld ),
     .pipe_in_rdy (fetch_rdy ),
     .decode      (decode    ),
-    .ex_hazard   (ex_hazard ),
     .pipe_out_vld(decode_vld),
     .pipe_out_rdy(decode_rdy),
     .regwr_data  (regwr_data),
@@ -55,14 +50,11 @@ kronos_EX u_ex (
     .clk         (clk        ),
     .rstz        (rstz       ),
     .decode      (decode     ),
-    .ex_hazard   (ex_hazard  ),
     .pipe_in_vld (decode_vld ),
     .pipe_in_rdy (decode_rdy ),
     .execute     (execute    ),
     .pipe_out_vld(execute_vld),
-    .pipe_out_rdy(execute_rdy),
-    .fwd_data    (fwd_data   ),
-    .fwd_vld     (fwd_vld    )
+    .pipe_out_rdy(execute_rdy)
 );
 
 kronos_WB u_wb (
@@ -83,9 +75,6 @@ kronos_WB u_wb (
     .data_wr_req  (data_wr_req  ),
     .data_gnt     (data_gnt     )
 );
-
-assign fwd_vld = regwr_en;
-assign fwd_data = regwr_data;
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
@@ -109,9 +98,6 @@ struct {
     `TEST_SUITE_SETUP begin
         clk = 0;
         rstz = 0;
-
-        fetch = '0;
-        fetch_vld = 0;
 
         // init regfile with random values
         for(int i=0; i<32; i++) begin
@@ -154,7 +140,8 @@ struct {
 
             // Wait until WB stage has a valid output, and check against expected
             repeat (8) begin
-                @(cb) if (u_wb.wb_valid) begin
+                @(cb) if (execute_vld) begin
+                    ##1;
                     $display("Got: ");
                     $display("  regwr_data: %h", regwr_data);
                     $display("  regwr_sel: %h", regwr_sel);

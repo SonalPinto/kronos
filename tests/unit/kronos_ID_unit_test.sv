@@ -20,7 +20,6 @@ logic pipe_out_rdy;
 logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
-hazardEX_t ex_hazard;
 
 kronos_ID u_id (
     .clk         (clk         ),
@@ -33,8 +32,7 @@ kronos_ID u_id (
     .pipe_out_rdy(pipe_out_rdy),
     .regwr_data  (regwr_data  ),
     .regwr_sel   (regwr_sel   ),
-    .regwr_en    (regwr_en    ),
-    .ex_hazard   (ex_hazard   )
+    .regwr_en    (regwr_en    )
 );
 
 default clocking cb @(posedge clk);
@@ -183,7 +181,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0, 33);
+    op = $urandom_range(0,36);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -672,6 +670,45 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.ld = 1;
             decode.data_size = HALF;
             decode.data_uns = 1;
+        end
+
+        34: begin
+            optype = "SB";
+            instr.ir = rv32_sb(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.op3 = 0;
+            decode.op4 = REG[rs2];
+
+            decode.st = 1;
+            decode.data_size = BYTE;
+        end
+
+        35: begin
+            optype = "SH";
+            instr.ir = rv32_sh(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.op3 = 0;
+            decode.op4 = REG[rs2];
+
+            decode.st = 1;
+            decode.data_size = HALF;
+        end
+
+        36: begin
+            optype = "SW";
+            instr.ir = rv32_sw(rs1, rs2, imm);
+
+            decode.op1 = REG[rs1];
+            decode.op2 = signed'(imm[11:0]);
+            decode.op3 = 0;
+            decode.op4 = REG[rs2];
+
+            decode.st = 1;
+            decode.data_size = WORD;
         end
     endcase // instr
 endtask

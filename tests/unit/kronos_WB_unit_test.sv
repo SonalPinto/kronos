@@ -20,6 +20,7 @@ logic branch;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
+logic [3:0] data_wr_mask;
 logic data_rd_req;
 logic data_wr_req;
 logic data_gnt;
@@ -38,6 +39,7 @@ kronos_WB u_wb (
     .data_addr    (data_addr    ),
     .data_rd_data (data_rd_data ),
     .data_wr_data (data_wr_data ),
+    .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
     .data_gnt     (data_gnt     )
@@ -50,7 +52,7 @@ spsram32_model #(.DEPTH(256)) u_dmem (
     .rdata  (data_rd_data             ),
     .en     ((data_rd_req|data_wr_req)),
     .wr_en  (data_wr_req              ),
-    .wr_mask(4'b0                     )
+    .wr_mask(data_wr_mask             )
 );
 
 always_ff @(posedge clk) begin
@@ -74,6 +76,9 @@ endclocking
 
 logic [31:0] expected_regwr_data;
 logic [4:0] expected_regwr_sel;
+
+logic [31:0] store_addr;
+logic [7:0][7:0] expected_store_data;
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -135,7 +140,52 @@ logic [4:0] expected_regwr_sel;
 
         ##64;
     end
+
+    `TEST_CASE("store") begin
+        string optype;
+        pipeEXWB_t texecute;
+        logic [7:0][7:0] mem_data;
+
+        repeat (2**10) begin
+            fork 
+                // Drive stimulus
+                begin
+                    rand_store(texecute, optype);
+                    $display("OPTYPE=%s", optype);
+                    $display("Expected: ");
+                    $display("  store_data: %h", expected_store_data);
+                    $display("  store_addr: %h", store_addr);
+                    @(cb);
+                    cb.execute <= texecute;
+                    cb.execute_vld <= 1;
+                    repeat (16) begin
+                        @(cb) if (cb.execute_rdy) begin
+                            cb.execute_vld <= 0;
+                            break;
+                        end
+                    end
+                end
+
+                // Store checker
+                forever @(cb) begin
+                    if (u_wb.lsu_done) begin
+                        mem_data = {`MEM[store_addr+1], `MEM[store_addr]};
+                        $display("GOT");
+                        $display("  store_data: %h", mem_data);
+                        assert(expected_store_data == mem_data);
+                        break;
+                    end
+                end
+            join
+
+            $display("-----------------\n\n");
+        end
+
+        ##64;
+    end
 end
+
+`WATCHDOG(1ms);
 
 // ============================================================
 // METHODS
@@ -253,6 +303,76 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             expected_regwr_sel = rd;
         end
     endcase // op
+endtask
+
+task automatic rand_store(output pipeEXWB_t execute, output string optype);
+    int op;
+    int maddr;
+
+    logic [7:0][7:0] mem_word;
+    int offset;
+    logic [7:0] dbyte;
+    logic [15:0] dhalf;
+    logic [31:0] dword;
+
+    int aligned_addr;
+
+    // generate scenario
+    op = $urandom_range(0,2);
+    maddr = $urandom_range(0,252);
+    dbyte = $urandom;
+    dhalf = $urandom;
+    dword = $urandom;
+
+    // clear out execute
+    execute = '0;
+
+    // Fetch 4B word and next word from the memory
+    aligned_addr = maddr>>2;
+    offset = maddr & 3;
+    mem_word = {`MEM[aligned_addr+1], `MEM[aligned_addr]};
+    $display("MEMADDR: %h",maddr);
+    $display("MEMWORD: %h",mem_word);
+
+    case(op)
+        0: begin
+            optype = "SB";
+
+            execute.result1 = maddr;
+            execute.result2 = dbyte;
+            execute.st = 1;
+            execute.data_size = BYTE;
+
+            mem_word[offset] = dbyte;
+        end
+
+        1: begin
+            optype = "SH";
+
+            execute.result1 = maddr;
+            execute.result2 = dhalf;
+            execute.st = 1;
+            execute.data_size = HALF;
+
+            {mem_word[offset+1], mem_word[offset]} = dhalf;
+        end
+
+        2: begin
+            optype = "SW";
+
+            execute.result1 = maddr;
+            execute.result2 = dword;
+            execute.st = 1;
+            execute.data_size = WORD;
+
+            {mem_word[offset+3], mem_word[offset+2],
+                mem_word[offset+1], mem_word[offset]} = dword;
+        end
+    endcase
+
+    // Setup expected stored data at word-aligned address
+    store_addr = aligned_addr;
+    expected_store_data = mem_word;
 endtask
 
 endmodule

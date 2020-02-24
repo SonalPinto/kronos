@@ -121,6 +121,21 @@ function instr_t rv32_lhu(logic [4:0] rd, rs1, logic [31:0] imm);
 endfunction
 
 // ========================================================
+// STORE
+// ========================================================
+function instr_t rv32_sb(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[11:5], rs2, rs1, 3'b000, imm[4:0], 7'b01_000_11};
+endfunction
+
+function instr_t rv32_sh(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[11:5], rs2, rs1, 3'b001, imm[4:0], 7'b01_000_11};
+endfunction
+
+function instr_t rv32_sw(logic [4:0] rs1, rs2, logic [31:0] imm);
+    return {imm[11:5], rs2, rs1, 3'b010, imm[4:0], 7'b01_000_11};
+endfunction
+
+// ========================================================
 // OPIMM
 // ========================================================
 function instr_t rv32_addi(logic [4:0] rd, rs1, logic [31:0] imm);

@@ -15,16 +15,30 @@ logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
 logic instr_gnt;
+logic [31:0] data_addr;
+logic [31:0] data_rd_data;
+logic [31:0] data_wr_data;
+logic [3:0] data_wr_mask;
+logic data_rd_req;
+logic data_wr_req;
+logic data_gnt;
 
 logic run;
 
 kronos_core u_dut (
-    .clk       (clk       ),
-    .rstz      (rstz      ),
-    .instr_addr(instr_addr),
-    .instr_data(instr_data),
-    .instr_req (instr_req ),
-    .instr_gnt (instr_gnt & run)
+    .clk         (clk            ),
+    .rstz        (rstz           ),
+    .instr_addr  (instr_addr     ),
+    .instr_data  (instr_data     ),
+    .instr_req   (instr_req      ),
+    .instr_gnt   (instr_gnt & run),
+    .data_addr   (data_addr      ),
+    .data_rd_data(data_rd_data   ),
+    .data_wr_data(data_wr_data   ),
+    .data_wr_mask(data_wr_mask   ),
+    .data_rd_req (data_rd_req    ),
+    .data_wr_req (data_wr_req    ),
+    .data_gnt    (data_gnt       )
 );
 
 
@@ -53,7 +67,15 @@ endclocking
     `TEST_SUITE_SETUP begin
         clk = 0;
         rstz = 0;
+
         run = 0;
+        data_gnt = 0;
+
+        // // init regfile with random values
+        // for(int i=0; i<32; i++) begin
+        //     u_dut.u_id.REG1[i] = $urandom;
+        //     u_dut.u_id.REG2[i] = u_dut.u_id.REG1[i];
+        // end
 
         fork 
             forever #1ns clk = ~clk;
