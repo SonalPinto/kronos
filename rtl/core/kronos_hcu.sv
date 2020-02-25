@@ -4,15 +4,10 @@
 /*
 Kronos Hazard Control Unit
 
-The HCU monitors for hazards at the ID/EX interface
-in a look-ahead manner. When the decode pipe output 
-is ready to latch a new decoded instruction, the 
-hazard status is also latched based on history
-
-The check signal is asserted the same time as the decode is 
-about to be latched (handoff from the fetch stage)
-
-Registering the hazard status reduces the critical path
+The HCU monitors for Register Read hazards at the Decode Stage
+These hazards occur when a register is being read before it's
+latest value is written back from the Write Back stage,
+either as a result of a Direct Write or a Load
 
 */
 
@@ -22,51 +17,80 @@ module kronos_hcu
 (
     input  logic        clk,
     input  logic        rstz,
-    input  logic        check,
-    input  logic        fwd_vld,
-    // Decode inputs
-    input  logic [4:0]  rd,
+    // Decoder inputs
     input  logic [4:0]  rs1,
     input  logic [4:0]  rs2,
-    input  logic        rd_write,
-    input  logic        op1_regrd,
-    input  logic        op2_regrd,
-    input  logic        op3_regrd,
-    input  logic        op4_regrd,
-    // Execute Stage Hazard status
-    output hazardEX_t   ex_hazard
+    input  logic [4:0]  rd,
+    input  logic        regrd_rs1_en,
+    input  logic        regrd_rs2_en,
+    input  logic        upgrade,
+    // Write Back inputs
+    input  logic [4:0]  regwr_sel,
+    input  logic        downgrade,
+    // Decoder Stall status
+    output logic        stall
 );
 
-logic is_pending;
-logic is_op1_hzd, is_op2_hzd, is_op3_hzd, is_op4_hzd;
+/*
+Register Pending Tracker
+------------------------
+In the Kronos pipeline, there are 2 stages ahead of the Decoder.
 
-assign is_op1_hzd = op1_regrd && rs1 == rd;
-assign is_op2_hzd = op2_regrd && rs2 == rd;
-assign is_op3_hzd = op3_regrd && rs1 == rd;
-assign is_op4_hzd = op4_regrd && rs2 == rd;
+Hence, there can be a maximum of two pending writes to any register.
+
+This is tracked as 2b shift register which shifts in a '1' to track
+that a write is pending, and shifts out when it is written back.
+
+This is representative of upgrading or downgrading the hazard level
+on that register.
+
+The LSB of this 2b hazard vector indicates the hazard status.
+
+Controls,
+Upgrade     : decode is ready to register for the next stage, and regwr_rd_en is valid
+Downgrade   : write back is valid, i.e. regwr_en
+
+Note,
+1. This HCU design scales really well. For deeper levels of 
+pending write-backs (downgrades), the hazard vector needs to be widened.
+However, the stall conditioned only checks the LSB.
+This architecture can pretty much be used anywhere if the IO is generalized
+
+2. There is no forwarding of register data. Register write data can only be 
+forwarded if the hazard level is 1. This could easily be implemented here, 
+but I didn't feel the resources (and delay on fetch_rdy thru stall) 
+were worth it for Kronos.
+
+*/
+
+logic [31:0][1:0] rpend;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
-        is_pending <= 1'b0;
-        ex_hazard <= '0;
+        rpend <= '0;
     end
-    else if (check) begin
-        // Keep track if some register requires a write
-        is_pending <= rd_write;
-
-        if (is_pending) begin
-            // OP1/4 only take RS1 and OP2/3 only take RS2
-            ex_hazard.op1_hazard <= is_op1_hzd;
-            ex_hazard.op2_hazard <= is_op2_hzd;
-            ex_hazard.op3_hazard <= is_op3_hzd;
-            ex_hazard.op4_hazard <= is_op4_hzd;
-            ex_hazard.op_hazard  <= |{is_op1_hzd, is_op2_hzd, is_op3_hzd, is_op4_hzd};
+    else begin
+        if (upgrade && ~downgrade) begin
+            // Decode ready. Upgrade register's hazard level
+            rpend[rd] <= {rpend[rd][0], 1'b1};
+        end
+        else if (~upgrade && downgrade) begin
+            // Register written back. Downgrade register's hazard level
+            rpend[regwr_sel] <= {1'b0, rpend[regwr_sel][1]};
+        end
+        else if (upgrade && downgrade) begin
+            // Hazard level remains the same if both decoder and write
+            // back collide on the same register
+            // Else, upgrade and downgrade specified registers
+            if (rd != regwr_sel) begin
+                rpend[rd] <= {rpend[rd][0], 1'b1};
+                rpend[regwr_sel] <= {1'b0, rpend[regwr_sel][1]};
+            end
         end
     end
-    else if (fwd_vld) begin
-        is_pending <= 1'b0;
-        ex_hazard <= '0;
-    end
 end
+
+// Stall if rs1 or rs2 is pending
+assign stall = (regrd_rs1_en && rpend[rs1][0]) || (regrd_rs2_en && rpend[rs2][0]);
 
 endmodule

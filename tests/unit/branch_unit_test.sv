@@ -141,7 +141,6 @@ struct {
             // Wait until WB stage has a valid output, and check against expected
             repeat (8) begin
                 @(cb) if (execute_vld) begin
-                    ##1;
                     $display("Got: ");
                     $display("  regwr_data: %h", regwr_data);
                     $display("  regwr_sel: %h", regwr_sel);

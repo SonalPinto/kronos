@@ -52,6 +52,9 @@ module kronos_WB
     input  logic        data_gnt
 );
 
+logic wb_valid;
+logic direct_write;
+
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
@@ -90,6 +93,7 @@ always_comb begin
 end
 
 assign pipe_in_rdy = (state == WRITE) && (next_state != CATCH);
+assign wb_valid = (state == WRITE) && pipe_in_vld && next_state == WRITE;
 
 
 // ============================================================
@@ -125,44 +129,21 @@ kronos_lsu u_lsu (
 // ============================================================
 // Register Write
 // Registers are written either directly or from memory loads
-// Direct writes are commited in 1 cycle
-// Loads will take 2 cycles for aligned access and 3 for unaligned access
+// Direct writes are commited in the same cycle as execute goes valid
+// and is evaluated as a safe direct write
+// Loads will take 1 cycle for aligned access and 2 for unaligned access
 
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        regwr_en <= 1'b0;
-    end
-    else begin
-        if ((state == WRITE) && pipe_in_vld && next_state == WRITE) begin
-            regwr_data <= execute.result1;
-            regwr_sel  <= execute.rd;
-            regwr_en   <= execute.rd_write;
-        end
-        else if (load_en) begin
-            regwr_data <= load_data;
-            regwr_sel  <= load_rd;
-            regwr_en   <= 1'b1;
-        end
-        else begin
-            regwr_en   <= 1'b0;
-        end
-    end
-end 
+assign direct_write = wb_valid && execute.rd_write;
+
+assign regwr_data = (load_en) ? load_data : execute.result1;
+assign regwr_sel  = (load_en) ? load_rd   : execute.rd;
+assign regwr_en   = (load_en) ? 1'b1      : direct_write;
 
 // ============================================================
 // Branch
 // Set PC to result2, if unconditional branch or condition valid (result1 from alu comparator is 1)
 
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        branch <= 1'b0;
-    end
-    else begin
-        if ((state == WRITE) && pipe_in_vld && next_state == WRITE) begin
-            branch_target <= execute.result2;
-            branch <= (execute.branch || (execute.branch_cond && execute.result1[0]));
-        end
-    end
-end 
+assign branch_target = execute.result2;
+assign branch = wb_valid && (execute.branch || (execute.branch_cond && execute.result1[0]));
 
 endmodule

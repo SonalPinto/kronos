@@ -39,7 +39,7 @@ default clocking cb @(posedge clk);
     default input #10ps output #10ps;
     input pipe_out_vld, decode;
     input negedge pipe_in_rdy;
-    output pipe_in_vld, fetch;
+    output pipe_in_vld, fetch, regwr_en;
     output negedge pipe_out_rdy;
 endclocking
 
@@ -115,6 +115,15 @@ logic [31:0] REG [32];
                         ##1 cb.pipe_out_rdy <= 0;
 
                         assert(rdecode == tdecode);
+
+                        // Write back register, else the HCU will stall
+                        if (rdecode.rd_write) begin
+                            regwr_data = $urandom();
+                            regwr_sel = rdecode.rd;
+                            REG[rdecode.rd] = regwr_data;
+                            @(cb) cb.regwr_en <= 1;
+                            ##1 cb.regwr_en <= 0;
+                        end
                     end
                 end
             join

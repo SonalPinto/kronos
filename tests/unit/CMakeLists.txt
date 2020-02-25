@@ -25,10 +25,16 @@ add_hdl_unit_test(kronos_WB_unit_test.sv
 )
 
 
-add_hdl_unit_test(hcu_unit_test.sv
+add_hdl_unit_test(core_basic_unit_test.sv
     DEPENDS
         spsram32_model
         kronos_core
+        rv32_assembler
+)
+
+add_hdl_unit_test(hcu_unit_test.sv
+    DEPENDS
+        kronos_ID
         rv32_assembler
 )
 

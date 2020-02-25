@@ -74,7 +74,6 @@ logic instr_valid;
 logic illegal_opcode;
 
 logic regrd_rs1_en, regrd_rs2_en;
-logic [31:0] regrd_rs1_data, regrd_rs2_data;
 logic [31:0] regrd_rs1, regrd_rs2;
 logic regwr_rd_en;
 
@@ -113,6 +112,11 @@ logic [2:0] sel;
 // Memory access controls
 logic [1:0] mem_access_size;
 logic mem_access_unsigned;
+
+// Hazard controls
+logic hcu_upgrade;
+logic hcu_downgrade;
+logic hcu_stall;
 
 
 // ============================================================
@@ -172,24 +176,12 @@ assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
 
 // REG read
 always_ff @(negedge clk) begin
-    if (regrd_rs1_en) regrd_rs1_data <= REG1[rs1];
-    if (regrd_rs2_en) regrd_rs2_data <= REG2[rs2];
-end
-
-always_comb begin
-    // Forward the latest write-data if requried
-    // Also blank out if x0 is being read
-    if (regrd_rs1_en && rs1 != '0)
-        regrd_rs1 = (regwr_en && regwr_sel == rs1) ? regwr_data : regrd_rs1_data;
-    else regrd_rs1 = '0;
-
-    if (regrd_rs2_en && rs2 != '0)
-        regrd_rs2 = (regwr_en && regwr_sel == rs2) ? regwr_data : regrd_rs2_data;
-    else regrd_rs2 = '0;
+    if (regrd_rs1_en) regrd_rs1 <= (rs1 != 0) ? REG1[rs1] : '0;
+    if (regrd_rs2_en) regrd_rs2 <= (rs2 != 0) ? REG2[rs2] : '0;
 end
 
 // REG Write
-always_ff @(negedge clk) begin
+always_ff @(posedge clk) begin
     if (regwr_en) begin
         REG1[regwr_sel] <= regwr_data;
         REG2[regwr_sel] <= regwr_data;
@@ -472,6 +464,27 @@ assign mem_access_size = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[1:0] :
 assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2] : '0;
 
 
+
+// ============================================================
+// Hazard Control
+
+assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy;
+assign hcu_downgrade = regwr_en;
+
+kronos_hcu u_hcu (
+    .clk         (clk          ),
+    .rstz        (rstz         ),
+    .rs1         (rs1          ),
+    .rs2         (rs2          ),
+    .rd          (rd           ),
+    .regrd_rs1_en(regrd_rs1_en ),
+    .regrd_rs2_en(regrd_rs2_en ),
+    .upgrade     (hcu_upgrade  ),
+    .regwr_sel   (regwr_sel    ),
+    .downgrade   (hcu_downgrade),
+    .stall       (hcu_stall    )
+);
+
 // ============================================================
 // Instruction Decode Output Pipe (decoded instruction)
 
@@ -560,6 +573,6 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 // Pipethru can only happen in the ID1 state
-assign pipe_in_rdy = ~pipe_out_vld | pipe_out_rdy;
+assign pipe_in_rdy = (~pipe_out_vld | pipe_out_rdy) && ~hcu_stall;
 
 endmodule

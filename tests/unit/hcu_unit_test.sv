@@ -11,71 +11,65 @@ import rv32_assembler::*;
 
 logic clk;
 logic rstz;
-logic [31:0] instr_addr;
-logic [31:0] instr_data;
-logic instr_req;
-logic instr_gnt;
-logic [31:0] data_addr;
-logic [31:0] data_rd_data;
-logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
-logic data_rd_req;
-logic data_wr_req;
-logic data_gnt;
+pipeIFID_t fetch;
+logic pipe_in_vld;
+logic pipe_in_rdy;
+pipeIDEX_t decode;
+logic pipe_out_vld;
+logic pipe_out_rdy;
+logic [31:0] regwr_data;
+logic [4:0] regwr_sel;
+logic regwr_en;
 
-logic run;
-
-kronos_core u_dut (
-    .clk         (clk            ),
-    .rstz        (rstz           ),
-    .instr_addr  (instr_addr     ),
-    .instr_data  (instr_data     ),
-    .instr_req   (instr_req      ),
-    .instr_gnt   (instr_gnt & run),
-    .data_addr   (data_addr      ),
-    .data_rd_data(data_rd_data   ),
-    .data_wr_data(data_wr_data   ),
-    .data_wr_mask(data_wr_mask   ),
-    .data_rd_req (data_rd_req    ),
-    .data_wr_req (data_wr_req    ),
-    .data_gnt    (data_gnt       )
+kronos_ID u_id (
+    .clk         (clk         ),
+    .rstz        (rstz        ),
+    .fetch       (fetch       ),
+    .pipe_in_vld (pipe_in_vld ),
+    .pipe_in_rdy (pipe_in_rdy ),
+    .decode      (decode      ),
+    .pipe_out_vld(pipe_out_vld),
+    .pipe_out_rdy(pipe_out_rdy),
+    .regwr_data  (regwr_data  ),
+    .regwr_sel   (regwr_sel   ),
+    .regwr_en    (regwr_en    )
 );
 
-
-spsram32_model #(.DEPTH(1024)) u_imem (
-    .clk    (clk       ),
-    .addr   (instr_addr[2+:10]),
-    .wdata  (32'b0     ),
-    .rdata  (instr_data),
-    .en     (instr_req ),
-    .wr_en  (1'b0      ),
-    .wr_mask(4'b0      )
-);
-
-always_ff @(posedge clk) instr_gnt <= instr_req;
-
+`define hcu u_id.u_hcu 
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
-    input instr_req, instr_addr;
-    output negedge run;
+    input pipe_out_vld, decode;
+    input negedge pipe_in_rdy;
+    output pipe_in_vld, fetch, regwr_en;
+    output negedge pipe_out_rdy;
 endclocking
 
 // ============================================================
+
+logic [31:0] REG [32];
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
         clk = 0;
         rstz = 0;
 
-        run = 0;
-        data_gnt = 0;
+        fetch = '0;
+        pipe_in_vld = 0;
+        pipe_out_rdy = 0;
+        regwr_data = '0;
+        regwr_en = 0;
+        regwr_sel = 0;
 
-        // // init regfile with random values
-        // for(int i=0; i<32; i++) begin
-        //     u_dut.u_id.REG1[i] = $urandom;
-        //     u_dut.u_id.REG2[i] = u_dut.u_id.REG1[i];
-        // end
+        // init regfile with random values
+        for(int i=0; i<32; i++) begin
+            u_id.REG1[i] = $urandom;
+            u_id.REG2[i] = u_id.REG1[i];
+            REG[i] = u_id.REG1[i];
+        end
+
+        // Zero out TB's REG[0] (x0)
+        REG[0] = 0;
 
         fork 
             forever #1ns clk = ~clk;
@@ -84,149 +78,118 @@ endclocking
         ##4 rstz = 1;
     end
 
-    `TEST_CASE("doubler") begin
-        logic [31:0] PROGRAM [$];
-        instr_t instr;
-        int prog_size, index;
-        int data;
-        int n;
 
-        // setup program: DOUBLER
-        /*  
-            x1 = 1
-            repeat(n):
-                x1 = x1 + x1
-        */
-        // load 1 in x1
-        instr = rv32_addi(x1, x0, 1);
-        PROGRAM.push_back(instr);
+    `TEST_CASE("hazard") begin
+        pipeIFID_t instr;
+        logic [1:0] hazard;
+        logic [4:0] rs1, rs2, rd;
 
-        n = $urandom_range(1,31);
-        $display("N = %d", n);
-        repeat(n) begin
-            instr = rv32_add(x1, x1, x1);
-            PROGRAM.push_back(instr);
-        end
+        instr.pc = 0;
 
-        prog_size = PROGRAM.size();
-
-        // Bootload
-        foreach(PROGRAM[i])
-            u_imem.MEM[i] = PROGRAM[i];
-
-        // Run
-        fork 
-            begin
-                @(cb) cb.run <= 1;
-            end
-
-            forever @(cb) begin
-                if (instr_req && instr_gnt) begin
-                    index = cb.instr_addr>>2;
-                    if (index >= prog_size) begin
-                        cb.run <= 0;
-                        break;
+        // Fill up hazard trackers, by executing two writes per register
+        repeat (2) begin
+            for(int i=1; i<31; i++) begin
+                // x[i] = 0
+                instr.ir = rv32_add(x0+i, x0, x0);
+                $display("INSTR=%h //add x%0d = 0", instr.ir, i);
+                fork 
+                    begin
+                        @(cb);
+                        cb.fetch <= instr;
+                        cb.pipe_in_vld <= 1;
+                        repeat (16) begin
+                            @(cb) if (cb.pipe_in_rdy) begin
+                                cb.pipe_in_vld <= 0;
+                                break;
+                            end
+                        end
                     end
-                    instr = PROGRAM[index];
-                    $display("[%0d] INSTR=%h", index, instr);
-                end
-            end
-        join
 
-        ##32;
-
-        data = u_dut.u_id.REG1[1];
-        $display("x1: %d", data);
-        assert(data == 2**n);
-
-        ##64;
-    end
-
-
-    `TEST_CASE("fibonnaci") begin
-        logic [31:0] PROGRAM [$];
-        instr_t instr;
-        int prog_size, index;
-        int reg_x1, reg_x2, reg_x3;
-        int a, b, c;
-        int n;
-
-        // setup program: FIBONNACI
-        /*  
-            x1 = 0
-            x2 = 1
-            repeat(n):
-                x3 = x1 + x2
-                x1 = x2
-                x2 = x3
-        */
-        // x1 = 0
-        instr = rv32_add(x1, x0, x0);
-        PROGRAM.push_back(instr);
-        // x2 = 1
-        instr = rv32_addi(x2, x0, 1);
-        PROGRAM.push_back(instr);
-
-        n = $urandom_range(1, 32);
-        $display("N = %d", n);
-        repeat(n) begin
-            // x3 = x1 + x2
-            instr = rv32_add(x3, x1, x2);
-            PROGRAM.push_back(instr);
-            // x1 = x2
-            instr = rv32_add(x1, x2, x0);
-            PROGRAM.push_back(instr);
-            // x2 = x3
-            instr = rv32_add(x2, x3, x0);
-            PROGRAM.push_back(instr);
-        end
-
-        prog_size = PROGRAM.size();
-
-        // Bootload
-        foreach(PROGRAM[i])
-            u_imem.MEM[i] = PROGRAM[i];
-
-        // Run
-        fork 
-            begin
-                @(cb) cb.run <= 1;
-            end
-
-            forever @(cb) begin
-                if (instr_req && instr_gnt) begin
-                    index = cb.instr_addr>>2;
-                    if (index >= prog_size) begin
-                        cb.run <= 0;
-                        break;
+                    begin
+                        @(cb iff pipe_out_vld) begin
+                            // drain and check
+                            $display("Got Decode:");
+                            print_decode(decode);
+                            cb.pipe_out_rdy <= 1;
+                            ##1 cb.pipe_out_rdy <= 0;
+                        end
                     end
-                    instr = PROGRAM[index];
-                    $display("[%0d] INSTR=%h", index, instr);
-                end
+                join
+                $display("-----------------\n\n");
             end
-        join
-
-        ##32;
-
-        //-------------------------------
-        // check
-        a = 0;
-        b = 1;
-        repeat(n) begin
-            c = a+b;
-            a = b;
-            b = c;
         end
 
-        reg_x1 = u_dut.u_id.REG1[1];
-        reg_x2 = u_dut.u_id.REG1[2];
-        reg_x3 = u_dut.u_id.REG1[3];
-        $display("REG[x1]=%d vs a=%d", reg_x1, a);
-        $display("REG[x2]=%d vs b=%d", reg_x2, b);
-        $display("REG[x3]=%d vs c=%d", reg_x3, c);
-        assert(reg_x1 == a);
-        assert(reg_x2 == b);
-        assert(reg_x3 == c);
+        // Check that the hazard tracker is full
+        for(int i=0; i<31; i++) begin
+            hazard = `hcu.rpend[i];
+            $display("HCU.rpend[%0d] = %b", i, hazard);
+            if (i==0) assert(hazard == 0);
+            else assert(hazard == 2'b11);
+        end
+        $display("-----------------\n\n");
+
+        // Pick any 2 registers and setup an instruction that reads them
+        rs1 = $urandom_range(2,15);
+        rs2 = $urandom_range(16,31);
+        rd = 1;
+        
+        instr.ir = rv32_add(rd, rs1, rs2);
+        $display("INSTR=%h //add x%0d = 0", instr.ir, rd);
+
+        @(cb);
+        cb.fetch <= instr;
+        cb.pipe_in_vld <= 1;
+        repeat (16) begin
+            // confirm that decode doesn't accept the instr
+            // adn that stall is high
+            @(cb) begin
+                assert(~cb.pipe_in_rdy);
+                assert(`hcu.stall);
+            end
+        end
+        $display("-----------------\n\n");
+
+        // Write back rs1 twice and check hazard status
+        repeat(2) begin
+            regwr_data = $urandom();
+            regwr_sel = rs1;
+            $display("WriteBack: x%0d = %h", rs1, regwr_data);
+            REG[rs1] = regwr_data;
+            @(cb) cb.regwr_en <= 1;
+            ##1 cb.regwr_en <= 0;
+        end
+        $display("-----------------\n\n");
+
+        hazard = `hcu.rpend[rs1];
+        $display("HCU.rpend[%0d] = %b", rs1, hazard);
+        assert(hazard == 0);
+        assert(`hcu.stall);
+        $display("-----------------\n\n");
+
+        // Write back rs1 twice and check hazard status
+        repeat(2) begin
+            regwr_data = $urandom();
+            regwr_sel = rs2;
+            REG[rs2] = regwr_data;
+            $display("WriteBack: x%0d = %h", rs2, regwr_data);
+            @(cb) cb.regwr_en <= 1;
+            ##1 cb.regwr_en <= 0;
+        end
+        $display("-----------------\n\n");
+
+        hazard = `hcu.rpend[rs2];
+        $display("HCU.rpend[%0d] = %b", rs2, hazard);
+        assert(~`hcu.stall);
+        $display("-----------------\n\n");
+
+        // Finally, check that decode is registered, now that hazard is cleared
+        // for this instruction
+        ##1;
+        assert(pipe_out_vld)
+        $display("Got Decode:");
+        print_decode(decode);
+        assert(decode.op1 == REG[rs1]);
+        assert(decode.op2 == REG[rs2]);
 
         ##64;
     end
@@ -234,5 +197,34 @@ end
 
 `WATCHDOG(1ms);
 
+// ============================================================
+// METHODS
+// ============================================================
+
+task automatic print_decode(input pipeIDEX_t d);
+    $display("---- OP --------");
+    $display("  op1: %h",           d.op1);
+    $display("  op2: %h",           d.op2);
+    $display("  op3: %h",           d.op3);
+    $display("  op4: %h",           d.op4);
+    $display("---- EXCTRL ----");
+    $display("  cin: %b",           d.cin);
+    $display("  rev: %b",           d.rev);
+    $display("  uns: %b",           d.uns);
+    $display("  eq: %b",            d.eq);
+    $display("  inv: %b",           d.inv);
+    $display("  align: %b",         d.align);
+    $display("  sel: %h",           d.sel);
+    $display("---- WBCTRL ----");
+    $display("  rd: %d",            d.rd);
+    $display("  rd_write: %h",      d.rd_write);
+    $display("  branch: %h",        d.branch);
+    $display("  branch_cond: %h",   d.branch_cond);
+    $display("  ld: %h",            d.ld);
+    $display("  st: %h",            d.st);
+    $display("  data_size: %h",     d.data_size);    
+    $display("  data_uns: %h",      d.data_uns);
+    $display("  illegal: %h",       d.illegal);
+endtask
 
 endmodule
