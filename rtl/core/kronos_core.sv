@@ -33,6 +33,8 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
+logic flush;
+
 pipeIFID_t fetch;
 pipeIDEX_t decode;
 pipeEXWB_t execute;
@@ -65,6 +67,7 @@ kronos_IF u_if (
 kronos_ID u_id (
     .clk         (clk       ),
     .rstz        (rstz      ),
+    .flush       (flush     ),
     .fetch       (fetch     ),
     .pipe_in_vld (fetch_vld ),
     .pipe_in_rdy (fetch_rdy ),
@@ -83,6 +86,7 @@ kronos_ID u_id (
 kronos_EX u_ex (
     .clk         (clk        ),
     .rstz        (rstz       ),
+    .flush       (flush      ),
     .decode      (decode     ),
     .pipe_in_vld (decode_vld ),
     .pipe_in_rdy (decode_rdy ),
@@ -114,5 +118,8 @@ kronos_WB u_wb (
     .data_wr_req  (data_wr_req  ),
     .data_gnt     (data_gnt     )
 );
+
+// Flush pipeline on branch
+assign flush = branch;
 
 endmodule

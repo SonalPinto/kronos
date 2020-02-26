@@ -17,6 +17,7 @@ module kronos_hcu
 (
     input  logic        clk,
     input  logic        rstz,
+    input  logic        flush,
     // Decoder inputs
     input  logic [4:0]  rs1,
     input  logic [4:0]  rs2,
@@ -70,7 +71,10 @@ always_ff @(posedge clk or negedge rstz) begin
         rpend <= '0;
     end
     else begin
-        if (upgrade && ~downgrade) begin
+        if (flush) begin
+            rpend = '0;
+        end
+        else if (upgrade && ~downgrade) begin
             // Decode ready. Upgrade register's hazard level
             rpend[rd] <= {rpend[rd][0], 1'b1};
         end

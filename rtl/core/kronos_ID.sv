@@ -49,6 +49,7 @@ module kronos_ID
 (
     input  logic        clk,
     input  logic        rstz,
+    input  logic        flush,
     // IF/ID
     input  pipeIFID_t   fetch,
     input  logic        pipe_in_vld,
@@ -70,6 +71,7 @@ logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
 
+logic is_illegal;
 logic instr_valid;
 logic illegal_opcode;
 
@@ -456,6 +458,9 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
+// Consolidate illegal factors
+assign is_illegal = ~(instr_valid) | illegal_opcode;
+
 
 // ============================================================
 // Memory Access
@@ -464,16 +469,16 @@ assign mem_access_size = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[1:0] :
 assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2] : '0;
 
 
-
 // ============================================================
 // Hazard Control
 
-assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy;
+assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy && ~is_illegal;
 assign hcu_downgrade = regwr_en;
 
 kronos_hcu u_hcu (
     .clk         (clk          ),
     .rstz        (rstz         ),
+    .flush       (flush        ),
     .rs1         (rs1          ),
     .rs2         (rs2          ),
     .rd          (rd           ),
@@ -493,7 +498,10 @@ always_ff @(posedge clk or negedge rstz) begin
         pipe_out_vld <= 1'b0;
     end
     else begin
-        if(pipe_in_vld && pipe_in_rdy) begin
+        if (flush) begin
+            pipe_out_vld <= 1'b0;
+        end
+        else if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
 
             // EX controls
@@ -514,7 +522,7 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.st           <= OP == INSTR_STORE;
             decode.data_size    <= mem_access_size;
             decode.data_uns     <= mem_access_unsigned;
-            decode.illegal      <= ~(instr_valid) | illegal_opcode;
+            decode.illegal      <= is_illegal;
 
             // Store defaults in operands
             decode.op1 <= PC;

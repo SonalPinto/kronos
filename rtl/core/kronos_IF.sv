@@ -87,7 +87,10 @@ always_ff @(posedge clk or negedge rstz) begin
         fetch_vld <= '0;
     end
     else begin
-        if (instr_gnt && fetch_rdy && (state == FETCH || state == STALL)) begin
+        if (branch) begin
+            fetch_vld <= 1'b0;
+        end
+        else if (instr_gnt && fetch_rdy && (state == FETCH || state == STALL)) begin
             fetch.pc <= pc_last;
             fetch.ir <= instr_data;
             fetch_vld <= 1'b1;

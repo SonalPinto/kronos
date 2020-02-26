@@ -14,6 +14,7 @@ module kronos_EX
 (
     input  logic        clk,
     input  logic        rstz,
+    input  logic        flush,
     // IF/ID
     input  pipeIDEX_t   decode,
     input  logic        pipe_in_vld,
@@ -54,7 +55,10 @@ always_ff @(posedge clk or negedge rstz) begin
         pipe_out_vld <= 1'b0;
     end
     else begin
-        if(pipe_in_vld && pipe_in_rdy) begin
+        if (flush) begin
+            pipe_out_vld <= 1'b0;
+        end
+        else if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
 
             // Forwar WB controls
