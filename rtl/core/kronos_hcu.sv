@@ -72,7 +72,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
     else begin
         if (flush) begin
-            rpend = '0;
+            rpend <= '0;
         end
         else if (upgrade && ~downgrade) begin
             // Decode ready. Upgrade register's hazard level

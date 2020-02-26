@@ -71,6 +71,8 @@ logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
 
+logic is_nop;
+
 logic is_illegal;
 logic instr_valid;
 logic illegal_opcode;
@@ -252,6 +254,7 @@ always_comb begin
     align   = 1'b0;
     sel     = ALU_ADDER;
     instr_valid = 1'b0;
+    is_nop = 1'b0;
 
     // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
@@ -454,6 +457,23 @@ always_comb begin
             end
         endcase // funct3
     end
+    // --------------------------------
+    INSTR_MISC: begin
+        case(funct3)
+            3'b000: begin // FENCE
+                if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) begin
+                    is_nop = 1'b1;
+                    instr_valid = 1'b1;
+                end
+            end
+            3'b001: begin // FENCE.I
+                if (IR[31:20] == '0 && rs1 == '0 && rd =='0) begin
+                    is_nop = 1'b1;
+                    instr_valid = 1'b1;
+                end
+            end
+        endcase // funct3
+    end
     endcase // OP
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -490,6 +510,7 @@ kronos_hcu u_hcu (
     .stall       (hcu_stall    )
 );
 
+
 // ============================================================
 // Instruction Decode Output Pipe (decoded instruction)
 
@@ -502,7 +523,7 @@ always_ff @(posedge clk or negedge rstz) begin
             pipe_out_vld <= 1'b0;
         end
         else if(pipe_in_vld && pipe_in_rdy) begin
-            pipe_out_vld <= 1'b1;
+            pipe_out_vld <= ~is_nop;
 
             // EX controls
             decode.cin   <= cin;
