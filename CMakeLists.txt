@@ -10,18 +10,19 @@ enable_testing()
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# Add Verilator cmake package
-# Note: this will run some c++ compiler flag checks on build
+# Add tools
 set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
 find_package(verilator)
-
 find_package(Python3)
 find_package(VUnit)
+find_package(RISCV)
+find_package(SRecord)
 
-# Add HDL packages
+# Add Packages
 include(macros)
 include(AddHDL)
 include(AddVUnit)
+include(AddRISCV)
 
 add_subdirectory(rtl)
 add_subdirectory(tests)

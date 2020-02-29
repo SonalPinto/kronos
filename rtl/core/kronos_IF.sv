@@ -61,6 +61,7 @@ assign update_pc = next_state == FETCH;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) state <= INIT;
+    else if (branch) state <= INIT;
     else state <= next_state;
 end
 

@@ -27,6 +27,7 @@ function(add_hdl_unit_test hdl_test_file)
         DEFINES
         DEPENDS
         INCLUDES
+        TESTDATA
     )
 
     # Resolve keywords into ARG_#
@@ -51,6 +52,7 @@ function(add_hdl_unit_test hdl_test_file)
     init_arg(ARG_DEFINES "")
     init_arg(ARG_DEPENDS "")
     init_arg(ARG_INCLUDES "")
+    init_arg(ARG_TESTDATA "")
 
     set_realpath(ARG_SOURCES)
     set_realpath(ARG_INCLUDES)
@@ -85,6 +87,13 @@ function(add_hdl_unit_test hdl_test_file)
         WORKING_DIRECTORY
             ${CMAKE_BINARY_DIR}
     )
+
+    foreach(dep ${ARG_TESTDATA})
+        if (NOT TARGET testdata-${dep})
+            message(FATAL_ERROR "Test Data target does not exist: testdata-${dep}")
+        endif()
+        add_dependencies("test-${ARG_NAME}" "testdata-${dep}")
+    endforeach(dep)
 
     # Bind to global test suite
     add_test(

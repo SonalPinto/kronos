@@ -6,6 +6,12 @@
 
 module tb_core_ut;
 
+/*
+For this test suite, the memory is limited to 4KB (1024 words)
+
+The results will be stored in the .data section starting at 960
+*/
+
 import kronos_types::*;
 import rv32_assembler::*;
 
@@ -41,23 +47,47 @@ kronos_core u_dut (
     .data_gnt    (data_gnt       )
 );
 
+logic [31:0] mem_addr;
+logic [31:0] mem_wdata;
+logic [31:0] mem_rdata;
+logic mem_en, mem_wren;
+logic [3:0] mem_wmask;
 
 spsram32_model #(.DEPTH(1024)) u_imem (
-    .clk    (clk       ),
-    .addr   (instr_addr[2+:10]),
-    .wdata  (32'b0     ),
-    .rdata  (instr_data),
-    .en     (instr_req ),
-    .wr_en  (1'b0      ),
-    .wr_mask(4'b0      )
+    .clk    (clk      ),
+    .addr   (mem_addr ),
+    .wdata  (mem_wdata),
+    .rdata  (mem_rdata),
+    .en     (mem_en   ),
+    .wr_en  (mem_wren ),
+    .wr_mask(mem_wmask)
 );
 
-always_ff @(posedge clk) instr_gnt <= instr_req;
+// Data has Priority
+always_comb begin
+    mem_en = |{instr_req, data_rd_req, data_wr_req};
+    mem_wren = data_wr_req;
+
+    mem_addr = 0;
+    mem_addr = (data_rd_req | data_wr_req) ?
+        data_addr[2+:10] : instr_addr[2+:10];
+
+    instr_data = mem_rdata;
+    data_rd_data = mem_rdata;
+
+    mem_wdata = data_wr_data;
+    mem_wmask = data_wr_mask;
+end
+
+always_ff @(posedge clk) begin
+    instr_gnt <= (instr_req) & ~(data_rd_req | data_wr_req) && run;
+    data_gnt <= (data_rd_req | data_wr_req);
+end
 
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
-    input instr_req, instr_addr;
+    input instr_req, instr_addr, instr_gnt;
     output negedge run;
 endclocking
 
@@ -69,7 +99,6 @@ endclocking
         rstz = 0;
 
         run = 0;
-        data_gnt = 0;
 
         fork 
             forever #1ns clk = ~clk;
@@ -84,6 +113,8 @@ endclocking
         int prog_size, index;
         int data;
         int n;
+
+        cb.run <= 0;
 
         // setup program: DOUBLER
         /*  
@@ -136,7 +167,6 @@ endclocking
         ##64;
     end
 
-
     `TEST_CASE("fibonnaci") begin
         logic [31:0] PROGRAM [$];
         instr_t instr;
@@ -184,7 +214,8 @@ endclocking
         // Run
         fork 
             begin
-                @(cb) cb.run <= 1;
+                ##5;
+                cb.run <= 1;
             end
 
             forever @(cb) begin
