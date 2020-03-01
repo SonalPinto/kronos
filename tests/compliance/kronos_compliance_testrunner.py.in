@@ -1,0 +1,111 @@
+# Copyright (c) 2020 Sonal Pinto
+# SPDX-License-Identifier: Apache-2.0
+
+import re
+import os
+from vunit import VUnitCLI
+from vunit.verilog import VUnit
+
+test_name = "kronos_compliance"
+
+cli = VUnitCLI()
+cli.parser.add_argument('--program',default=None,help="rv32i compiled verilog memory file")
+cli.parser.add_argument('--out',default=None,help="rv32i output signature result")
+
+args = cli.parse_args()
+
+# Check program memory file
+assert(args.program), "Program must be defined"
+assert(args.out), "Output signature file must be defined"
+memfile = args.program
+resfile = args.out
+
+if not os.path.exists(memfile):
+    assert False, "{} not found".format(memfile)
+
+# Extract signatures from nm file (base file name expected to be same as the program)
+nmfile = re.sub('.mem', '.nm', args.program)
+if not os.path.exists(nmfile):
+    assert False, "{} not found".format(nmfile)
+
+NM = open(nmfile, "r")
+
+for s in NM.readlines():
+    items = re.split("\s+", s)
+    addr = "32'h"+items[0]
+    if "begin_signature" in s:
+        begin_signature = addr
+    elif "end_signature" in s:
+        end_signature = addr
+
+NM.close()
+
+# Extract Compliance test name
+match = re.search("\/([^\/]+).mem", memfile)
+compliance_test = ''
+if match:
+    compliance_test = match.group(1)
+else:
+    assert False, "Unable to extract test name in {}".format(memfile)
+
+print("Compliance Test: {}".format(compliance_test))
+print("Program: {}".format(memfile))
+print("Result: {}".format(resfile))
+print("begin_signature: {}".format(begin_signature))
+print("end_signature: {}".format(end_signature))
+print("\n\n")
+
+# -------------------------------------------------------------
+# Setup Simulation
+args.output_path = "@TEST_RUN_DIR@"
+
+vu = VUnit.from_args(args=args)
+
+lib = vu.add_library('lib')
+
+source_files = "@TEST_SOURCES@".split(';')
+for f in source_files:
+    lib.add_source_files(f)
+
+# Macro Defines
+vlog_flags = []
+vlog_flags.append('+define+PROGRAM=' + args.program);
+vlog_flags.append('+define+BEGIN_SIGNATURE=' + begin_signature);
+vlog_flags.append('+define+END_SIGNATURE=' + end_signature);
+
+# Additional runtime config
+dump_wave = '-do "add wave -r *"'
+
+vu.set_compile_option("modelsim.vlog_flags", vlog_flags)
+vu.set_sim_option("modelsim.vsim_flags", [dump_wave])
+
+# Post Check: Extract signature
+def post_check(output_path):
+    odir = "@TEST_OUTPUT_DIR@"
+    ofilename = odir+"/"+compliance_test+".signature.output"
+    OFILE = open(ofilename, "w")
+    IFILE = open(output_path+"/output.txt", "r")
+
+    start = False
+    for line in IFILE.readlines():
+        if "<<START>>" in line:
+            start = True
+            continue
+
+        if "<<END>>" in line:
+            break
+
+        if start:
+            items = line.split()
+            OFILE.write(items[-1]+"\n")
+    
+    IFILE.close()
+    OFILE.close()
+    os.system('cp {} {}'.format(ofilename, resfile))
+    return True
+
+test = lib.module("tb_compliance")
+test.add_config("parse_result", post_check=post_check)
+
+vu.main()
+

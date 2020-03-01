@@ -54,7 +54,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
-assign update_pc = next_state == FETCH;
+assign update_pc = (next_state == FETCH) || branch;
 
 // ============================================================
 //  Instruction Fetch

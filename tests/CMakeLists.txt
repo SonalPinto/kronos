@@ -3,3 +3,4 @@
 
 add_subdirectory(packages)
 add_subdirectory(unit)
+add_subdirectory(compliance)

@@ -53,7 +53,7 @@ logic [31:0] mem_rdata;
 logic mem_en, mem_wren;
 logic [3:0] mem_wmask;
 
-spsram32_model #(.DEPTH(1024)) u_imem (
+spsram32_model #(.DEPTH(1024)) u_mem (
     .clk    (clk      ),
     .addr   (mem_addr ),
     .wdata  (mem_wdata),
@@ -128,7 +128,7 @@ endclocking
         */
         // Bootloader -------------------------
         // Load text
-        $readmemh("../../../data/doubler.mem", u_imem.MEM);
+        $readmemh("../../../data/doubler.mem", u_mem.MEM);
 
         // ABI --------------------------------
         // Setup Return Address (ra/x1)
@@ -136,7 +136,7 @@ endclocking
         u_dut.u_id.REG2[x1] = 944;
 
         // Store while(1); at 944
-        u_imem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
+        u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)
         u_dut.u_id.REG1[x8] = 0;
@@ -162,7 +162,7 @@ endclocking
             forever @(cb) begin
                 if (instr_req && instr_gnt) begin
                     addr = cb.instr_addr;
-                    instr = u_imem.MEM[addr>>2];
+                    instr = u_mem.MEM[addr>>2];
                     $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
                     index++;
                     if (addr == 944) begin
@@ -177,7 +177,7 @@ endclocking
         //-------------------------------
         // check
         r_exp = 2**n;
-        r_got = u_imem.MEM[960>>2];
+        r_got = u_mem.MEM[960>>2];
         $display("RESULT: %d vs %d", r_exp, r_got);
         assert(r_exp == r_got);
 
@@ -209,7 +209,7 @@ endclocking
         */
         // Bootloader -------------------------
         // Load text
-        $readmemh("../../../data/fibonnaci.mem", u_imem.MEM);
+        $readmemh("../../../data/fibonnaci.mem", u_mem.MEM);
 
         // ABI --------------------------------
         // Setup Return Address (ra/x1)
@@ -217,7 +217,7 @@ endclocking
         u_dut.u_id.REG2[x1] = 944;
 
         // Store while(1); at 944
-        u_imem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
+        u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)
         u_dut.u_id.REG1[x8] = 0;
@@ -243,7 +243,7 @@ endclocking
             forever @(cb) begin
                 if (instr_req && instr_gnt) begin
                     addr = cb.instr_addr;
-                    instr = u_imem.MEM[addr>>2];
+                    instr = u_mem.MEM[addr>>2];
                     $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
                     index++;
                     if (addr == 944) begin
@@ -266,7 +266,7 @@ endclocking
         end
 
         r_exp = c;
-        r_got = u_imem.MEM[960>>2];
+        r_got = u_mem.MEM[960>>2];
         $display("RESULT: %d vs %d", r_exp, r_got);
         assert(r_exp == r_got);
 
