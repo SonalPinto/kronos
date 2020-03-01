@@ -115,7 +115,7 @@ endclocking
         int n;
         int r_exp, r_got;
 
-        // setup program: DOUBLER - from test source: doubler.c
+        // setup program: doubler.c
         /*
             void main(int n) {
                 int a, b;
@@ -177,6 +177,95 @@ endclocking
         //-------------------------------
         // check
         r_exp = 2**n;
+        r_got = u_imem.MEM[960>>2];
+        $display("RESULT: %d vs %d", r_exp, r_got);
+        assert(r_exp == r_got);
+
+        ##64;
+    end
+
+    `TEST_CASE("fibonnaci") begin
+        logic [31:0] PROGRAM [$];
+        instr_t instr;
+        int index, addr;
+        int data;
+        int n;
+        int a, b, c;
+        int r_exp, r_got;
+
+        // setup program: fibonnaci.c
+        /*
+            void main(int n) {
+                int a, b, c, i;
+                a = 0;
+                b = 1;
+                for (i=0; i<n; i++){
+                    c = a + b;
+                    a = b;
+                    b = c;
+                }
+                result = c;
+            }
+        */
+        // Bootloader -------------------------
+        // Load text
+        $readmemh("../../../data/fibonnaci.mem", u_imem.MEM);
+
+        // ABI --------------------------------
+        // Setup Return Address (ra/x1)
+        u_dut.u_id.REG1[x1] = 944;
+        u_dut.u_id.REG2[x1] = 944;
+
+        // Store while(1); at 944
+        u_imem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
+
+        // Setup Frame Pointer (s0/x8)
+        u_dut.u_id.REG1[x8] = 0;
+        u_dut.u_id.REG2[x8] = 0;
+
+        // Setup Stack Pointer (sp/x2) to the end of the memory (4KB)
+        u_dut.u_id.REG1[x2] = 1024;
+        u_dut.u_id.REG2[x2] = 1024;
+
+        // Setup Function Argument - "n" - at a0 (x10)
+        n = $urandom_range(1,32);
+        $display("\n\nARG: n = %0d", n);
+        u_dut.u_id.REG1[x10] = n;
+        u_dut.u_id.REG2[x10] = n;
+
+        // Run
+        $display("\n\nEXEC\n\n");
+        fork 
+            begin
+                @(cb) cb.run <= 1;
+            end
+
+            forever @(cb) begin
+                if (instr_req && instr_gnt) begin
+                    addr = cb.instr_addr;
+                    instr = u_imem.MEM[addr>>2];
+                    $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
+                    index++;
+                    if (addr == 944) begin
+                        cb.run <= 0;
+                        break;
+                    end
+                end
+            end
+        join
+        $display("\n\n");
+
+        //-------------------------------
+        // check
+        a = 0;
+        b = 1;
+        repeat(n) begin
+            c = a+b;
+            a = b;
+            b = c;
+        end
+
+        r_exp = c;
         r_got = u_imem.MEM[960>>2];
         $display("RESULT: %d vs %d", r_exp, r_got);
         assert(r_exp == r_got);

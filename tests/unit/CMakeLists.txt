@@ -41,6 +41,7 @@ add_hdl_unit_test(core_adv_unit_test.sv
         rv32_assembler
     TESTDATA
        doubler
+       fibonnaci
 )
 
 add_hdl_unit_test(hcu_unit_test.sv
