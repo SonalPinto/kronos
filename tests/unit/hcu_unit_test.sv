@@ -8,6 +8,7 @@ module tb_hcu_ut;
 
 import kronos_types::*;
 import rv32_assembler::*;
+import common::*;
 
 logic clk;
 logic rstz;
@@ -197,36 +198,5 @@ logic [31:0] REG [32];
 end
 
 `WATCHDOG(1ms);
-
-// ============================================================
-// METHODS
-// ============================================================
-
-task automatic print_decode(input pipeIDEX_t d);
-    $display("---- OP --------");
-    $display("  op1: %h",           d.op1);
-    $display("  op2: %h",           d.op2);
-    $display("  op3: %h",           d.op3);
-    $display("  op4: %h",           d.op4);
-    $display("---- EXCTRL ----");
-    $display("  cin: %b",           d.cin);
-    $display("  rev: %b",           d.rev);
-    $display("  uns: %b",           d.uns);
-    $display("  eq: %b",            d.eq);
-    $display("  inv: %b",           d.inv);
-    $display("  align: %b",         d.align);
-    $display("  sel: %h",           d.sel);
-    $display("---- WBCTRL ----");
-    $display("  rd: %d",            d.rd);
-    $display("  rd_write: %h",      d.rd_write);
-    $display("  branch: %h",        d.branch);
-    $display("  branch_cond: %h",   d.branch_cond);
-    $display("  ld: %h",            d.ld);
-    $display("  st: %h",            d.st);
-    $display("  data_size: %h",     d.data_size);    
-    $display("  data_uns: %h",      d.data_uns);
-    $display("---- Exception ----");
-    $display("  is_illegal: %h",    d.is_illegal);
-endtask
 
 endmodule

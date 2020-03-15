@@ -13,11 +13,13 @@ add_hdl_unit_test(kronos_ID_unit_test.sv
     DEPENDS
         kronos_ID
         rv32_assembler
+        common
 )
 
 add_hdl_unit_test(kronos_EX_unit_test.sv
     DEPENDS
         kronos_EX
+        common
 )
 
 add_hdl_unit_test(kronos_WB_unit_test.sv
@@ -48,6 +50,7 @@ add_hdl_unit_test(hcu_unit_test.sv
     DEPENDS
         kronos_ID
         rv32_assembler
+        common
 )
 
 add_hdl_unit_test(branch_unit_test.sv

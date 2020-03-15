@@ -18,9 +18,9 @@ where,
                   and OP3/4 are secondary adder operands
                   Each operand can take one of many values as listed below,
                   OP1 <= REG[rs1], PC, ZERO
-                  OP2 <= REG[rs2], IMM, FOUR
-                  OP3 <= REG[rs1], PC, ZERO
-                  OP4 <= REG[rs2], IMM, FOUR
+                  OP2 <= REG[rs2], IMM, FOUR, IR
+                  OP3 <= REG[rs1], PC, ZIMM, ZERO
+                  OP4 <= REG[rs2], IMM, FOUR, ZERO
     EX_CTRL     : Execute stage controls
     WB_CTRL     : Write Back stage controls which perform an action using
                   RESULT1/2
@@ -40,6 +40,7 @@ WB_CTRL
 
 Exceptions
     is_illegal
+    is_ecall
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
     if compare(rs1, rs2):
@@ -72,12 +73,13 @@ module kronos_ID
 logic [31:0] IR, PC;
 logic [4:0] OP;
 logic [6:0] opcode;
-logic [4:0] rs1, rs2, rd;
+logic [4:0] rs1, rs2, rd, zimm;
 logic [2:0] funct3;
 logic [6:0] funct7;
 
 logic is_nop;
 logic is_fencei;
+logic is_ecall;
 
 logic is_illegal;
 logic instr_valid;
@@ -110,6 +112,9 @@ logic [11:0]    ImmF;
 
 logic [31:0] immediate;
 
+// Zero Extended immediate
+logic [31:0] zimmediate;
+
 // Execute Stage controls
 logic       cin;
 logic       rev;
@@ -128,6 +133,12 @@ logic hcu_upgrade;
 logic hcu_downgrade;
 logic hcu_stall;
 
+// CSR Controls
+logic csr_regrd, csr_regwr;
+logic csr_rd;
+logic csr_wr;
+logic csr_set;
+logic csr_clr;
 
 // ============================================================
 // [rv32i] Instruction Decoder
@@ -145,6 +156,8 @@ assign rd  = IR[11: 7];
 
 assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
+
+assign zimm = IR[19:15];
 
 // opcode is illegal if LSB 2b are not 2'b11
 assign illegal_opcode = opcode[1:0] != 2'b11;
@@ -170,19 +183,32 @@ assign regrd_rs1_en = OP == INSTR_OPIMM
                     || OP == INSTR_JALR 
                     || OP == INSTR_BR
                     || OP == INSTR_LOAD
-                    || OP == INSTR_STORE;
+                    || OP == INSTR_STORE
+                    || csr_regrd;
 
 assign regrd_rs2_en = OP == INSTR_OP 
                     || OP == INSTR_BR
                     || OP == INSTR_STORE;
 
-assign regwr_rd_en = (rd != 0) && (OP == INSTR_LUI
+assign regwr_rd_en = (rd != '0) && (OP == INSTR_LUI
                                 || OP == INSTR_AUIPC
                                 || OP == INSTR_JAL
                                 || OP == INSTR_JALR
                                 || OP == INSTR_OPIMM 
                                 || OP == INSTR_OP
-                                || OP == INSTR_LOAD);
+                                || OP == INSTR_LOAD
+                                || csr_regwr);
+
+assign csr_regrd = OP == INSTR_SYS && (funct3 == 3'b001
+                                    || funct3 == 3'b010
+                                    || funct3 == 3'b011);
+
+assign csr_regwr = OP == INSTR_SYS && (funct3 == 3'b001
+                                    || funct3 == 3'b010
+                                    || funct3 == 3'b011
+                                    || funct3 == 3'b101
+                                    || funct3 == 3'b110
+                                    || funct3 == 3'b111);
 
 // REG read
 always_ff @(negedge clk) begin
@@ -244,6 +270,9 @@ end
 // As A-Team's Hannibal would say, "I love it when a plan comes together"
 assign immediate = {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
 
+// Zero extended immediate used in CSR sytsem instructions
+assign zimmediate = {27'b0, zimm};
+
 
 // ============================================================
 // Execute Stage Operation Decoder
@@ -252,16 +281,21 @@ always_comb begin
     // Default ALU Operation: ADD 
     //  result1 <= ALU.adder
     //  result2 <= unaligned add
-    cin         = 1'b0;
-    rev         = 1'b0;
-    uns         = 1'b0;
-    eq          = 1'b0;
-    inv         = 1'b0;
-    align       = 1'b0;
-    sel         = ALU_ADDER;
-    instr_valid = 1'b0;
-    is_nop      = 1'b0;
-    is_fencei   = 1'b0;
+    cin             = 1'b0;
+    rev             = 1'b0;
+    uns             = 1'b0;
+    eq              = 1'b0;
+    inv             = 1'b0;
+    align           = 1'b0;
+    sel             = ALU_ADDER;
+    instr_valid     = 1'b0;
+    is_nop          = 1'b0;
+    is_fencei       = 1'b0;
+    is_ecall        = 1'b0;
+    csr_wr          = 1'b0;
+    csr_rd          = 1'b0;
+    csr_set         = 1'b0;
+    csr_clr         = 1'b0;
 
     // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
@@ -468,19 +502,64 @@ always_comb begin
     INSTR_MISC: begin
         case(funct3)
             3'b000: begin // FENCE
-                if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) begin
+                if (funct7[6:3] == '0 && zimm == '0 && rd == '0) begin
                     is_nop = 1'b1;
                     instr_valid = 1'b1;
                 end
             end
             3'b001: begin // FENCE.I
-                if (IR[31:20] == '0 && rs1 == '0 && rd =='0) begin
+                if (IR[31:20] == '0 && zimm == '0 && rd == '0) begin
                     // implementing fence.i as `j f1` (jump to pc+4) 
                     // as this will flush the pipeline and cause a fresh 
                     // fetch of the instructions after the fence.i instruction
                     is_fencei = 1'b1;
                     instr_valid = 1'b1;
                 end
+            end
+        endcase // funct3
+    end
+    // --------------------------------
+    INSTR_SYS: begin
+        case(funct3)
+            3'b000: begin
+                if (IR[31:20] == 12'b0 && zimm == '0 && rd =='0) begin // EBREAK
+                    is_nop = 1'b1;
+                    instr_valid = 1'b1;
+                end
+                else if (IR[31:20] == 12'b1 && zimm == '0 && rd =='0) begin // ECALL
+                    is_ecall = 1'b1;
+                    instr_valid = 1'b1;
+                end
+            end
+            3'b001: begin // CSRRW
+                csr_rd = 1'b1;
+                csr_wr = 1'b1;
+                instr_valid = 1'b1;
+            end
+            3'b010: begin // CSRRS
+                csr_rd = 1'b1;
+                csr_set = 1'b1;
+                instr_valid = 1'b1;
+            end
+            3'b011: begin // CSRRC
+                csr_rd = 1'b1;
+                csr_clr = 1'b1;
+                instr_valid = 1'b1;
+            end
+            3'b101: begin // CSRRW
+                csr_rd = 1'b1;
+                csr_wr = 1'b1;
+                instr_valid = 1'b1;
+            end
+            3'b110: begin // CSRRS
+                csr_rd = 1'b1;
+                csr_set = 1'b1;
+                instr_valid = 1'b1;
+            end
+            3'b111: begin // CSRRC
+                csr_rd = 1'b1;
+                csr_clr = 1'b1;
+                instr_valid = 1'b1;
             end
         endcase // funct3
     end
@@ -495,8 +574,8 @@ assign is_illegal = ~(instr_valid) | illegal_opcode;
 // ============================================================
 // Memory Access
 // Load/Store memory access control
-assign mem_access_size = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[1:0] : '0;
-assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2] : '0;
+assign mem_access_size = funct3[1:0];
+assign mem_access_unsigned = funct3[2];
 
 
 // ============================================================
@@ -547,7 +626,7 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.sel   <= sel;
             
             // WB controls
-            decode.rd           <= (regwr_rd_en) ? rd : '0;
+            decode.rd           <= rd;
             decode.rd_write     <= regwr_rd_en;
             decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR || is_fencei;
             decode.branch_cond  <= OP == INSTR_BR;
@@ -556,8 +635,14 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.data_size    <= mem_access_size;
             decode.data_uns     <= mem_access_unsigned;
 
+            decode.csr_rd       <= csr_rd;
+            decode.csr_wr       <= csr_wr;
+            decode.csr_set      <= csr_set;
+            decode.csr_clr      <= csr_clr;
+
             // Exceptions
             decode.is_illegal   <= is_illegal;
+            decode.is_ecall     <= is_ecall;
 
             // Store defaults in operands
             decode.op1 <= PC;
@@ -566,24 +651,24 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.op4 <= FOUR;
 
             if (is_illegal) begin
-                decode.op1 <= IR;
-                decode.op2 <= ZERO;
+                decode.op1 <= ZERO;
+                decode.op2 <= IR;
             end
             else begin
                 // Fill out OP1-4 as per opcode
                 /* verilator lint_off CASEINCOMPLETE */
                 case(OP)
-                    INSTR_LUI   : begin
+                    INSTR_LUI: begin
                         decode.op1 <= ZERO;
                         decode.op2 <= immediate;
                     end
-                    INSTR_AUIPC : begin
+                    INSTR_AUIPC: begin
                         decode.op2 <= immediate;
                     end
-                    INSTR_JAL : begin
+                    INSTR_JAL: begin
                         decode.op4 <= immediate;
                     end
-                    INSTR_JALR : begin
+                    INSTR_JALR: begin
                         decode.op3 <= regrd_rs1;
                         decode.op4 <= immediate;
                     end
@@ -602,13 +687,19 @@ always_ff @(posedge clk or negedge rstz) begin
                         decode.op3 <= ZERO;
                         decode.op4 <= regrd_rs2;
                     end
-                    INSTR_OPIMM : begin
+                    INSTR_OPIMM: begin
                         decode.op1 <= regrd_rs1;
                         decode.op2 <= immediate;
                     end
-                    INSTR_OP    : begin
+                    INSTR_OP: begin
                         decode.op1 <= regrd_rs1;
                         decode.op2 <= regrd_rs2;
+                    end
+                    INSTR_SYS: begin
+                        decode.op1 <= ZERO;
+                        decode.op2 <= IR;
+                        decode.op3 <= (csr_regrd) ? regrd_rs1 : zimmediate;
+                        decode.op4 <= ZERO;
                     end
                 endcase // OP
                 /* verilator lint_off CASEINCOMPLETE */

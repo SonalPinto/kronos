@@ -231,7 +231,33 @@ endfunction
 // ========================================================
 // SYSTEM
 // ========================================================
+function instr_t rv32_csrrw(logic [4:0] rd, rs1, logic [11:0] csr);
+    return {csr, rs1, 3'b001, rd, 7'b11_100_11};
+endfunction
 
+function instr_t rv32_csrrs(logic [4:0] rd, rs1, logic [11:0] csr);
+    return {csr, rs1, 3'b010, rd, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_csrrc(logic [4:0] rd, rs1, logic [11:0] csr);
+    return {csr, rs1, 3'b011, rd, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_csrrwi(logic [4:0] rd, zimm, logic [11:0] csr);
+    return {csr, zimm, 3'b101, rd, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_csrrsi(logic [4:0] rd, zimm, logic [11:0] csr);
+    return {csr, zimm, 3'b110, rd, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_csrrci(logic [4:0] rd, zimm, logic [11:0] csr);
+    return {csr, zimm, 3'b111, rd, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_ecall();
+    return {12'b1, 5'b0, 3'b000, 5'b0, 7'b11_100_11};
+endfunction
 
 /* verilator lint_on UNUSED */
 endpackage

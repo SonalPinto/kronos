@@ -288,6 +288,9 @@ task automatic rand_instr(output pipeIFID_t instr, output string optype);
             expected_wb.branch = expected_wb.regwr_data == 1;
         end
     endcase // instr
+
+    // defaults - IR segments
+    expected_wb.regwr_sel = instr.ir[11:7];
 endtask
 
 endmodule

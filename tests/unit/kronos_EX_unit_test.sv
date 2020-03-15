@@ -6,6 +6,7 @@
 module tb_kronos_EX_ut;
 
 import kronos_types::*;
+import common::*;
 
 logic clk;
 logic rstz;
@@ -109,24 +110,6 @@ end
 // METHODS
 // ============================================================
 
-task automatic print_execute(input pipeEXWB_t e);
-    $display("---- RES -------");
-    $display("  result1: %h", e.result1);
-    $display("  result2: %h", e.result2);
-    $display("---- WBCTRL ----");
-    $display("  rd: %d",          e.rd);
-    $display("  rd_write: %h",    e.rd_write);
-    $display("  branch: %h",      e.branch);
-    $display("  ld: %h",          e.ld);
-    $display("  st: %h",          e.st);
-    $display("  branch_cond: %h", e.branch_cond);
-    $display("  data_size: %h",   e.data_size);    
-    $display("  data_uns: %h",    e.data_uns);
-    $display("---- Exception ----");
-    $display("  is_illegal: %h",  e.is_illegal);
-endtask
-
-
 task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t execute, output string optype);
     /*
     Generate constrained-random decode
@@ -151,31 +134,11 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
 
     //=========================
     // DECODE
-    // EX Operands ------------
+    decode = '0;
     decode.op1 = op1;
     decode.op2 = op2;
     decode.op3 = op3;
     decode.op4 = op4;
-    // ------------------------
-    // EX controls
-    decode.cin = 0;
-    decode.rev = 0;
-    decode.uns = 0;
-    decode.eq = 0;
-    decode.inv = 0;
-    decode.align = 0;
-    decode.sel = 0;
-    // ------------------------
-    // WB controls
-    decode.rd = 0;
-    decode.rd_write = 0;
-    decode.branch = 0;
-    decode.branch_cond = 0;
-    decode.ld = 0;
-    decode.st = 0;
-    decode.data_size = 0;
-    decode.data_uns = 0;
-    decode.is_illegal = 0;
 
     //=========================
     // EXECUTE
@@ -191,6 +154,11 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.data_size   = decode.data_size;
     execute.data_uns    = decode.data_uns;
     execute.is_illegal  = decode.is_illegal;
+    execute.is_ecall    = decode.is_ecall;
+    execute.csr_rd      = decode.csr_rd;
+    execute.csr_wr      = decode.csr_wr;
+    execute.csr_set     = decode.csr_set;
+    execute.csr_clr     = decode.csr_clr;
 
     case(aluop)
         0: begin
