@@ -203,6 +203,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.st = 0;
     decode.data_size = 0;
     decode.data_uns = 0;
+    decode.system = 0;
     decode.csr_rd = 0;
     decode.csr_wr = 0;
     decode.csr_set = 0;
@@ -728,6 +729,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_wr = 1;
         end
@@ -743,6 +746,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_set = 1;
         end
@@ -758,6 +763,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_clr = 1;
         end
@@ -773,6 +780,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_wr = 1;
         end
@@ -788,6 +797,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_set = 1;
         end
@@ -803,6 +814,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.rd = rd;
             decode.rd_write = rd != 0;
+
+            decode.system = 1;
             decode.csr_rd = 1;
             decode.csr_clr = 1;
         end
@@ -816,6 +829,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op3 = 0;
             decode.op4 = 0;
 
+            decode.system = 1;
             decode.is_ecall = 1;
         end
     endcase // instr

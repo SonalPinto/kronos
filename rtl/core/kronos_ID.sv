@@ -37,6 +37,7 @@ EX_CTRL,
 
 WB_CTRL
     rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns
+    system, csr_wr/rd/set/clr
 
 Exceptions
     is_illegal
@@ -635,6 +636,7 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.data_size    <= mem_access_size;
             decode.data_uns     <= mem_access_unsigned;
 
+            decode.system       <= OP == INSTR_SYS;
             decode.csr_rd       <= csr_rd;
             decode.csr_wr       <= csr_wr;
             decode.csr_set      <= csr_set;

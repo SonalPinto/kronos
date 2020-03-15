@@ -155,6 +155,7 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.data_uns    = decode.data_uns;
     execute.is_illegal  = decode.is_illegal;
     execute.is_ecall    = decode.is_ecall;
+    execute.system      = decode.system;
     execute.csr_rd      = decode.csr_rd;
     execute.csr_wr      = decode.csr_wr;
     execute.csr_set     = decode.csr_set;

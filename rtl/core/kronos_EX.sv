@@ -73,6 +73,7 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.st          <= decode.st;
             execute.data_size   <= decode.data_size;
             execute.data_uns    <= decode.data_uns;
+            execute.system      <= decode.system;
             execute.csr_rd      <= decode.csr_rd;
             execute.csr_wr      <= decode.csr_wr;
             execute.csr_set     <= decode.csr_set;

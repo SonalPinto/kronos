@@ -36,6 +36,7 @@ typedef struct packed {
     logic        st;
     logic [1:0]  data_size;
     logic        data_uns;
+    logic        system;
     logic        csr_wr;
     logic        csr_rd;
     logic        csr_set;
@@ -59,6 +60,7 @@ typedef struct packed {
     logic        st;
     logic [1:0]  data_size;
     logic        data_uns;
+    logic        system;
     logic        csr_rd;
     logic        csr_wr;
     logic        csr_set;
