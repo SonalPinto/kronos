@@ -11,7 +11,8 @@ This is the last stage of the Kronos pipeline and is responsible for these funct
 - Branch unconditionally
 - Branch conditionally as per value of result1
 
-Unaligned access is handled by the LSU
+Unaligned access is handled by the LSU and will never throw the
+Load/Store address aligned exception
 
 WB_CTRL
     rd          : register write select
@@ -22,6 +23,8 @@ WB_CTRL
     st          : store
     data_size   : memory access size - byte, half-word or word
     data_sign   : sign extend memory data (only for load)
+
+Exceptions
     illegal     : illegal instruction
 
 */
@@ -54,6 +57,10 @@ module kronos_WB
 
 logic wb_valid;
 logic direct_write;
+logic branch_success;
+
+logic exception_caught;
+logic [3:0] exception_cause, exception_cause_next;
 
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
@@ -61,7 +68,7 @@ logic [4:0] load_rd;
 logic load_en;
 
 enum logic [1:0] {
-    WRITE,
+    STEADY,
     LSU,
     TRAP
 } state, next_state;
@@ -73,7 +80,7 @@ enum logic [1:0] {
 // Load/Store take 2-3 cycles depending on data alignment
 
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= WRITE;
+    if (~rstz) state <= STEADY;
     else state <= next_state;
 end
 
@@ -81,28 +88,27 @@ always_comb begin
     next_state = state;
     /* verilator lint_off CASEINCOMPLETE */
     case (state)
-        WRITE: if (pipe_in_vld) begin
-            if (execute.except) next_state = TRAP;
+        STEADY: if (pipe_in_vld) begin
+            if (exception_caught) next_state = TRAP;
             else if (execute.ld || execute.st) next_state = LSU;
         end
 
-        LSU: if (lsu_done) next_state = WRITE;
+        LSU: if (lsu_done) next_state = STEADY;
 
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
 
 // Always accept execute stage pipeline in steady state
-assign pipe_in_rdy = state == WRITE;
+assign pipe_in_rdy = state == STEADY;
 
-// Direct write-back is always valid in steady state
-assign wb_valid = pipe_in_vld && state == WRITE && next_state == WRITE;
-
+// Direct write-back is always valid in continued steady state
+assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught;
 
 // ============================================================
 // Load Store Unit
 
-assign lsu_start = state == WRITE && next_state == LSU;
+assign lsu_start = wb_valid && (execute.ld || execute.st);
 
 kronos_lsu u_lsu (
     .clk         (clk              ),
@@ -128,7 +134,6 @@ kronos_lsu u_lsu (
     .data_gnt    (data_gnt         )
 );
 
-
 // ============================================================
 // Register Write
 // Registers are written either directly or from memory loads
@@ -136,7 +141,7 @@ kronos_lsu u_lsu (
 // and is evaluated as a safe direct write
 // Loads will take 1 cycle for aligned access and 2 for unaligned access
 
-assign direct_write = wb_valid && execute.rd_write;
+assign direct_write = wb_valid && execute.rd_write && ~execute.ld;
 
 assign regwr_data = (load_en) ? load_data : execute.result1;
 assign regwr_sel  = (load_en) ? load_rd   : execute.rd;
@@ -147,6 +152,37 @@ assign regwr_en   = (load_en) ? 1'b1      : direct_write;
 // Set PC to result2, if unconditional branch or condition valid (result1 from alu comparator is 1)
 
 assign branch_target = execute.result2;
-assign branch = wb_valid && (execute.branch || (execute.branch_cond && execute.result1[0]));
+assign branch_success = execute.branch || (execute.branch_cond && execute.result1[0]);
+
+assign branch = wb_valid && branch_success;
+
+// ============================================================
+// Exceptions
+
+// Catch exceptions from various sources around the core and inform
+// the WB sequencer about it, so it can prompt the CLIC to invoke
+// the trap handler
+always_comb begin
+    exception_caught = 1'b0;
+    exception_cause_next = '0;
+    if (pipe_in_vld && state == STEADY) begin
+        if (execute.is_illegal) begin
+            // Illegal instructions detected by the decoder
+            exception_caught = 1'b1;
+            exception_cause_next = ILLEGAL_INSTR;
+        end
+        else if (branch_success && branch_target[1:0] != 2'b00) begin
+            // Instructions can only be jumped to at 4B boundary
+            // And this only needs to be checked for unconditional jumps 
+            // or successful branches
+            exception_caught = 1'b1;
+            exception_cause_next = INSTR_ADDR_MISALIGNED;
+        end
+    end
+end
+
+always_ff @(posedge clk) begin
+    if (exception_caught) exception_cause <= exception_cause_next;
+end
 
 endmodule

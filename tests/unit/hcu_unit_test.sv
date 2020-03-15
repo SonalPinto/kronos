@@ -225,9 +225,8 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  st: %h",            d.st);
     $display("  data_size: %h",     d.data_size);    
     $display("  data_uns: %h",      d.data_uns);
-    $display("---- CLICCTRL ----");
-    $display("  except: %h",        d.except);
-    $display("  excause: %h",       d.excause);
+    $display("---- Exception ----");
+    $display("  is_illegal: %h",    d.is_illegal);
 endtask
 
 endmodule

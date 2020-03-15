@@ -11,7 +11,7 @@ into a generic form:
     RESULT2 = ADD( OP3, OP4 )
     EX_CTRL
     WB_CTRL
-    CLIC_CTRL
+    Exceptions
 
 where,
     OP1-4       : Operands, where OP1/2 are primary kronos_ALU operands,
@@ -29,7 +29,7 @@ where,
                   branch condition
     RESULT2     : memory write data
                   branch target
-    CLIC_CTRL   : Exception and Cause
+    Exceptions  : Exceptions caught
 
 EX_CTRL,
     cin, rev, uns , eq, inv, align, sel  
@@ -38,8 +38,8 @@ EX_CTRL,
 WB_CTRL
     rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns
 
-CLIC_CTRL
-    exception, excause
+Exceptions
+    is_illegal
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
     if compare(rs1, rs2):
@@ -548,17 +548,16 @@ always_ff @(posedge clk or negedge rstz) begin
             
             // WB controls
             decode.rd           <= (regwr_rd_en) ? rd : '0;
-            decode.rd_write     <= ~is_illegal && regwr_rd_en;
-            decode.branch       <= ~is_illegal && (OP == INSTR_JAL || OP == INSTR_JALR || is_fencei);
-            decode.branch_cond  <= ~is_illegal && (OP == INSTR_BR);
-            decode.ld           <= ~is_illegal && (OP == INSTR_LOAD);
-            decode.st           <= ~is_illegal && (OP == INSTR_STORE);
+            decode.rd_write     <= regwr_rd_en;
+            decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR || is_fencei;
+            decode.branch_cond  <= OP == INSTR_BR;
+            decode.ld           <= OP == INSTR_LOAD;
+            decode.st           <= OP == INSTR_STORE;
             decode.data_size    <= mem_access_size;
             decode.data_uns     <= mem_access_unsigned;
 
-            // CLIC Controls
-            decode.except       <= is_illegal;
-            decode.excause      <= is_illegal ? ILLEGAL_INSTR : '0;
+            // Exceptions
+            decode.is_illegal   <= is_illegal;
 
             // Store defaults in operands
             decode.op1 <= PC;
@@ -614,7 +613,6 @@ always_ff @(posedge clk or negedge rstz) begin
                 endcase // OP
                 /* verilator lint_off CASEINCOMPLETE */
             end
-
         end
         else if (pipe_out_vld && pipe_out_rdy) begin
             pipe_out_vld <= 1'b0;

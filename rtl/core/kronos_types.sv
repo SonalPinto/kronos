@@ -37,9 +37,8 @@ typedef struct packed {
     logic [1:0]  data_size;
     logic        data_uns;
     // ------------------------
-    // CLIC Controls
-    logic        except;
-    logic [3:0]  excause;
+    // Exceptions
+    logic        is_illegal;
 } pipeIDEX_t;
 
 typedef struct packed {
@@ -56,9 +55,8 @@ typedef struct packed {
     logic [1:0]  data_size;
     logic        data_uns;
     // ------------------------
-    // CLIC Controls
-    logic        except;
-    logic [3:0]  excause;
+    // Exceptions
+    logic        is_illegal;
 } pipeEXWB_t;
 
 

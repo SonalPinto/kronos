@@ -166,9 +166,8 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  st: %h",            d.st);
     $display("  data_size: %h",     d.data_size);    
     $display("  data_uns: %h",      d.data_uns);
-    $display("---- CLICCTRL ----");
-    $display("  except: %h",        d.except);
-    $display("  excause: %h",       d.excause);
+    $display("---- Exception ----");
+    $display("  is_illegal: %h",    d.is_illegal);
 endtask
 
 task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, output string optype);
@@ -193,7 +192,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0,38);
+    op = $urandom_range(0,37);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -227,9 +226,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.data_size = 0;
     decode.data_uns = 0;
     // ------------------------
-    // CLIC controls
-    decode.except = 0;
-    decode.excause = 0;
+    // Exceptions
+    decode.is_illegal = 0;
 
 
     // painstakingly build random-valid instructions
@@ -734,17 +732,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 4;
 
             decode.branch = 1;
-        end
-
-        38: begin
-            optype = "ILLEGAL";
-            instr.ir = 0;
-
-            decode.op1 = instr.ir;
-            decode.op2 = 0;
-
-            decode.except = 1;
-            decode.excause = ILLEGAL_INSTR;
         end
     endcase // instr
 endtask
