@@ -9,32 +9,37 @@ into a generic form:
 
     RESULT1 = ALU( OP1, OP2 )
     RESULT2 = ADD( OP3, OP4 )
-    WB_CONTROLS
+    EX_CTRL
+    WB_CTRL
+    CLIC_CTRL
 
 where,
     OP1-4       : Operands, where OP1/2 are primary kronos_ALU operands,
                   and OP3/4 are secondary adder operands
                   Each operand can take one of many values as listed below,
-                  OP1 <= PC, ZERO, REG[rs1]
-                  OP2 <= IMM, FOUR, REG[rs2]
+                  OP1 <= REG[rs1], PC, ZERO
+                  OP2 <= REG[rs2], IMM, FOUR
                   OP3 <= REG[rs1], PC, ZERO
-                  OP4 <= REG[rs2], IMM
+                  OP4 <= REG[rs2], IMM, FOUR
     EX_CTRL     : Execute stage controls
-    WB_CTRL     : Write back stage controls which perform an action using
+    WB_CTRL     : Write Back stage controls which perform an action using
                   RESULT1/2
     RESULT1     : register write data
                   memory access address
                   branch condition
     RESULT2     : memory write data
                   branch target
+    CLIC_CTRL   : Exception and Cause
 
 EX_CTRL,
     cin, rev, uns , eq, inv, align, sel  
     Check kronos_alu for details
 
 WB_CTRL
-    rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns, illegal
+    rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns
 
+CLIC_CTRL
+    exception, excause
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
     if compare(rs1, rs2):
@@ -72,6 +77,7 @@ logic [2:0] funct3;
 logic [6:0] funct7;
 
 logic is_nop;
+logic is_fencei;
 
 logic is_illegal;
 logic instr_valid;
@@ -246,15 +252,16 @@ always_comb begin
     // Default ALU Operation: ADD 
     //  result1 <= ALU.adder
     //  result2 <= unaligned add
-    cin     = 1'b0;
-    rev     = 1'b0;
-    uns     = 1'b0;
-    eq      = 1'b0;
-    inv     = 1'b0;
-    align   = 1'b0;
-    sel     = ALU_ADDER;
+    cin         = 1'b0;
+    rev         = 1'b0;
+    uns         = 1'b0;
+    eq          = 1'b0;
+    inv         = 1'b0;
+    align       = 1'b0;
+    sel         = ALU_ADDER;
     instr_valid = 1'b0;
-    is_nop = 1'b0;
+    is_nop      = 1'b0;
+    is_fencei   = 1'b0;
 
     // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
@@ -468,7 +475,10 @@ always_comb begin
             end
             3'b001: begin // FENCE.I
                 if (IR[31:20] == '0 && rs1 == '0 && rd =='0) begin
-                    is_nop = 1'b1;
+                    // implementing fence.i as `j f1` (jump to pc+4) 
+                    // as this will flush the pipeline and cause a fresh 
+                    // fetch of the instructions after the fence.i instruction
+                    is_fencei = 1'b1;
                     instr_valid = 1'b1;
                 end
             end
@@ -478,7 +488,7 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
-// Consolidate illegal factors
+// Consolidate factors that deem an instruction as illegal
 assign is_illegal = ~(instr_valid) | illegal_opcode;
 
 
@@ -492,7 +502,9 @@ assign mem_access_unsigned = (OP == INSTR_LOAD || OP == INSTR_STORE) ? funct3[2]
 // ============================================================
 // Hazard Control
 
-assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy && ~is_illegal;
+// Note that there is no need to guard against illegal instructions,
+// as upon jumping to the trap handler, the HCU will be flushed anyway
+assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy;
 assign hcu_downgrade = regwr_en;
 
 kronos_hcu u_hcu (
@@ -536,63 +548,72 @@ always_ff @(posedge clk or negedge rstz) begin
             
             // WB controls
             decode.rd           <= (regwr_rd_en) ? rd : '0;
-            decode.rd_write     <= regwr_rd_en;
-            decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR;
-            decode.branch_cond  <= OP == INSTR_BR;
-            decode.ld           <= OP == INSTR_LOAD;
-            decode.st           <= OP == INSTR_STORE;
+            decode.rd_write     <= ~is_illegal && regwr_rd_en;
+            decode.branch       <= ~is_illegal && (OP == INSTR_JAL || OP == INSTR_JALR || is_fencei);
+            decode.branch_cond  <= ~is_illegal && (OP == INSTR_BR);
+            decode.ld           <= ~is_illegal && (OP == INSTR_LOAD);
+            decode.st           <= ~is_illegal && (OP == INSTR_STORE);
             decode.data_size    <= mem_access_size;
             decode.data_uns     <= mem_access_unsigned;
-            decode.illegal      <= is_illegal;
+
+            // CLIC Controls
+            decode.except       <= is_illegal;
+            decode.excause      <= is_illegal ? ILLEGAL_INSTR : '0;
 
             // Store defaults in operands
             decode.op1 <= PC;
             decode.op2 <= FOUR;
             decode.op3 <= PC;
-            decode.op4 <= ZERO;
+            decode.op4 <= FOUR;
 
-            // Fill out OP1-4 as per opcode
-            /* verilator lint_off CASEINCOMPLETE */
-            case(OP)
-                INSTR_LUI   : begin
-                    decode.op1 <= ZERO;
-                    decode.op2 <= immediate;
-                end
-                INSTR_AUIPC : begin
-                    decode.op2 <= immediate;
-                end
-                INSTR_JAL : begin
-                    decode.op4 <= immediate;
-                end
-                INSTR_JALR : begin
-                    decode.op3 <= regrd_rs1;
-                    decode.op4 <= immediate;
-                end
-                INSTR_BR: begin
-                    decode.op1 <= regrd_rs1;
-                    decode.op2 <= regrd_rs2;
-                    decode.op4 <= immediate;
-                end
-                INSTR_LOAD: begin
-                    decode.op1 <= regrd_rs1;
-                    decode.op2 <= immediate;
-                end
-                INSTR_STORE: begin
-                    decode.op1 <= regrd_rs1;
-                    decode.op2 <= immediate;
-                    decode.op3 <= ZERO;
-                    decode.op4 <= regrd_rs2;
-                end
-                INSTR_OPIMM : begin
-                    decode.op1 <= regrd_rs1;
-                    decode.op2 <= immediate;
-                end
-                INSTR_OP    : begin
-                    decode.op1 <= regrd_rs1;
-                    decode.op2 <= regrd_rs2;
-                end
-            endcase // OP
-            /* verilator lint_off CASEINCOMPLETE */
+            if (is_illegal) begin
+                decode.op1 <= IR;
+                decode.op2 <= ZERO;
+            end
+            else begin
+                // Fill out OP1-4 as per opcode
+                /* verilator lint_off CASEINCOMPLETE */
+                case(OP)
+                    INSTR_LUI   : begin
+                        decode.op1 <= ZERO;
+                        decode.op2 <= immediate;
+                    end
+                    INSTR_AUIPC : begin
+                        decode.op2 <= immediate;
+                    end
+                    INSTR_JAL : begin
+                        decode.op4 <= immediate;
+                    end
+                    INSTR_JALR : begin
+                        decode.op3 <= regrd_rs1;
+                        decode.op4 <= immediate;
+                    end
+                    INSTR_BR: begin
+                        decode.op1 <= regrd_rs1;
+                        decode.op2 <= regrd_rs2;
+                        decode.op4 <= immediate;
+                    end
+                    INSTR_LOAD: begin
+                        decode.op1 <= regrd_rs1;
+                        decode.op2 <= immediate;
+                    end
+                    INSTR_STORE: begin
+                        decode.op1 <= regrd_rs1;
+                        decode.op2 <= immediate;
+                        decode.op3 <= ZERO;
+                        decode.op4 <= regrd_rs2;
+                    end
+                    INSTR_OPIMM : begin
+                        decode.op1 <= regrd_rs1;
+                        decode.op2 <= immediate;
+                    end
+                    INSTR_OP    : begin
+                        decode.op1 <= regrd_rs1;
+                        decode.op2 <= regrd_rs2;
+                    end
+                endcase // OP
+                /* verilator lint_off CASEINCOMPLETE */
+            end
 
         end
         else if (pipe_out_vld && pipe_out_rdy) begin

@@ -1,9 +1,10 @@
 // Copyright (c) 2020 Sonal Pinto
 // SPDX-License-Identifier: Apache-2.0
 
-
 package kronos_types;
 
+// ============================================================
+// Types
 typedef logic [31:0] instr_t;
 
 typedef struct packed {
@@ -35,7 +36,10 @@ typedef struct packed {
     logic        st;
     logic [1:0]  data_size;
     logic        data_uns;
-    logic        illegal;
+    // ------------------------
+    // CLIC Controls
+    logic        except;
+    logic [3:0]  excause;
 } pipeIDEX_t;
 
 typedef struct packed {
@@ -51,7 +55,10 @@ typedef struct packed {
     logic        st;
     logic [1:0]  data_size;
     logic        data_uns;
-    logic        illegal;
+    // ------------------------
+    // CLIC Controls
+    logic        except;
+    logic [3:0]  excause;
 } pipeEXWB_t;
 
 
@@ -92,5 +99,13 @@ parameter logic [1:0] WORD      = 2'b10;
 // Constants
 parameter logic [31:0] ZERO   = 32'h0;
 parameter logic [31:0] FOUR   = 32'h4;
+
+// ============================================================
+// Exceptions
+parameter logic [3:0] INSTR_ADDR_MISALIGNED = 4'd0;
+parameter logic [3:0] ILLEGAL_INSTR         = 4'd2;
+parameter logic [3:0] LOAD_ACCESS_FAULT     = 4'd5;
+parameter logic [3:0] STORE_ACCESS_FAULT    = 4'd7;
+parameter logic [3:0] ECALL_MACHINE         = 4'd11;
 
 endpackage

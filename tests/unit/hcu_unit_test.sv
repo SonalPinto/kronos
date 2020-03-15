@@ -24,6 +24,7 @@ logic regwr_en;
 kronos_ID u_id (
     .clk         (clk         ),
     .rstz        (rstz        ),
+    .flush       (1'b0        ),
     .fetch       (fetch       ),
     .pipe_in_vld (pipe_in_vld ),
     .pipe_in_rdy (pipe_in_rdy ),
@@ -224,7 +225,9 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  st: %h",            d.st);
     $display("  data_size: %h",     d.data_size);    
     $display("  data_uns: %h",      d.data_uns);
-    $display("  illegal: %h",       d.illegal);
+    $display("---- CLICCTRL ----");
+    $display("  except: %h",        d.except);
+    $display("  excause: %h",       d.excause);
 endtask
 
 endmodule

@@ -28,6 +28,8 @@ module kronos_EX
 logic [31:0] result1;
 logic [31:0] result2;
 
+logic is_misaligned;
+
 // ============================================================
 // ALU
 kronos_alu u_alu (
@@ -46,6 +48,15 @@ kronos_alu u_alu (
     .result2(result2     )
 );
 
+// Check for Instruction Address Misaligned exception
+// Instructions can only be jumped to at 4B boundary
+always_comb begin
+    is_misaligned = 1'b0;
+    if (decode.branch || decode.branch_cond) begin
+        is_misaligned = result2[1:0] != 2'b00;
+    end
+end
+
 
 // ============================================================
 // Execute Output Stage (calculated results)
@@ -61,7 +72,11 @@ always_ff @(posedge clk or negedge rstz) begin
         else if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= 1'b1;
 
-            // Forwar WB controls
+            // Results
+            execute.result1 <= result1;
+            execute.result2 <= result2;
+
+            // Forward WB controls
             execute.rd          <= decode.rd;
             execute.rd_write    <= decode.rd_write;
             execute.branch      <= decode.branch;
@@ -70,12 +85,16 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.st          <= decode.st;
             execute.data_size   <= decode.data_size;
             execute.data_uns    <= decode.data_uns;
-            execute.illegal     <= decode.illegal;
 
-            // Results
-            execute.result1 <= result1;
-            execute.result2 <= result2;
-
+            // Catch misaligned exception, else forward
+            if (~execute.except && is_misaligned) begin
+                execute.except      <= 1'b1;
+                execute.excause     <= INSTR_ADDR_MISALIGNED;
+            end
+            else begin
+                execute.except      <= decode.except;
+                execute.excause     <= decode.excause;
+            end
         end
         else if (pipe_out_vld && pipe_out_rdy) begin
             pipe_out_vld <= 1'b0;

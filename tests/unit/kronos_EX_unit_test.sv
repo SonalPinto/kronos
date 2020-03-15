@@ -122,7 +122,9 @@ task automatic print_execute(input pipeEXWB_t e);
     $display("  branch_cond: %h", e.branch_cond);
     $display("  data_size: %h",   e.data_size);    
     $display("  data_uns: %h",    e.data_uns);
-    $display("  illegal: %h",     e.illegal);
+    $display("---- CLICCTRL ----");
+    $display("  except: %h",     e.except);
+    $display("  excause: %h",    e.excause);
 endtask
 
 
@@ -174,7 +176,8 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     decode.st = 0;
     decode.data_size = 0;
     decode.data_uns = 0;
-    decode.illegal = 0;
+    decode.except = 0;
+    decode.excause = 0;
 
     //=========================
     // EXECUTE
@@ -188,8 +191,9 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.ld          = decode.ld;
     execute.st          = decode.st;
     execute.data_size   = decode.data_size;
-    execute.data_uns   = decode.data_uns;
-    execute.illegal     = decode.illegal;
+    execute.data_uns    = decode.data_uns;
+    execute.except      = 0;
+    execute.excause     = 0;
 
     case(aluop)
         0: begin

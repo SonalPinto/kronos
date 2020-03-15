@@ -166,7 +166,9 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  st: %h",            d.st);
     $display("  data_size: %h",     d.data_size);    
     $display("  data_uns: %h",      d.data_uns);
-    $display("  illegal: %h",       d.illegal);
+    $display("---- CLICCTRL ----");
+    $display("  except: %h",        d.except);
+    $display("  excause: %h",       d.excause);
 endtask
 
 task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, output string optype);
@@ -191,7 +193,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     logic [31:0] imm;
 
     // generate scenario
-    op = $urandom_range(0,36);
+    op = $urandom_range(0,38);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -204,7 +206,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.op1 = instr.pc;
     decode.op2 = 4;
     decode.op3 = instr.pc;
-    decode.op4 = 0;
+    decode.op4 = 4;
     // ------------------------
     // EX controls
     decode.cin = 0;
@@ -224,7 +226,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.st = 0;
     decode.data_size = 0;
     decode.data_uns = 0;
-    decode.illegal = 0;
+    // ------------------------
+    // CLIC controls
+    decode.except = 0;
+    decode.excause = 0;
 
 
     // painstakingly build random-valid instructions
@@ -719,6 +724,27 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
 
             decode.st = 1;
             decode.data_size = WORD;
+        end
+
+        37: begin
+            optype = "FENCEI";
+            instr.ir = rv32_fencei();
+
+            decode.op3 = instr.pc;
+            decode.op4 = 4;
+
+            decode.branch = 1;
+        end
+
+        38: begin
+            optype = "ILLEGAL";
+            instr.ir = 0;
+
+            decode.op1 = instr.ir;
+            decode.op2 = 0;
+
+            decode.except = 1;
+            decode.excause = ILLEGAL_INSTR;
         end
     endcase // instr
 endtask

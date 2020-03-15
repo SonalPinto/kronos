@@ -63,7 +63,7 @@ logic load_en;
 enum logic [1:0] {
     WRITE,
     LSU,
-    CATCH
+    TRAP
 } state, next_state;
 
 // ============================================================
@@ -82,7 +82,7 @@ always_comb begin
     /* verilator lint_off CASEINCOMPLETE */
     case (state)
         WRITE: if (pipe_in_vld) begin
-            if (execute.illegal) next_state = CATCH;
+            if (execute.except) next_state = TRAP;
             else if (execute.ld || execute.st) next_state = LSU;
         end
 
@@ -92,14 +92,17 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
-assign pipe_in_rdy = (state == WRITE) && (next_state != CATCH);
-assign wb_valid = (state == WRITE) && pipe_in_vld && next_state == WRITE;
+// Always accept execute stage pipeline in steady state
+assign pipe_in_rdy = state == WRITE;
+
+// Direct write-back is always valid in steady state
+assign wb_valid = pipe_in_vld && state == WRITE && next_state == WRITE;
 
 
 // ============================================================
 // Load Store Unit
 
-assign lsu_start = (state == WRITE) && pipe_in_vld && (execute.ld || execute.st);
+assign lsu_start = state == WRITE && next_state == LSU;
 
 kronos_lsu u_lsu (
     .clk         (clk              ),

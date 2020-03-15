@@ -20,6 +20,7 @@ logic regwr_en;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
+logic [3:0]  data_wr_mask;
 logic data_rd_req;
 logic data_wr_req;
 logic data_gnt;
@@ -35,6 +36,7 @@ logic execute_vld, execute_rdy;
 kronos_ID u_id (
     .clk         (clk       ),
     .rstz        (rstz      ),
+    .flush       (1'b0      ),
     .fetch       (fetch     ),
     .pipe_in_vld (fetch_vld ),
     .pipe_in_rdy (fetch_rdy ),
@@ -49,6 +51,7 @@ kronos_ID u_id (
 kronos_EX u_ex (
     .clk         (clk        ),
     .rstz        (rstz       ),
+    .flush       (1'b0       ),
     .decode      (decode     ),
     .pipe_in_vld (decode_vld ),
     .pipe_in_rdy (decode_rdy ),
@@ -58,7 +61,7 @@ kronos_EX u_ex (
 );
 
 kronos_WB u_wb (
-    .clk          (clk),
+    .clk          (clk          ),
     .rstz         (rstz         ),
     .execute      (execute      ),
     .pipe_in_vld  (execute_vld  ),
@@ -71,9 +74,11 @@ kronos_WB u_wb (
     .data_addr    (data_addr    ),
     .data_rd_data (data_rd_data ),
     .data_wr_data (data_wr_data ),
+    .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
     .data_gnt     (data_gnt     )
+    
 );
 
 default clocking cb @(posedge clk);
@@ -101,7 +106,7 @@ struct {
 
         // init regfile with random values
         for(int i=0; i<32; i++) begin
-            u_id.REG1[i] = $urandom;
+            u_id.REG1[i] = $urandom & ~3;
             u_id.REG2[i] = u_id.REG1[i];
             REG[i] = u_id.REG1[i];
         end
@@ -187,12 +192,12 @@ task automatic rand_instr(output pipeIFID_t instr, output string optype);
 
     // generate scenario
     op = $urandom_range(0, 7);
-    imm = $urandom();
+    imm = $urandom() & ~3;
     rs1 = $urandom();
     rs2 = $urandom();
     rd = $urandom_range(1,31);
 
-    instr.pc = $urandom;
+    instr.pc = $urandom & ~3;
     pc = int'(instr.pc);
     op1_uns = REG[rs1];
     op2_uns = REG[rs2];

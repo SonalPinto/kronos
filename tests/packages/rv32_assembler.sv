@@ -217,5 +217,21 @@ function instr_t rv32_and(logic [4:0] rd, rs1, rs2);
     return {7'b0000000, rs2, rs1, 3'b111, rd, 7'b01_100_11};
 endfunction
 
+// ========================================================
+// MISC
+// ========================================================
+function instr_t rv32_fence();
+    return {12'b0, 5'b0, 3'b000, 5'b0, 7'b00_011_11};
+endfunction
+
+function instr_t rv32_fencei();
+    return {12'b0, 5'b0, 3'b001, 5'b0, 7'b00_011_11};
+endfunction
+
+// ========================================================
+// SYSTEM
+// ========================================================
+
+
 /* verilator lint_on UNUSED */
 endpackage
