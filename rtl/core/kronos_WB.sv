@@ -21,8 +21,15 @@ WB_CTRL
     branch_cond : conditional branch
     ld          : load
     st          : store
-    data_size   : memory access size - byte, half-word or word
-    data_sign   : sign extend memory data (only for load)
+    funct3      : Context based parameter
+        - data_size : memory access size - byte, half-word or word
+        - data_sign : sign extend memory data (only for load)
+
+System Controls
+    system      : system instruction
+    ecall       : environment call
+    funct3      : Context based parameter
+        - csr_op    : CSR operation, rw/set/clr
 
 Exceptions
     illegal     : illegal instruction
@@ -111,27 +118,27 @@ assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught;
 assign lsu_start = wb_valid && (execute.ld || execute.st);
 
 kronos_lsu u_lsu (
-    .clk         (clk              ),
-    .rstz        (rstz             ),
-    .addr        (execute.result1  ),
-    .load_data   (load_data        ),
-    .load_rd     (load_rd          ),
-    .load_en     (load_en          ),
-    .store_data  (execute.result2  ),
-    .start       (lsu_start        ),
-    .done        (lsu_done         ),
-    .rd          (execute.rd       ),
-    .ld          (execute.ld       ),
-    .st          (execute.st       ),
-    .data_size   (execute.data_size),
-    .data_uns    (execute.data_uns ),
-    .data_addr   (data_addr        ),
-    .data_rd_data(data_rd_data     ),
-    .data_wr_data(data_wr_data     ),
-    .data_wr_mask(data_wr_mask     ),
-    .data_rd_req (data_rd_req      ),
-    .data_wr_req (data_wr_req      ),
-    .data_gnt    (data_gnt         )
+    .clk         (clk                ),
+    .rstz        (rstz               ),
+    .addr        (execute.result1    ),
+    .load_data   (load_data          ),
+    .load_rd     (load_rd            ),
+    .load_en     (load_en            ),
+    .store_data  (execute.result2    ),
+    .start       (lsu_start          ),
+    .done        (lsu_done           ),
+    .rd          (execute.rd         ),
+    .ld          (execute.ld         ),
+    .st          (execute.st         ),
+    .data_size   (execute.funct3[1:0]),
+    .data_uns    (execute.funct3[2]  ),
+    .data_addr   (data_addr          ),
+    .data_rd_data(data_rd_data       ),
+    .data_wr_data(data_wr_data       ),
+    .data_wr_mask(data_wr_mask       ),
+    .data_rd_req (data_rd_req        ),
+    .data_wr_req (data_wr_req        ),
+    .data_gnt    (data_gnt           )
 );
 
 // ============================================================

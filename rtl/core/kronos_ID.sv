@@ -11,6 +11,7 @@ into a generic form:
     RESULT2 = ADD( OP3, OP4 )
     EX_CTRL
     WB_CTRL
+    System
     Exceptions
 
 where,
@@ -24,24 +25,26 @@ where,
     EX_CTRL     : Execute stage controls
     WB_CTRL     : Write Back stage controls which perform an action using
                   RESULT1/2
+    System      : System instructions
+    Exceptions  : Exceptions caught
     RESULT1     : register write data
                   memory access address
                   branch condition
     RESULT2     : memory write data
                   branch target
-    Exceptions  : Exceptions caught
 
 EX_CTRL,
     cin, rev, uns , eq, inv, align, sel  
     Check kronos_alu for details
 
 WB_CTRL
-    rd, rd_write, branch, branch_cond, ld, st, data_size, data_uns
-    system, csr_wr/rd/set/clr
+    rd, rd_write, branch, branch_cond, ld, st, funct3 (load/store data size+sign)
+
+System
+    system, ecall, funct3 (csr operation: rw/set/clr)
 
 Exceptions
     is_illegal
-    is_ecall
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
     if compare(rs1, rs2):
@@ -125,21 +128,13 @@ logic       inv;
 logic       align;
 logic [2:0] sel;
 
-// Memory access controls
-logic [1:0] mem_access_size;
-logic mem_access_unsigned;
-
 // Hazard controls
 logic hcu_upgrade;
 logic hcu_downgrade;
 logic hcu_stall;
 
-// CSR Controls
+// CSR register access
 logic csr_regrd, csr_regwr;
-logic csr_rd;
-logic csr_wr;
-logic csr_set;
-logic csr_clr;
 
 // ============================================================
 // [rv32i] Instruction Decoder
@@ -293,10 +288,6 @@ always_comb begin
     is_nop          = 1'b0;
     is_fencei       = 1'b0;
     is_ecall        = 1'b0;
-    csr_wr          = 1'b0;
-    csr_rd          = 1'b0;
-    csr_set         = 1'b0;
-    csr_clr         = 1'b0;
 
     // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
@@ -509,7 +500,7 @@ always_comb begin
                 end
             end
             3'b001: begin // FENCE.I
-                if (IR[31:20] == '0 && zimm == '0 && rd == '0) begin
+                if (IR[31:20] == 12'b0 && zimm == '0 && rd == '0) begin
                     // implementing fence.i as `j f1` (jump to pc+4) 
                     // as this will flush the pipeline and cause a fresh 
                     // fetch of the instructions after the fence.i instruction
@@ -532,34 +523,12 @@ always_comb begin
                     instr_valid = 1'b1;
                 end
             end
-            3'b001: begin // CSRRW
-                csr_rd = 1'b1;
-                csr_wr = 1'b1;
-                instr_valid = 1'b1;
-            end
-            3'b010: begin // CSRRS
-                csr_rd = 1'b1;
-                csr_set = 1'b1;
-                instr_valid = 1'b1;
-            end
-            3'b011: begin // CSRRC
-                csr_rd = 1'b1;
-                csr_clr = 1'b1;
-                instr_valid = 1'b1;
-            end
-            3'b101: begin // CSRRW
-                csr_rd = 1'b1;
-                csr_wr = 1'b1;
-                instr_valid = 1'b1;
-            end
-            3'b110: begin // CSRRS
-                csr_rd = 1'b1;
-                csr_set = 1'b1;
-                instr_valid = 1'b1;
-            end
-            3'b111: begin // CSRRC
-                csr_rd = 1'b1;
-                csr_clr = 1'b1;
+            3'b001,       // CSRRW
+            3'b010,       // CSRRS
+            3'b011,       // CSRRC
+            3'b101,       // CSRRWI
+            3'b110,       // CSRRSI
+            3'b111: begin // CSRRCI
                 instr_valid = 1'b1;
             end
         endcase // funct3
@@ -570,13 +539,6 @@ end
 
 // Consolidate factors that deem an instruction as illegal
 assign is_illegal = ~(instr_valid) | illegal_opcode;
-
-
-// ============================================================
-// Memory Access
-// Load/Store memory access control
-assign mem_access_size = funct3[1:0];
-assign mem_access_unsigned = funct3[2];
 
 
 // ============================================================
@@ -633,18 +595,14 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.branch_cond  <= OP == INSTR_BR;
             decode.ld           <= OP == INSTR_LOAD;
             decode.st           <= OP == INSTR_STORE;
-            decode.data_size    <= mem_access_size;
-            decode.data_uns     <= mem_access_unsigned;
+            decode.funct3       <= funct3;
 
+            // System
             decode.system       <= OP == INSTR_SYS;
-            decode.csr_rd       <= csr_rd;
-            decode.csr_wr       <= csr_wr;
-            decode.csr_set      <= csr_set;
-            decode.csr_clr      <= csr_clr;
+            decode.ecall        <= is_ecall;
 
             // Exceptions
             decode.is_illegal   <= is_illegal;
-            decode.is_ecall     <= is_ecall;
 
             // Store defaults in operands
             decode.op1 <= PC;

@@ -228,8 +228,7 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             execute.rd = rd;
             execute.rd_write = 1;
             execute.ld = 1;
-            execute.data_size = BYTE;
-            execute.data_uns = 0;
+            execute.funct3 = {1'b0, BYTE};
 
             dbyte = mem_word[offset];
             expected_regwr_data = signed'(dbyte);
@@ -243,8 +242,7 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             execute.rd = rd;
             execute.rd_write = 1;
             execute.ld = 1;
-            execute.data_size = BYTE;
-            execute.data_uns = 1;
+            execute.funct3 = {1'b1, BYTE};
 
             dbyte = mem_word[offset];
             expected_regwr_data = {24'b0, dbyte};
@@ -258,8 +256,7 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             execute.rd = rd;
             execute.rd_write = 1;
             execute.ld = 1;
-            execute.data_size = HALF;
-            execute.data_uns = 0;
+            execute.funct3 = {1'b0, HALF};
 
             expected_regwr_sel = rd;
 
@@ -275,8 +272,7 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             execute.rd = rd;
             execute.rd_write = 1;
             execute.ld = 1;
-            execute.data_size = HALF;
-            execute.data_uns = 1;
+            execute.funct3 = {1'b1, HALF};
 
             expected_regwr_sel = rd;
 
@@ -292,8 +288,7 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
             execute.rd = rd;
             execute.rd_write = 1;
             execute.ld = 1;
-            execute.data_size = WORD;
-            execute.data_uns = 0;
+            execute.funct3 = {1'b0, WORD};
 
             expected_regwr_sel = rd;
 
@@ -341,7 +336,7 @@ task automatic rand_store(output pipeEXWB_t execute, output string optype);
             execute.result1 = maddr;
             execute.result2 = dbyte;
             execute.st = 1;
-            execute.data_size = BYTE;
+            execute.funct3 = {1'b0, BYTE};
 
             mem_word[offset] = dbyte;
         end
@@ -352,7 +347,7 @@ task automatic rand_store(output pipeEXWB_t execute, output string optype);
             execute.result1 = maddr;
             execute.result2 = dhalf;
             execute.st = 1;
-            execute.data_size = HALF;
+            execute.funct3 = {1'b0, HALF};
 
             {mem_word[offset+1], mem_word[offset]} = dhalf;
         end
@@ -363,7 +358,7 @@ task automatic rand_store(output pipeEXWB_t execute, output string optype);
             execute.result1 = maddr;
             execute.result2 = dword;
             execute.st = 1;
-            execute.data_size = WORD;
+            execute.funct3 = {1'b0, WORD};
 
             {mem_word[offset+3], mem_word[offset+2],
                 mem_word[offset+1], mem_word[offset]} = dword;

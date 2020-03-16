@@ -34,17 +34,14 @@ typedef struct packed {
     logic        branch_cond;
     logic        ld;
     logic        st;
-    logic [1:0]  data_size;
-    logic        data_uns;
+    logic [2:0]  funct3;
+    // ------------------------
+    // System
     logic        system;
-    logic        csr_wr;
-    logic        csr_rd;
-    logic        csr_set;
-    logic        csr_clr;
+    logic        ecall;
     // ------------------------
     // Exceptions
     logic        is_illegal;
-    logic        is_ecall;
 } pipeIDEX_t;
 
 typedef struct packed {
@@ -58,17 +55,14 @@ typedef struct packed {
     logic        branch_cond;
     logic        ld;
     logic        st;
-    logic [1:0]  data_size;
-    logic        data_uns;
+    logic [2:0]  funct3;
+    // ------------------------
+    // System
     logic        system;
-    logic        csr_rd;
-    logic        csr_wr;
-    logic        csr_set;
-    logic        csr_clr;
+    logic        ecall;
     // ------------------------
     // Exceptions
     logic        is_illegal;
-    logic        is_ecall;
 } pipeEXWB_t;
 
 

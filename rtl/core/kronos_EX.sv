@@ -71,17 +71,12 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.branch_cond <= decode.branch_cond;
             execute.ld          <= decode.ld;
             execute.st          <= decode.st;
-            execute.data_size   <= decode.data_size;
-            execute.data_uns    <= decode.data_uns;
+            execute.funct3      <= decode.funct3;
+            // Forward System controls
             execute.system      <= decode.system;
-            execute.csr_rd      <= decode.csr_rd;
-            execute.csr_wr      <= decode.csr_wr;
-            execute.csr_set     <= decode.csr_set;
-            execute.csr_clr     <= decode.csr_clr;
-
+            execute.ecall       <= decode.ecall;
             // Forward caught exceptions
             execute.is_illegal  <= decode.is_illegal;
-            execute.is_ecall    <= decode.is_ecall;
 
         end
         else if (pipe_out_vld && pipe_out_rdy) begin

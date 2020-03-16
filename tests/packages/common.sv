@@ -28,17 +28,12 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  branch_cond: %h",   d.branch_cond);
     $display("  ld: %h",            d.ld);
     $display("  st: %h",            d.st);
-    $display("  data_size: %h",     d.data_size);    
-    $display("  data_uns: %h",      d.data_uns);
+    $display("  funct3: %h",        d.funct3);    
     $display("---- System ----");
     $display("  system: %h",        d.system);
-    $display("  csr_rd: %h",        d.csr_rd);
-    $display("  csr_wr: %h",        d.csr_wr);
-    $display("  csr_set: %h",       d.csr_set);
-    $display("  csr_clr: %h",       d.csr_clr);
+    $display("  ecall: %h",         d.ecall);
     $display("---- Exception ----");
     $display("  is_illegal: %h",    d.is_illegal);
-    $display("  is_ecall: %h",      d.is_ecall);
 endtask
 
 task automatic print_execute(input pipeEXWB_t e);
@@ -52,17 +47,12 @@ task automatic print_execute(input pipeEXWB_t e);
     $display("  ld: %h",          e.ld);
     $display("  st: %h",          e.st);
     $display("  branch_cond: %h", e.branch_cond);
-    $display("  data_size: %h",   e.data_size);    
-    $display("  data_uns: %h",    e.data_uns);
+    $display("  funct3: %h",      e.funct3);    
     $display("---- System ----");
     $display("  system: %h",      e.system);
-    $display("  csr_rd: %h",      e.csr_rd);
-    $display("  csr_wr: %h",      e.csr_wr);
-    $display("  csr_set: %h",     e.csr_set);
-    $display("  csr_clr: %h",     e.csr_clr);
+    $display("  ecall: %h",       e.ecall);
     $display("---- Exception ----");
     $display("  is_illegal: %h",  e.is_illegal);
-    $display("  is_ecall: %h",    e.is_ecall);
 endtask
 
 endpackage

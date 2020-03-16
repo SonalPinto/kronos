@@ -201,18 +201,14 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     decode.branch_cond = 0;
     decode.ld = 0;
     decode.st = 0;
-    decode.data_size = 0;
-    decode.data_uns = 0;
+    decode.funct3 = 0;
+    // ------------------------
+    // System
     decode.system = 0;
-    decode.csr_rd = 0;
-    decode.csr_wr = 0;
-    decode.csr_set = 0;
-    decode.csr_clr = 0;
+    decode.ecall = 0;
     // ------------------------
     // Exceptions
     decode.is_illegal = 0;
-    decode.is_ecall   = 0;
-
 
     // painstakingly build random-valid instructions
     // and expected decode
@@ -609,8 +605,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd = rd;
             decode.rd_write = rd != 0;
             decode.ld = 1;
-            decode.data_size = BYTE;
-            decode.data_uns = 0;
         end
 
         30: begin
@@ -623,8 +617,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd = rd;
             decode.rd_write = rd != 0;
             decode.ld = 1;
-            decode.data_size = HALF;
-            decode.data_uns = 0;
         end
 
         31: begin
@@ -637,8 +629,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd = rd;
             decode.rd_write = rd != 0;
             decode.ld = 1;
-            decode.data_size = WORD;
-            decode.data_uns = 0;
         end
 
         32: begin
@@ -651,8 +641,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd = rd;
             decode.rd_write = rd != 0;
             decode.ld = 1;
-            decode.data_size = BYTE;
-            decode.data_uns = 1;
         end
 
         33: begin
@@ -665,8 +653,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd = rd;
             decode.rd_write = rd != 0;
             decode.ld = 1;
-            decode.data_size = HALF;
-            decode.data_uns = 1;
         end
 
         34: begin
@@ -679,7 +665,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = REG[rs2];
 
             decode.st = 1;
-            decode.data_size = BYTE;
         end
 
         35: begin
@@ -692,7 +677,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = REG[rs2];
 
             decode.st = 1;
-            decode.data_size = HALF;
         end
 
         36: begin
@@ -705,7 +689,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = REG[rs2];
 
             decode.st = 1;
-            decode.data_size = WORD;
         end
 
         37: begin
@@ -731,8 +714,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_wr = 1;
         end
 
         39: begin
@@ -748,8 +729,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_set = 1;
         end
 
         40: begin
@@ -765,8 +744,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_clr = 1;
         end
 
         41: begin
@@ -782,8 +759,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_wr = 1;
         end
 
         42: begin
@@ -799,8 +774,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_set = 1;
         end
 
         43: begin
@@ -816,8 +789,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.system = 1;
-            decode.csr_rd = 1;
-            decode.csr_clr = 1;
         end
 
         44: begin
@@ -830,14 +801,13 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.system = 1;
-            decode.is_ecall = 1;
+            decode.ecall = 1;
         end
     endcase // instr
 
-    // defaults - IR segments
+    // default as-is decode - IR segments
     decode.rd = instr.ir[11:7];
-    decode.data_size = instr.ir[13:12];
-    decode.data_uns = instr.ir[14];
+    decode.funct3 = instr.ir[14:12];
 endtask
 
 endmodule

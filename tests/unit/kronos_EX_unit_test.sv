@@ -151,15 +151,10 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.branch_cond = decode.branch_cond;
     execute.ld          = decode.ld;
     execute.st          = decode.st;
-    execute.data_size   = decode.data_size;
-    execute.data_uns    = decode.data_uns;
-    execute.is_illegal  = decode.is_illegal;
-    execute.is_ecall    = decode.is_ecall;
+    execute.funct3      = decode.funct3;
     execute.system      = decode.system;
-    execute.csr_rd      = decode.csr_rd;
-    execute.csr_wr      = decode.csr_wr;
-    execute.csr_set     = decode.csr_set;
-    execute.csr_clr     = decode.csr_clr;
+    execute.ecall       = decode.ecall;
+    execute.is_illegal  = decode.is_illegal;
 
     case(aluop)
         0: begin
