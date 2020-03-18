@@ -30,16 +30,20 @@ always_ff @(posedge clk or negedge rstz) begin
         incr_high <= 1'b0;
     end
     else begin
+        incr_high <= 1'b0;
+
+        // during a load (any segment), the count is paused
         if (load_low) count_low <= load_data;
         else if (load_high) count_high <= load_data;
-        else if (incr) begin
-            count_low <= count_low + 1'b1;
+        else begin
+            if (incr) begin
+                count_low <= count_low + 1'b1;
+                // indicate that the upper word needs to increment
+                incr_high <= count_low == '1;
+            end
 
-            // indicate that the upper word needs to increment
-            incr_high <= count_low == '1;
+            if (incr_high) count_high <= count_high + 1'b1;
         end
-
-        if (incr_high) count_high <= count_high + 1'b1;
     end
 end
 

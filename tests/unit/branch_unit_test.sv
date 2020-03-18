@@ -24,6 +24,14 @@ logic [3:0]  data_wr_mask;
 logic data_rd_req;
 logic data_wr_req;
 logic data_gnt;
+logic [11:0] csr_addr;
+logic [1:0] csr_op;
+logic [31:0] csr_rd_data;
+logic [31:0] csr_wr_data;
+logic csr_rd_req;
+logic csr_wr_req;
+logic csr_gnt;
+logic instret;
 
 pipeIFID_t fetch;
 pipeIDEX_t decode;
@@ -77,8 +85,15 @@ kronos_WB u_wb (
     .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
-    .data_gnt     (data_gnt     )
-    
+    .data_gnt     (data_gnt     ),
+    .csr_addr     (csr_addr     ),
+    .csr_op       (csr_op       ),
+    .csr_rd_data  (csr_rd_data  ),
+    .csr_wr_data  (csr_wr_data  ),
+    .csr_rd_req   (csr_rd_req   ),
+    .csr_wr_req   (csr_wr_req   ),
+    .csr_gnt      (csr_gnt      ),
+    .instret      (instret      )
 );
 
 default clocking cb @(posedge clk);
@@ -103,6 +118,9 @@ struct {
     `TEST_SUITE_SETUP begin
         clk = 0;
         rstz = 0;
+
+        csr_gnt = 0;
+        csr_rd_data = 0;
 
         // init regfile with random values
         for(int i=0; i<32; i++) begin

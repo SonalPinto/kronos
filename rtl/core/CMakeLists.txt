@@ -57,4 +57,5 @@ add_hdl_source(kronos_core.sv
         kronos_ID
         kronos_EX
         kronos_WB
+        kronos_csr
 )

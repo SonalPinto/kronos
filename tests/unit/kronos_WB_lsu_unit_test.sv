@@ -33,6 +33,8 @@ logic csr_rd_req;
 logic csr_wr_req;
 logic csr_gnt;
 
+logic instret;
+
 kronos_WB u_wb (
     .clk          (clk          ),
     .rstz         (rstz         ),
@@ -57,7 +59,8 @@ kronos_WB u_wb (
     .csr_wr_data  (csr_wr_data  ),
     .csr_rd_req   (csr_rd_req   ),
     .csr_wr_req   (csr_wr_req   ),
-    .csr_gnt      (csr_gnt      )
+    .csr_gnt      (csr_gnt      ),
+    .instret      (instret      )
 );
 
 spsram32_model #(.DEPTH(1024)) u_dmem (

@@ -64,7 +64,8 @@ module kronos_WB
     output logic [31:0] csr_wr_data,
     output logic        csr_rd_req,
     output logic        csr_wr_req,
-    input  logic        csr_gnt
+    input  logic        csr_gnt,
+    output logic        instret
 );
 
 logic wb_valid;
@@ -78,6 +79,9 @@ logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
 logic load_en;
+
+logic [4:0] csr_rd;
+logic csr_done, csr_wr_ok;
 
 enum logic [2:0] {
     STEADY,
@@ -153,17 +157,44 @@ kronos_lsu u_lsu (
 );
 
 // ============================================================
-// Register Write
-// Registers are written either directly or from memory loads
-// Direct writes are commited in the same cycle as execute goes valid
-// and is evaluated as a safe direct write
-// Loads will take 1 cycle for aligned access and 2 for unaligned access
+/*
+Register Write
+Registers are written by multiple sources
+     - directly as per the instruction
+     - memory load
+     - CSR
+
+Direct writes are commited in the same cycle as execute goes valid
+and is evaluated as a safe direct write
+
+Loads will take 1 cycle for aligned access and 2 for unaligned 
+immediate memory access (longer for far memory, i.e memory mapped,
+flash, etc)
+
+CSR read+modify+write takes 3-4 cycles
+*/
 
 assign direct_write = wb_valid && execute.rd_write;
 
-assign regwr_data = (load_en) ? load_data : execute.result1;
-assign regwr_sel  = (load_en) ? load_rd   : execute.rd;
-assign regwr_en   = (load_en) ? 1'b1      : direct_write;
+always_comb begin
+    regwr_data = execute.result1;
+    regwr_sel  = execute.rd;
+    regwr_en   = 1'b0;
+
+    if (state == WRITE_CSR) begin
+        regwr_data = csr_rd_data;
+        regwr_sel  = csr_rd;
+        regwr_en   = csr_rd != '0;
+    end
+    else if (load_en) begin
+        regwr_data = load_data;
+        regwr_sel  = load_rd;
+        regwr_en   = load_rd != '0;
+    end
+    else if (direct_write) begin
+        regwr_en   = execute.rd != '0;
+    end
+end
 
 // ============================================================
 // Branch
@@ -178,19 +209,35 @@ assign branch = wb_valid && branch_success;
 // CSR
 // Setup and assert Control Status Register operation controls
 // Note that these operations are static state Moore, and not Registered-Mealy
-// like LSU and direct writes/branches. Don't need to optimize for that 1 cycle...
+// like LSU and direct writes/branches. Don't need to optimize for CSR ops.
 // #ccf - common case fast
 
 always_ff @(posedge clk) begin
     if (wb_valid && execute.system) begin
         csr_op <= execute.funct3[1:0];
-        csr_addr <= execute.result1[31-:12]; // CSR forms the highest 12b of the IR
+        // CSR forms the highest 12b of the IR
+        csr_addr <= execute.result1[31-:12]; 
         csr_wr_data <= execute.result2;
+        csr_rd <= execute.rd;
+        // Cancel the CSR Write if CSR Reg wdata source, rs1=0
+        csr_wr_ok <= ~((execute.funct3 == 3'b010 || execute.funct3 == 3'b011)
+            && (execute.result1[19:15] == '0));
     end
 end
 
+assign csr_done = state == WRITE_CSR;
+
 assign csr_rd_req = state == READ_CSR & ~csr_gnt;
-assign csr_wr_req = state == WRITE_CSR;
+assign csr_wr_req = csr_done & csr_wr_ok;
+
+// instruction retired event
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) instret <= 1'b0;
+    else instret <= direct_write 
+                    || branch 
+                    || lsu_done 
+                    || csr_done;
+end
 
 // ============================================================
 // Exceptions

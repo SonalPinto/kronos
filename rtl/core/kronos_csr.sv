@@ -29,7 +29,9 @@ module kronos_csr
     input  logic [31:0] wr_data,
     input  logic        rd_req,
     input  logic        wr_req,
-    output logic        gnt
+    output logic        gnt,
+    // WB macros
+    input  logic        instret
 );
 
 logic [31:0] csr_rd_data, csr_wr_data;
@@ -38,6 +40,10 @@ logic csr_rd_vld;
 logic mcycle_wrenl, mcycle_wrenh;
 logic mcycle_rd_vld;
 logic [63:0] mcycle;
+
+logic minstret_wrenl, minstret_wrenh;
+logic minstret_rd_vld;
+logic [63:0] minstret;
 
 // ============================================================
 // Access Sequencer
@@ -59,7 +65,7 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 // aggregate all read-valid sources
-assign csr_rd_vld = mcycle_rd_vld;
+assign csr_rd_vld = mcycle_rd_vld && minstret_rd_vld;
 
 // ============================================================
 // CSR Read
@@ -68,9 +74,9 @@ always_comb begin
     /* verilator lint_off CASEINCOMPLETE */
     case(addr)
         MCYCLE      : csr_rd_data = mcycle[31:0];
-        // MINSTRET    : csr_rd_data = minstret[31:0];
+        MINSTRET    : csr_rd_data = minstret[31:0];
         MCYCLEH     : csr_rd_data = mcycle[63:32];
-        // MINSTRETH   : csr_rd_data = minstret[63:32];
+        MINSTRETH   : csr_rd_data = minstret[63:32];
     endcase // addr
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -108,5 +114,18 @@ kronos_counter64 u_hpmcounter0 (
 );
 
 // minstret, 64b Machine instructions-retired counter
+assign minstret_wrenl = wr_req && addr == MINSTRET;
+assign minstret_wrenh = wr_req && addr == MINSTRETH;
+
+kronos_counter64 u_hpmcounter1 (
+    .clk      (clk            ),
+    .rstz     (rstz           ),
+    .incr     (instret        ),
+    .load_data(csr_wr_data    ),
+    .load_low (minstret_wrenl ),
+    .load_high(minstret_wrenh ),
+    .count    (minstret       ),
+    .count_vld(minstret_rd_vld)
+);
 
 endmodule
