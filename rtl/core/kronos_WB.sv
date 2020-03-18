@@ -159,7 +159,7 @@ kronos_lsu u_lsu (
 // and is evaluated as a safe direct write
 // Loads will take 1 cycle for aligned access and 2 for unaligned access
 
-assign direct_write = wb_valid && execute.rd_write; // !!! FIXME !!!
+assign direct_write = wb_valid && execute.rd_write;
 
 assign regwr_data = (load_en) ? load_data : execute.result1;
 assign regwr_sel  = (load_en) ? load_rd   : execute.rd;

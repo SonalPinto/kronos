@@ -90,7 +90,7 @@ logic illegal_opcode;
 
 logic regrd_rs1_en, regrd_rs2_en;
 logic [31:0] regrd_rs1, regrd_rs2;
-logic regwr_rd_en;
+logic regwr_rd_en, is_reg_write;
 
 logic sign;
 logic format_I;
@@ -173,6 +173,7 @@ Note: Since this ID module is geared towards FPGA,
 logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
+// RS1/RS2 register read conditions
 assign regrd_rs1_en = OP == INSTR_OPIMM 
                     || OP == INSTR_OP 
                     || OP == INSTR_JALR 
@@ -185,7 +186,9 @@ assign regrd_rs2_en = OP == INSTR_OP
                     || OP == INSTR_BR
                     || OP == INSTR_STORE;
 
-assign regwr_rd_en = (rd != '0) && (OP == INSTR_LUI
+// Indicates a register will be written by this instructions
+// regardless of source. This is useful for hazard tracking
+assign is_reg_write = (rd != '0) && (OP == INSTR_LUI
                                 || OP == INSTR_AUIPC
                                 || OP == INSTR_JAL
                                 || OP == INSTR_JALR
@@ -193,6 +196,14 @@ assign regwr_rd_en = (rd != '0) && (OP == INSTR_LUI
                                 || OP == INSTR_OP
                                 || OP == INSTR_LOAD
                                 || csr_regwr);
+
+// Direct register write (when the WB writes to the Register directly)
+assign regwr_rd_en = (rd != '0) && (OP == INSTR_LUI
+                                || OP == INSTR_AUIPC
+                                || OP == INSTR_JAL
+                                || OP == INSTR_JALR
+                                || OP == INSTR_OPIMM 
+                                || OP == INSTR_OP);
 
 assign csr_regrd = OP == INSTR_SYS && (funct3 == 3'b001
                                     || funct3 == 3'b010
@@ -545,7 +556,7 @@ assign is_illegal = ~(instr_valid) | illegal_opcode;
 
 // Note that there is no need to guard against illegal instructions,
 // as upon jumping to the trap handler, the HCU will be flushed anyway
-assign hcu_upgrade = regwr_rd_en && pipe_in_vld && pipe_in_rdy;
+assign hcu_upgrade = is_reg_write && pipe_in_vld && pipe_in_rdy;
 assign hcu_downgrade = regwr_en;
 
 kronos_hcu u_hcu (

@@ -58,7 +58,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
-// aggreate all read-valid sources
+// aggregate all read-valid sources
 assign csr_rd_vld = mcycle_rd_vld;
 
 // ============================================================

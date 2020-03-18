@@ -81,54 +81,46 @@ logic [31:0] REG [32];
     `TEST_CASE("decode") begin
         pipeIFID_t tinstr;
         pipeIDEX_t tdecode, rdecode;
+        logic write_back;
         string optype;
 
         repeat (2**10) begin
 
-            rand_instr(tinstr, tdecode, optype);
+            rand_instr(tinstr, tdecode, write_back, optype);
 
             $display("OPTYPE=%s", optype);
             $display("IFID: PC=%h, IR=%h", tinstr.pc, tinstr.ir);
             $display("Expected IDEX:");
             print_decode(tdecode);
 
-            fork 
-                begin
-                    @(cb);
-                    cb.fetch <= tinstr;
-                    cb.pipe_in_vld <= 1;
-                    repeat (16) begin
-                        @(cb) if (cb.pipe_in_rdy) begin
-                            cb.pipe_in_vld <= 0;
-                            break;
-                        end
-                    end
-                end
+            @(cb);
+            cb.fetch <= tinstr;
+            cb.pipe_in_vld <= 1;
+            @(cb iff cb.pipe_in_rdy) begin
+                cb.pipe_in_vld <= 0;
+            end
 
-                begin
-                    @(cb iff pipe_out_vld) begin
-                        //check
-                        rdecode = decode;
+            @(cb iff cb.pipe_out_vld);
 
-                        $display("Got IDEX:");
-                        print_decode(rdecode);
+            //check
+            rdecode = decode;
 
-                        cb.pipe_out_rdy <= 1;
-                        ##1 cb.pipe_out_rdy <= 0;
+            $display("Got IDEX:");
+            print_decode(rdecode);
 
-                        assert(rdecode == tdecode);
+            cb.pipe_out_rdy <= 1;
+            ##1 cb.pipe_out_rdy <= 0;
 
-                        // Write back register, else the HCU will stall
-                        if (rdecode.rd_write) begin
-                            regwr_data = $urandom();
-                            regwr_sel = rdecode.rd;
-                            REG[rdecode.rd] = regwr_data;
-                            @(cb) cb.regwr_en <= 1;
-                            ##1 cb.regwr_en <= 0;
-                        end
-                    end
-                end
-            join
+            assert(rdecode == tdecode);
+
+            // Write back register, else the HCU will stall
+            if (write_back) begin
+                regwr_data = $urandom();
+                regwr_sel = rdecode.rd;
+                REG[rdecode.rd] = regwr_data;
+                @(cb) cb.regwr_en <= 1;
+                ##1 cb.regwr_en <= 0;
+            end
 
             $display("-----------------\n\n");
         end
@@ -144,7 +136,8 @@ end
 // METHODS
 // ============================================================
 
-task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, output string optype);
+task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, 
+    output logic write_back, output string optype);
     /*
     Generate constrained-random instr
 
@@ -209,6 +202,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     // ------------------------
     // Exceptions
     decode.is_illegal = 0;
+
+    // indicate that a register write back is required
+    write_back = 0;
 
     // painstakingly build random-valid instructions
     // and expected decode
@@ -496,7 +492,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.rd_write = rd != 0;
 
             decode.align = 1;
-
             decode.branch = 1;
         end
 
@@ -603,8 +598,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = signed'(imm[11:0]);
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
             decode.ld = 1;
+
+            write_back = 1;
         end
 
         30: begin
@@ -615,8 +611,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = signed'(imm[11:0]);
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
             decode.ld = 1;
+
+            write_back = 1;
         end
 
         31: begin
@@ -627,8 +624,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = signed'(imm[11:0]);
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
             decode.ld = 1;
+
+            write_back = 1;
         end
 
         32: begin
@@ -639,8 +637,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = signed'(imm[11:0]);
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
             decode.ld = 1;
+
+            write_back = 1;
         end
 
         33: begin
@@ -651,8 +650,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op2 = signed'(imm[11:0]);
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
             decode.ld = 1;
+
+            write_back = 1;
         end
 
         34: begin
@@ -711,9 +711,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         39: begin
@@ -726,9 +726,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         40: begin
@@ -741,9 +741,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         41: begin
@@ -756,9 +756,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         42: begin
@@ -771,9 +771,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         43: begin
@@ -786,9 +786,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.rd_write = rd != 0;
-
             decode.system = 1;
+
+            write_back = 1;
         end
 
         44: begin
@@ -808,6 +808,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode, out
     // default as-is decode - IR segments
     decode.rd = instr.ir[11:7];
     decode.funct3 = instr.ir[14:12];
+
+    write_back = decode.rd != 0;
 endtask
 
 endmodule

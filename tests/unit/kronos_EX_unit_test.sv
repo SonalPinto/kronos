@@ -17,9 +17,11 @@ pipeEXWB_t execute;
 logic pipe_out_vld;
 logic pipe_out_rdy;
 
+
 kronos_EX u_ex (
     .clk         (clk         ),
     .rstz        (rstz        ),
+    .flush       (1'b0        ),
     .decode      (decode      ),
     .pipe_in_vld (pipe_in_vld ),
     .pipe_in_rdy (pipe_in_rdy ),
@@ -69,33 +71,25 @@ endclocking
             $display("Expected: ");
             print_execute(texecute);
 
-            fork 
-                begin
-                    @(cb);
-                    cb.decode <= tdecode;
-                    cb.pipe_in_vld <= 1;
-                    repeat (16) begin
-                        @(cb) if (cb.pipe_in_rdy) begin
-                            cb.pipe_in_vld <= 0;
-                            break;
-                        end
-                    end
-                end
 
-                begin
-                    @(cb iff pipe_out_vld) begin
-                        //check
-                        rexecute = execute;
-                        $display("Got:");
-                        print_execute(rexecute);
+            @(cb);
+            cb.decode <= tdecode;
+            cb.pipe_in_vld <= 1;
+            @(cb iff cb.pipe_in_rdy) begin
+                cb.pipe_in_vld <= 0;
+            end
+       
+            @(cb iff cb.pipe_out_vld);
+            //check
+            rexecute = execute;
+            $display("Got:");
+            print_execute(rexecute);
 
-                        cb.pipe_out_rdy <= 1;
-                        ##1 cb.pipe_out_rdy <= 0;
+            cb.pipe_out_rdy <= 1;
+            ##1 cb.pipe_out_rdy <= 0;
 
-                        assert(rexecute == texecute);
-                    end
-                end
-            join
+            assert(rexecute == texecute);
+
 
             $display("-----------------\n\n");
         end
