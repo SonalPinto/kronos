@@ -28,10 +28,9 @@ add_hdl_unit_test(kronos_WB_lsu_unit_test.sv
         kronos_WB
 )
 
-add_hdl_unit_test(kronos_WB_csr_unit_test.sv
+add_hdl_unit_test(kronos_WB_counters_unit_test.sv
     DEPENDS
         kronos_WB
-        kronos_csr
         rv32_assembler
         common
 )

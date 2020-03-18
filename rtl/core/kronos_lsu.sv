@@ -21,7 +21,7 @@ module kronos_lsu
     input  logic [31:0] addr,
     output logic [31:0] load_data,
     output logic [4:0]  load_rd,
-    output logic        load_en,
+    output logic        load_write,
     input  logic [31:0] store_data,
     // WB Controls
     input  logic        start,
@@ -48,10 +48,12 @@ logic [1:0] offset;
 logic is_unaligned;
 logic [1:0] mem_size;
 logic load_uns;
+logic load_write_ok;
 logic [31:0] mem_addr, mem_addr_next;
 
 logic [3:0][7:0] mdata, rdata, trdata;
 
+logic load_done;
 logic [7:0] byte_data;
 logic [15:0] half_data;
 logic [31:0] load_byte_data;
@@ -120,7 +122,7 @@ always_ff @(posedge clk or negedge rstz) begin
         mem_addr <= '0;
         mem_addr_next <= '0;
     end
-    else if (state == IDLE) begin
+    else if (state == IDLE && start) begin
         // Detect unaligned access
         is_unaligned <= (data_size == HALF && addr_byte_index == 2'b11)
                         || (data_size == WORD && addr_byte_index != 2'b00);
@@ -129,6 +131,9 @@ always_ff @(posedge clk or negedge rstz) begin
         load_rd <= rd;
         mem_size <= data_size;
         load_uns <= data_uns;
+
+        // Cancel the register writeback for rd == 0
+        load_write_ok <= rd != '0;
 
         // Memory address - 4B aligned
         mem_addr <= addr_word_index;
@@ -211,8 +216,10 @@ always_comb begin
 end
 
 // Load operation done status
-assign load_en = (state == READ1 || state == READ2) && next_state == IDLE;
+assign load_done = (state == READ1 || state == READ2) && next_state == IDLE;
 
+// Cancel register write back if destination is x0
+assign load_write = load_done && load_write_ok;
 
 // ============================================================
 // Store
@@ -245,7 +252,7 @@ always_comb begin
 end
 
 always_ff @(posedge clk) begin
-    if (state == IDLE) begin
+    if (state == IDLE && start) begin
         // Stow data/mask
         twdata <= wdata;
         twmask <= wmask;
@@ -294,7 +301,7 @@ always_comb begin
 end
 
 // WB Done status
-assign done = load_en | store_done;
+assign done = load_done | store_done;
 
 // ------------------------------------------------------------
 `ifdef verilator

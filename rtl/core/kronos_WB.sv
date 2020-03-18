@@ -56,16 +56,7 @@ module kronos_WB
     output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
-    input  logic        data_gnt,
-    // CSR interface
-    output logic [11:0] csr_addr,
-    output logic [1:0]  csr_op,
-    input  logic [31:0] csr_rd_data,
-    output logic [31:0] csr_wr_data,
-    output logic        csr_rd_req,
-    output logic        csr_wr_req,
-    input  logic        csr_gnt,
-    output logic        instret
+    input  logic        data_gnt
 );
 
 logic wb_valid;
@@ -78,16 +69,20 @@ logic [3:0] exception_cause, exception_cause_reg;
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
-logic load_en;
+logic load_write;
 
+logic [31:0] csr_rd_data;
+logic csr_start;
 logic [4:0] csr_rd;
-logic csr_done, csr_wr_ok;
+logic csr_write;
+logic csr_done;
+
+logic instret;
 
 enum logic [2:0] {
     STEADY,
     LSU,
-    READ_CSR,
-    WRITE_CSR,
+    CSR,
     TRAP
 } state, next_state;
 
@@ -109,14 +104,10 @@ always_comb begin
         STEADY: if (pipe_in_vld) begin
             if (exception_caught) next_state = TRAP;
             else if (execute.ld || execute.st) next_state = LSU;
-            else if (execute.system) next_state = READ_CSR;
+            else if (execute.system) next_state = CSR;
         end
-
-        READ_CSR: if(csr_gnt) next_state = WRITE_CSR;
-        WRITE_CSR: next_state = STEADY;
-
         LSU: if (lsu_done) next_state = STEADY;
-
+        CSR: if (csr_done) next_state = STEADY;
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -126,35 +117,6 @@ assign pipe_in_rdy = state == STEADY;
 
 // Direct write-back is always valid in continued steady state
 assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught;
-
-// ============================================================
-// Load Store Unit
-
-assign lsu_start = wb_valid && (execute.ld || execute.st);
-
-kronos_lsu u_lsu (
-    .clk         (clk                ),
-    .rstz        (rstz               ),
-    .addr        (execute.result1    ),
-    .load_data   (load_data          ),
-    .load_rd     (load_rd            ),
-    .load_en     (load_en            ),
-    .store_data  (execute.result2    ),
-    .start       (lsu_start          ),
-    .done        (lsu_done           ),
-    .rd          (execute.rd         ),
-    .ld          (execute.ld         ),
-    .st          (execute.st         ),
-    .data_size   (execute.funct3[1:0]),
-    .data_uns    (execute.funct3[2]  ),
-    .data_addr   (data_addr          ),
-    .data_rd_data(data_rd_data       ),
-    .data_wr_data(data_wr_data       ),
-    .data_wr_mask(data_wr_mask       ),
-    .data_rd_req (data_rd_req        ),
-    .data_wr_req (data_wr_req        ),
-    .data_gnt    (data_gnt           )
-);
 
 // ============================================================
 /*
@@ -181,18 +143,18 @@ always_comb begin
     regwr_sel  = execute.rd;
     regwr_en   = 1'b0;
 
-    if (state == WRITE_CSR) begin
+    if (csr_write) begin
         regwr_data = csr_rd_data;
         regwr_sel  = csr_rd;
-        regwr_en   = csr_rd != '0;
+        regwr_en   = 1'b1;
     end
-    else if (load_en) begin
+    else if (load_write) begin
         regwr_data = load_data;
         regwr_sel  = load_rd;
-        regwr_en   = load_rd != '0;
+        regwr_en   = 1'b1;
     end
     else if (direct_write) begin
-        regwr_en   = execute.rd != '0;
+        regwr_en   = 1'b1;
     end
 end
 
@@ -206,29 +168,39 @@ assign branch_success = execute.branch || (execute.branch_cond && execute.result
 assign branch = wb_valid && branch_success;
 
 // ============================================================
+// Load Store Unit
+
+assign lsu_start = wb_valid && (execute.ld || execute.st);
+
+kronos_lsu u_lsu (
+    .clk         (clk                ),
+    .rstz        (rstz               ),
+    .addr        (execute.result1    ),
+    .load_data   (load_data          ),
+    .load_rd     (load_rd            ),
+    .load_write  (load_write         ),
+    .store_data  (execute.result2    ),
+    .start       (lsu_start          ),
+    .done        (lsu_done           ),
+    .rd          (execute.rd         ),
+    .ld          (execute.ld         ),
+    .st          (execute.st         ),
+    .data_size   (execute.funct3[1:0]),
+    .data_uns    (execute.funct3[2]  ),
+    .data_addr   (data_addr          ),
+    .data_rd_data(data_rd_data       ),
+    .data_wr_data(data_wr_data       ),
+    .data_wr_mask(data_wr_mask       ),
+    .data_rd_req (data_rd_req        ),
+    .data_wr_req (data_wr_req        ),
+    .data_gnt    (data_gnt           )
+);
+
+// ============================================================
 // CSR
-// Setup and assert Control Status Register operation controls
-// Note that these operations are static state Moore, and not Registered-Mealy
-// like LSU and direct writes/branches. Don't need to optimize for CSR ops.
-// #ccf - common case fast
 
-always_ff @(posedge clk) begin
-    if (wb_valid && execute.system) begin
-        csr_op <= execute.funct3[1:0];
-        // CSR forms the highest 12b of the IR
-        csr_addr <= execute.result1[31-:12]; 
-        csr_wr_data <= execute.result2;
-        csr_rd <= execute.rd;
-        // Cancel the CSR Write if CSR Reg wdata source, rs1=0
-        csr_wr_ok <= ~((execute.funct3 == 3'b010 || execute.funct3 == 3'b011)
-            && (execute.result1[19:15] == '0));
-    end
-end
-
-assign csr_done = state == WRITE_CSR;
-
-assign csr_rd_req = state == READ_CSR & ~csr_gnt;
-assign csr_wr_req = csr_done & csr_wr_ok;
+// CSR Read/Modify/Write System instructions
+assign csr_start = wb_valid && execute.system;
 
 // instruction retired event
 always_ff @(posedge clk or negedge rstz) begin
@@ -238,6 +210,19 @@ always_ff @(posedge clk or negedge rstz) begin
                     || lsu_done 
                     || csr_done;
 end
+
+kronos_csr u_csr (
+    .clk      (clk            ),
+    .rstz     (rstz           ),
+    .IR       (execute.result1),
+    .wr_data  (execute.result2),
+    .rd_data  (csr_rd_data    ),
+    .csr_start(csr_start      ),
+    .csr_rd   (csr_rd         ),
+    .csr_write(csr_write      ),
+    .done     (csr_done       ),
+    .instret  (instret        )
+);
 
 // ============================================================
 // Exceptions

@@ -48,6 +48,7 @@ add_hdl_source(kronos_WB.sv
     DEPENDS
         kronos_types
         kronos_lsu
+        kronos_csr
 )
 
 add_hdl_source(kronos_core.sv
@@ -57,5 +58,4 @@ add_hdl_source(kronos_core.sv
         kronos_ID
         kronos_EX
         kronos_WB
-        kronos_csr
 )

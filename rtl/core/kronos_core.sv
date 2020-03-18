@@ -33,15 +33,6 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
-logic [11:0] csr_addr;
-logic [1:0] csr_op;
-logic [31:0] csr_rd_data;
-logic [31:0] csr_wr_data;
-logic csr_rd_req;
-logic csr_wr_req;
-logic csr_gnt;
-logic instret;
-
 logic flush;
 
 pipeIFID_t fetch;
@@ -125,28 +116,7 @@ kronos_WB u_wb (
     .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
-    .data_gnt     (data_gnt     ),
-    .csr_addr     (csr_addr     ),
-    .csr_op       (csr_op       ),
-    .csr_rd_data  (csr_rd_data  ),
-    .csr_wr_data  (csr_wr_data  ),
-    .csr_rd_req   (csr_rd_req   ),
-    .csr_wr_req   (csr_wr_req   ),
-    .csr_gnt      (csr_gnt      ),
-    .instret      (instret      )
-);
-
-kronos_csr u_csr (
-    .clk    (clk        ),
-    .rstz   (rstz       ),
-    .addr   (csr_addr   ),
-    .op     (csr_op     ),
-    .rd_data(csr_rd_data),
-    .wr_data(csr_wr_data),
-    .rd_req (csr_rd_req ),
-    .wr_req (csr_wr_req ),
-    .gnt    (csr_gnt    ),
-    .instret(instret    )
+    .data_gnt     (data_gnt     )
 );
 
 // Flush pipeline on branch

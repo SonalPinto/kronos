@@ -9,9 +9,6 @@ This is a partial implementation with the following CSRs:
     * mcycle/mcycleh
     * minstret/minstreth
 
-The CSR have an sram-like read/write interface for implementing the system CSR 
-instructions
-
 The module also acts as an interruptor funneling the various interrupt source
 spec'd in the privileged machine-level architecture. Namely, External, Timer 
 and Software interrupts
@@ -22,20 +19,26 @@ module kronos_csr
 (
     input  logic        clk,
     input  logic        rstz,
-    // CSR RW interface
-    input  logic [11:0] addr,
-    input  logic [1:0]  op,
-    output logic [31:0] rd_data,
+    // WB Controls
+    input  logic [31:0] IR,
     input  logic [31:0] wr_data,
-    input  logic        rd_req,
-    input  logic        wr_req,
-    output logic        gnt,
-    // WB macros
+    output logic [31:0] rd_data,
+    input  logic        csr_start,
+    output logic [4:0]  csr_rd,
+    output logic        csr_write,
+    output logic        done,
+    // external
     input  logic        instret
 );
 
+logic [1:0] op;
+logic [11:0] addr;
+logic [31:0] twdata;
+
 logic [31:0] csr_rd_data, csr_wr_data;
-logic csr_rd_vld;
+logic csr_rd_vld, csr_wr_vld;
+logic csr_rd_en, csr_wr_en;
+logic csr_write_ok;
 
 logic mcycle_wrenl, mcycle_wrenh;
 logic mcycle_rd_vld;
@@ -45,27 +48,67 @@ logic minstret_wrenl, minstret_wrenh;
 logic minstret_rd_vld;
 logic [63:0] minstret;
 
+enum logic [1:0] {
+    IDLE,
+    READ,
+    WRITE
+} state, next_state;
+
 // ============================================================
-// Access Sequencer
+// CSR Sequencer
+
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        gnt <= 1'b0;
-    end
-    else begin
-        // CSR RW Operations
-        if (rd_req) begin
-            rd_data <= csr_rd_data;
-            gnt <= csr_rd_vld;
+    if (~rstz) state <= IDLE;
+    else state <= next_state;
+end
+
+always_comb begin
+    next_state = state;
+    /* verilator lint_off CASEINCOMPLETE */
+    case (state)
+        IDLE: begin
+            // Atomic Read/Modify/Write
+            if (csr_start) next_state = READ;
         end
-        else if (wr_req) begin
-            gnt <= 1'b1;
-        end
-        else gnt <= 1'b0;
+        READ: if (csr_rd_vld) next_state = WRITE;
+        WRITE: next_state = IDLE;
+    endcase // state
+    /* verilator lint_on CASEINCOMPLETE */
+end
+
+// Stow controls
+always_ff @(posedge clk) begin
+    if (state == IDLE && csr_start) begin
+        // Extract CSR instruction parameters from the IR
+        op <= IR[13:12];        // funct3[1:0]
+        addr <= IR[31-:12];
+        csr_rd <= IR[11:7];
+
+        twdata <= wr_data;
+
+        // Cancel the CSR write for csrrc/rs if rs1=0
+        csr_wr_vld <= ~((IR[14:12] == 3'b010 || IR[14:12] == 3'b011) && IR[19:15] == '0);
+
+        // Cancel the CSR register writeback for rd == 0
+        csr_write_ok <= IR[11:7] != '0;
     end
 end
 
 // aggregate all read-valid sources
 assign csr_rd_vld = mcycle_rd_vld && minstret_rd_vld;
+
+// CSR read/write access
+assign csr_rd_en = state == READ && csr_rd_vld;
+assign csr_wr_en = state == WRITE && csr_wr_vld;
+
+// Register write back
+assign csr_write = state == WRITE && csr_write_ok;
+always_ff @(posedge clk) begin
+    if (csr_rd_en) rd_data <= csr_rd_data;
+end
+
+// CSR work done
+assign done = state == WRITE;
 
 // ============================================================
 // CSR Read
@@ -89,9 +132,9 @@ always_comb begin
     // RC: Clear - wr_data as a clear mask
     // Rw/Default: wr_data as write data
     case (op)
-        CSR_RS: csr_wr_data = rd_data | wr_data;
-        CSR_RC: csr_wr_data = rd_data & ~wr_data;
-        default: csr_wr_data = wr_data;
+        CSR_RS: csr_wr_data = rd_data | twdata;
+        CSR_RC: csr_wr_data = rd_data & ~twdata;
+        default: csr_wr_data = twdata;
     endcase
 end
 
@@ -99,8 +142,8 @@ end
 // Hardware Performance Monitors
 
 // mcycle, 64b Machine cycle counter
-assign mcycle_wrenl = wr_req && addr == MCYCLE;
-assign mcycle_wrenh = wr_req && addr == MCYCLEH;
+assign mcycle_wrenl = csr_wr_en && addr == MCYCLE;
+assign mcycle_wrenh = csr_wr_en && addr == MCYCLEH;
 
 kronos_counter64 u_hpmcounter0 (
     .clk      (clk          ),
@@ -114,8 +157,8 @@ kronos_counter64 u_hpmcounter0 (
 );
 
 // minstret, 64b Machine instructions-retired counter
-assign minstret_wrenl = wr_req && addr == MINSTRET;
-assign minstret_wrenh = wr_req && addr == MINSTRETH;
+assign minstret_wrenl = csr_wr_en && addr == MINSTRET;
+assign minstret_wrenh = csr_wr_en && addr == MINSTRETH;
 
 kronos_counter64 u_hpmcounter1 (
     .clk      (clk            ),
@@ -127,5 +170,12 @@ kronos_counter64 u_hpmcounter1 (
     .count    (minstret       ),
     .count_vld(minstret_rd_vld)
 );
+
+// ------------------------------------------------------------
+`ifdef verilator
+logic _unused = &{1'b0
+    , IR[6:0]
+};
+`endif
 
 endmodule
