@@ -25,6 +25,14 @@ logic data_rd_req;
 logic data_wr_req;
 logic data_gnt;
 
+logic [11:0] csr_addr;
+logic [1:0] csr_op;
+logic [31:0] csr_rd_data;
+logic [31:0] csr_wr_data;
+logic csr_rd_req;
+logic csr_wr_req;
+logic csr_gnt;
+
 kronos_WB u_wb (
     .clk          (clk          ),
     .rstz         (rstz         ),
@@ -42,12 +50,19 @@ kronos_WB u_wb (
     .data_wr_mask (data_wr_mask ),
     .data_rd_req  (data_rd_req  ),
     .data_wr_req  (data_wr_req  ),
-    .data_gnt     (data_gnt     )
+    .data_gnt     (data_gnt     ),
+    .csr_addr     (csr_addr     ),
+    .csr_op       (csr_op       ),
+    .csr_rd_data  (csr_rd_data  ),
+    .csr_wr_data  (csr_wr_data  ),
+    .csr_rd_req   (csr_rd_req   ),
+    .csr_wr_req   (csr_wr_req   ),
+    .csr_gnt      (csr_gnt      )
 );
 
-spsram32_model #(.DEPTH(256)) u_dmem (
+spsram32_model #(.DEPTH(1024)) u_dmem (
     .clk    (clk                      ),
-    .addr   (data_addr[2+:10]         ),
+    .addr   (data_addr>>2             ),
     .wdata  (data_wr_data             ),
     .rdata  (data_rd_data             ),
     .en     ((data_rd_req|data_wr_req)),
@@ -87,6 +102,9 @@ logic [7:0][7:0] expected_store_data;
 
         execute = '0;
         execute_vld = 0;
+
+        csr_gnt = 0;
+        csr_rd_data = 0;
 
         for(int i=0; i<256; i++)
             `MEM[i] = $urandom;

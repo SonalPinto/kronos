@@ -112,4 +112,18 @@ parameter logic [3:0] LOAD_ACCESS_FAULT     = 4'd5;
 parameter logic [3:0] STORE_ACCESS_FAULT    = 4'd7;
 parameter logic [3:0] ECALL_MACHINE         = 4'd11;
 
+// ============================================================
+// Control Status Register
+
+// CSR operations
+parameter logic [1:0]  CSR_RW       = 2'b01;
+parameter logic [1:0]  CSR_RS       = 2'b10;
+parameter logic [1:0]  CSR_RC       = 2'b11;
+
+// CSR Address
+parameter logic [11:0] MCYCLE       = 12'hB00;
+parameter logic [11:0] MINSTRET     = 12'hB02;
+parameter logic [11:0] MCYCLEH      = 12'hB80;
+parameter logic [11:0] MINSTRETH    = 12'hB82;
+
 endpackage

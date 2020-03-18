@@ -1,7 +1,6 @@
 // Copyright (c) 2020 Sonal Pinto
 // SPDX-License-Identifier: Apache-2.0
 
-
 /*
 Kronos RISC-V 32I Decoder
 The 32b instruction and PC from the IF stage is decoded

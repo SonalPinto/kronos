@@ -1,7 +1,5 @@
 # Copyright (c) 2020 Sonal Pinto
 # SPDX-License-Identifier: Apache-2.0
 
-add_subdirectory(basic)
 add_subdirectory(memory)
 add_subdirectory(core)
-

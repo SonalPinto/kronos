@@ -3,6 +3,8 @@
 
 add_hdl_source(kronos_types.sv)
 
+add_hdl_source(kronos_counter64.sv)
+
 add_hdl_source(kronos_hcu.sv
     DEPENDS
         kronos_types
@@ -12,6 +14,13 @@ add_hdl_source(kronos_alu.sv
     DEPENDS
         kronos_types
 )
+
+add_hdl_source(kronos_csr.sv
+    DEPENDS
+        kronos_types
+        kronos_counter64
+)
+
 
 add_hdl_source(kronos_lsu.sv
     DEPENDS

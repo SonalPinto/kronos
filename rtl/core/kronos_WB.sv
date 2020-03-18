@@ -31,9 +31,6 @@ System Controls
     funct3      : Context based parameter
         - csr_op    : CSR operation, rw/set/clr
 
-Exceptions
-    illegal     : illegal instruction
-
 */
 
 module kronos_WB
@@ -59,7 +56,15 @@ module kronos_WB
     output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
-    input  logic        data_gnt
+    input  logic        data_gnt,
+    // CSR interface
+    output logic [11:0] csr_addr,
+    output logic [1:0]  csr_op,
+    input  logic [31:0] csr_rd_data,
+    output logic [31:0] csr_wr_data,
+    output logic        csr_rd_req,
+    output logic        csr_wr_req,
+    input  logic        csr_gnt
 );
 
 logic wb_valid;
@@ -67,16 +72,18 @@ logic direct_write;
 logic branch_success;
 
 logic exception_caught;
-logic [3:0] exception_cause, exception_cause_next;
+logic [3:0] exception_cause, exception_cause_reg;
 
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
 logic load_en;
 
-enum logic [1:0] {
+enum logic [2:0] {
     STEADY,
     LSU,
+    READ_CSR,
+    WRITE_CSR,
     TRAP
 } state, next_state;
 
@@ -98,7 +105,11 @@ always_comb begin
         STEADY: if (pipe_in_vld) begin
             if (exception_caught) next_state = TRAP;
             else if (execute.ld || execute.st) next_state = LSU;
+            else if (execute.system) next_state = READ_CSR;
         end
+
+        READ_CSR: if(csr_gnt) next_state = WRITE_CSR;
+        WRITE_CSR: next_state = STEADY;
 
         LSU: if (lsu_done) next_state = STEADY;
 
@@ -148,7 +159,7 @@ kronos_lsu u_lsu (
 // and is evaluated as a safe direct write
 // Loads will take 1 cycle for aligned access and 2 for unaligned access
 
-assign direct_write = wb_valid && execute.rd_write && ~execute.ld;
+assign direct_write = wb_valid && execute.rd_write; // !!! FIXME !!!
 
 assign regwr_data = (load_en) ? load_data : execute.result1;
 assign regwr_sel  = (load_en) ? load_rd   : execute.rd;
@@ -164,32 +175,50 @@ assign branch_success = execute.branch || (execute.branch_cond && execute.result
 assign branch = wb_valid && branch_success;
 
 // ============================================================
+// CSR
+// Setup and assert Control Status Register operation controls
+// Note that these operations are static state Moore, and not Registered-Mealy
+// like LSU and direct writes/branches. Don't need to optimize for that 1 cycle...
+// #ccf - common case fast
+
+always_ff @(posedge clk) begin
+    if (wb_valid && execute.system) begin
+        csr_op <= execute.funct3[1:0];
+        csr_addr <= execute.result1[31-:12]; // CSR forms the highest 12b of the IR
+        csr_wr_data <= execute.result2;
+    end
+end
+
+assign csr_rd_req = state == READ_CSR & ~csr_gnt;
+assign csr_wr_req = state == WRITE_CSR;
+
+// ============================================================
 // Exceptions
 
 // Catch exceptions from various sources around the core and inform
-// the WB sequencer about it, so it can prompt the CLIC to invoke
+// the WB sequencer about it, so it can prompt the THU to invoke
 // the trap handler
 always_comb begin
     exception_caught = 1'b0;
-    exception_cause_next = '0;
+    exception_cause = '0;
     if (pipe_in_vld && state == STEADY) begin
         if (execute.is_illegal) begin
             // Illegal instructions detected by the decoder
             exception_caught = 1'b1;
-            exception_cause_next = ILLEGAL_INSTR;
+            exception_cause = ILLEGAL_INSTR;
         end
         else if (branch_success && branch_target[1:0] != 2'b00) begin
             // Instructions can only be jumped to at 4B boundary
             // And this only needs to be checked for unconditional jumps 
             // or successful branches
             exception_caught = 1'b1;
-            exception_cause_next = INSTR_ADDR_MISALIGNED;
+            exception_cause = INSTR_ADDR_MISALIGNED;
         end
     end
 end
 
 always_ff @(posedge clk) begin
-    if (exception_caught) exception_cause <= exception_cause_next;
+    if (exception_caught) exception_cause_reg <= exception_cause;
 end
 
 endmodule

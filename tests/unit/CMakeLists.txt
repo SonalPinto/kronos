@@ -22,12 +22,19 @@ add_hdl_unit_test(kronos_EX_unit_test.sv
         common
 )
 
-add_hdl_unit_test(kronos_WB_unit_test.sv
+add_hdl_unit_test(kronos_WB_lsu_unit_test.sv
     DEPENDS
         spsram32_model
         kronos_WB
 )
 
+add_hdl_unit_test(kronos_WB_csr_unit_test.sv
+    DEPENDS
+        kronos_WB
+        kronos_csr
+        rv32_assembler
+        common
+)
 
 add_hdl_unit_test(core_basic_unit_test.sv
     DEPENDS
