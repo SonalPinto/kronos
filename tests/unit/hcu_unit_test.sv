@@ -90,7 +90,7 @@ logic [31:0] REG [32];
 
         // Fill up hazard trackers, by executing two writes per register
         repeat (2) begin
-            for(int i=1; i<31; i++) begin
+            for(int i=1; i<32; i++) begin
                 // x[i] = 0
                 instr.ir = rv32_add(x0+i, x0, x0);
                 $display("INSTR=%h //add x%0d = 0", instr.ir, i);
@@ -122,7 +122,7 @@ logic [31:0] REG [32];
         end
 
         // Check that the hazard tracker is full
-        for(int i=0; i<31; i++) begin
+        for(int i=0; i<32; i++) begin
             hazard = `hcu.rpend[i];
             $display("HCU.rpend[%0d] = %b", i, hazard);
             if (i==0) assert(hazard == 0);
@@ -143,7 +143,7 @@ logic [31:0] REG [32];
         cb.pipe_in_vld <= 1;
         repeat (16) begin
             // confirm that decode doesn't accept the instr
-            // adn that stall is high
+            // and that stall is high
             @(cb) begin
                 assert(~cb.pipe_in_rdy);
                 assert(`hcu.stall);
