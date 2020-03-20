@@ -95,7 +95,6 @@ enum logic [2:0] {
     LSU,
     CSR,
     EXCEPT,
-    ECALL,
     RETURN,
     WFI,
     JUMP
@@ -120,7 +119,8 @@ always_comb begin
             if (exception_caught)               next_state = EXCEPT;
             else if (execute.ld || execute.st)  next_state = LSU;
             else if (execute.csr)               next_state = CSR;
-            else if (execute.ecall)             next_state = ECALL;
+            else if (execute.ecall || execute.ebreak)
+                                                next_state = EXCEPT;
             else if (execute.ret)               next_state = RETURN;
             else if (execute.wfi)               next_state = WFI;
         end
@@ -130,9 +130,8 @@ always_comb begin
         CSR: if (csr_done) next_state = STEADY;
 
         EXCEPT: next_state = JUMP;
-        ECALL: next_state = JUMP;
         RETURN: next_state = JUMP;
-        JUMP: if (trap_jump) next_state = JUMP;
+        JUMP: if (trap_jump) next_state = STEADY;
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -191,7 +190,7 @@ end
 assign branch_target = trap_jump ? trap_addr : execute.result2;
 assign branch_success = execute.branch || (execute.branch_cond && execute.result1[0]);
 
-assign branch = wb_valid && (branch_success || trap_jump);
+assign branch = (wb_valid && branch_success) || trap_jump;
 
 // ============================================================
 // Load Store Unit
@@ -257,7 +256,7 @@ kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
     .trap_jump    (trap_jump      )
 );
 
-assign activate_trap = (state == EXCEPT || state == ECALL);
+assign activate_trap = state == EXCEPT;
 assign return_trap = state == RETURN;
 
 // ============================================================
@@ -293,9 +292,13 @@ always_ff @(posedge clk) begin
         trap_cause <= {28'b0, tcause};
         trap_value <= tvalue;
     end
-    else if (state == ECALL) begin
+    else if (state == STEADY && execute.ecall) begin
         trap_cause <= {28'b0, ECALL_MACHINE};
         trap_value <= '0;
+    end
+    else if (state == STEADY && execute.ebreak) begin
+        trap_cause <= {28'b0, BREAKPOINT};
+        trap_value <= execute.pc;
     end
 end
 

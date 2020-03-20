@@ -77,6 +77,7 @@ always_ff @(posedge clk or negedge rstz) begin
             // Forward System controls
             execute.csr         <= decode.csr;
             execute.ecall       <= decode.ecall;
+            execute.ebreak      <= decode.ebreak;
             execute.ret         <= decode.ret;
             execute.wfi         <= decode.wfi;
             // Forward caught exceptions

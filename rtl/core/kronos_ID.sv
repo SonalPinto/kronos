@@ -88,6 +88,7 @@ logic is_nop;
 logic is_fencei;
 logic is_csr;
 logic is_ecall;
+logic is_ebreak;
 logic is_mret;
 logic is_wfi;
 
@@ -306,6 +307,7 @@ always_comb begin
     is_fencei       = 1'b0;
     is_csr          = 1'b0;
     is_ecall        = 1'b0;
+    is_ebreak       = 1'b0;
     is_mret         = 1'b0;
     is_wfi          = 1'b0;
 
@@ -535,12 +537,12 @@ always_comb begin
         case(funct3)
             3'b000: begin
                 if (rs1 == '0 && rd =='0) begin
-                    if (IR[31:20] == 12'h000) begin // EBREAK
-                        is_nop = 1'b1;
+                    if (IR[31:20] == 12'h000) begin // ECALL
+                        is_ecall = 1'b1;
                         instr_valid = 1'b1;
                     end
-                    else if (IR[31:20] == 12'h001) begin // ECALL
-                        is_ecall = 1'b1;
+                    else if (IR[31:20] == 12'h001) begin // EBREAK
+                        is_ebreak = 1'b1;
                         instr_valid = 1'b1;
                     end
                     else if (IR[31:20] == 12'h302) begin // MRET
@@ -633,6 +635,7 @@ always_ff @(posedge clk or negedge rstz) begin
             // System
             decode.csr          <= is_csr;
             decode.ecall        <= is_ecall;
+            decode.ebreak       <= is_ebreak;
             decode.ret          <= is_mret;
             decode.wfi          <= is_wfi;
 

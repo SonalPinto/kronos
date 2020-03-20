@@ -40,6 +40,7 @@ typedef struct packed {
     // System
     logic        csr;
     logic        ecall;
+    logic        ebreak;
     logic        ret;
     logic        wfi;
     // ------------------------
@@ -64,6 +65,7 @@ typedef struct packed {
     // System
     logic        csr;
     logic        ecall;
+    logic        ebreak;
     logic        ret;
     logic        wfi;
     // ------------------------
@@ -120,6 +122,7 @@ parameter logic [3:0] EXTERNAL_INTERRUPT    = 4'd11;
 // Exceptions
 parameter logic [3:0] INSTR_ADDR_MISALIGNED = 4'd0;
 parameter logic [3:0] ILLEGAL_INSTR         = 4'd2;
+parameter logic [3:0] BREAKPOINT            = 4'd3;
 parameter logic [3:0] ECALL_MACHINE         = 4'd11;
 
 // ============================================================

@@ -161,7 +161,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     logic [4:0] zimm;
 
     // generate scenario
-    op = $urandom_range(0,46);
+    op = $urandom_range(0,47);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -200,6 +200,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     // System
     decode.csr = 0;
     decode.ecall = 0;
+    decode.ebreak = 0;
     decode.ret = 0;
     decode.wfi = 0;
     // ------------------------
@@ -806,7 +807,20 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ecall = 1;
         end
 
+
         45: begin
+            optype = "EBREAK";
+            instr.ir = rv32_ebreak();
+
+            decode.op1 = 0;
+            decode.op2 = instr.ir;
+            decode.op3 = 0;
+            decode.op4 = 0;
+
+            decode.ebreak = 1;
+        end
+
+        46: begin
             optype = "MRET";
             instr.ir = rv32_mret();
 
@@ -818,7 +832,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ret = 1;
         end
 
-        46: begin
+        47: begin
             optype = "WFI";
             instr.ir = rv32_wfi();
 
