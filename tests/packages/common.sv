@@ -8,6 +8,7 @@ package common;
 import kronos_types::*;
 
 task automatic print_decode(input pipeIDEX_t d);
+    $display("  pc: %h",            d.pc);
     $display("---- OP --------");
     $display("  op1: %h",           d.op1);
     $display("  op2: %h",           d.op2);
@@ -37,9 +38,10 @@ task automatic print_decode(input pipeIDEX_t d);
 endtask
 
 task automatic print_execute(input pipeEXWB_t e);
+    $display("  pc: %h",          e.pc);
     $display("---- RES -------");
-    $display("  result1: %h", e.result1);
-    $display("  result2: %h", e.result2);
+    $display("  result1: %h",     e.result1);
+    $display("  result2: %h",     e.result2);
     $display("---- WBCTRL ----");
     $display("  rd: %d",          e.rd);
     $display("  rd_write: %h",    e.rd_write);

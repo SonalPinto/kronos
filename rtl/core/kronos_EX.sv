@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos RISC-V 32I Execution Unit
+Kronos Execution Unit
 
 Pipestage with the Kronos ALU
 
@@ -64,6 +64,8 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.result1 <= result1;
             execute.result2 <= result2;
 
+            // Forwarded PC
+            execute.pc          <= decode.pc;
             // Forward WB controls
             execute.rd          <= decode.rd;
             execute.rd_write    <= decode.rd_write;

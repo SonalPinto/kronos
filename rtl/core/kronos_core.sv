@@ -3,7 +3,7 @@
 
 /*
 Kronos 
-    4-stage RV32I RISC-V Core
+    4-stage RISC-V RV32I Core
 */
 
 module kronos_core 
@@ -26,6 +26,8 @@ module kronos_core
     input  logic        data_gnt
 );
 
+parameter logic [31:0] BOOT_ADDR = 32'h0;
+
 logic [31:0] branch_target;
 logic branch;
 
@@ -46,7 +48,7 @@ logic execute_vld, execute_rdy;
 // ============================================================
 // Fetch
 // ============================================================
-kronos_IF u_if (
+kronos_IF #(.BOOT_ADDR(BOOT_ADDR)) u_if (
     .clk          (clk          ),
     .rstz         (rstz         ),
     .instr_addr   (instr_addr   ),
@@ -99,7 +101,7 @@ kronos_EX u_ex (
 // Write Back
 // ============================================================
 
-kronos_WB u_wb (
+kronos_WB #(.BOOT_ADDR(BOOT_ADDR)) u_wb (
     .clk          (clk          ),
     .rstz         (rstz         ),
     .execute      (execute      ),

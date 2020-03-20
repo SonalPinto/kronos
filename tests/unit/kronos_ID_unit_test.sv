@@ -172,6 +172,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     instr.pc = $urandom;
 
     // Blank out decode
+    decode.pc  = instr.pc;
     // EX Operands ------------
     decode.op1 = instr.pc;
     decode.op2 = 4;

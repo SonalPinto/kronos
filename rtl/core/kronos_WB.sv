@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos RISC-V 32I Write Back Unit
+Kronos Write Back Unit
 
 This is the last stage of the Kronos pipeline and is responsible for these functions:
 - Write Back register data
@@ -10,6 +10,8 @@ This is the last stage of the Kronos pipeline and is responsible for these funct
 - Store data to memory
 - Branch unconditionally
 - Branch conditionally as per value of result1
+- Trapping exceptions and interrupts and setting up CSR for jumping to trap handler
+- Returning from trap handler
 
 Unaligned access is handled by the LSU and will never throw the
 Load/Store address aligned exception
@@ -35,7 +37,9 @@ System Controls
 
 module kronos_WB
     import kronos_types::*;
-(
+#(
+    parameter BOOT_ADDR = 32'h0
+)(
     input  logic        clk,
     input  logic        rstz,
     // IF/ID interface
@@ -63,9 +67,6 @@ logic wb_valid;
 logic direct_write;
 logic branch_success;
 
-logic exception_caught;
-logic [3:0] exception_cause, exception_cause_reg;
-
 logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
@@ -76,6 +77,10 @@ logic csr_start;
 logic [4:0] csr_rd;
 logic csr_write;
 logic csr_done;
+
+logic activate_trap, return_trap;
+logic [31:0] trap_cause, trap_addr, trap_value;
+logic trap_jump;
 
 logic instret;
 
@@ -102,12 +107,13 @@ always_comb begin
     /* verilator lint_off CASEINCOMPLETE */
     case (state)
         STEADY: if (pipe_in_vld) begin
-            if (exception_caught) next_state = TRAP;
+            if (activate_trap) next_state = TRAP;
             else if (execute.ld || execute.st) next_state = LSU;
             else if (execute.system) next_state = CSR;
         end
         LSU: if (lsu_done) next_state = STEADY;
         CSR: if (csr_done) next_state = STEADY;
+        TRAP: if (trap_jump) next_state = STEADY;
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -116,7 +122,7 @@ end
 assign pipe_in_rdy = state == STEADY;
 
 // Direct write-back is always valid in continued steady state
-assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught;
+assign wb_valid = pipe_in_vld && state == STEADY && ~activate_trap;
 
 // ============================================================
 /*
@@ -161,11 +167,12 @@ end
 // ============================================================
 // Branch
 // Set PC to result2, if unconditional branch or condition valid (result1 from alu comparator is 1)
+// branch for trap handler jumps (to/from) as well
 
-assign branch_target = execute.result2;
+assign branch_target = trap_jump ? trap_addr : execute.result2;
 assign branch_success = execute.branch || (execute.branch_cond && execute.result1[0]);
 
-assign branch = wb_valid && branch_success;
+assign branch = wb_valid && (branch_success || trap_jump);
 
 // ============================================================
 // Load Store Unit
@@ -208,49 +215,61 @@ always_ff @(posedge clk or negedge rstz) begin
     else instret <= direct_write 
                     || branch 
                     || lsu_done 
-                    || csr_done;
+                    || csr_done; // FIXME - ret/ecall should count for instructions done
 end
 
-kronos_csr u_csr (
-    .clk      (clk            ),
-    .rstz     (rstz           ),
-    .IR       (execute.result1),
-    .wr_data  (execute.result2),
-    .rd_data  (csr_rd_data    ),
-    .csr_start(csr_start      ),
-    .csr_rd   (csr_rd         ),
-    .csr_write(csr_write      ),
-    .done     (csr_done       ),
-    .instret  (instret        )
+kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
+    .clk          (clk            ),
+    .rstz         (rstz           ),
+    .IR           (execute.result1),
+    .wr_data      (execute.result2),
+    .rd_data      (csr_rd_data    ),
+    .csr_start    (csr_start      ),
+    .csr_rd       (csr_rd         ),
+    .csr_write    (csr_write      ),
+    .done         (csr_done       ),
+    .instret      (instret        ),
+    .activate_trap(activate_trap  ),
+    .return_trap  (return_trap    ),
+    .trapped_pc   (execute.pc     ),
+    .trap_cause   (trap_cause     ),
+    .trap_value   (trap_value     ),
+    .trap_addr    (trap_addr      ),
+    .trap_jump    (trap_jump      )
 );
 
-// ============================================================
-// Exceptions
+assign return_trap = 1'b0; // FIXME - implement in ID and forward
 
-// Catch exceptions from various sources around the core and inform
+// ============================================================
+// Trap Handling
+
+// Catch exceptions/interrupts from various sources around the core and inform
 // the WB sequencer about it, so it can prompt the THU to invoke
 // the trap handler
 always_comb begin
-    exception_caught = 1'b0;
-    exception_cause = '0;
+    activate_trap = 1'b0;
+    trap_cause = '0;
+    trap_value = '0;
+
     if (pipe_in_vld && state == STEADY) begin
         if (execute.is_illegal) begin
             // Illegal instructions detected by the decoder
-            exception_caught = 1'b1;
-            exception_cause = ILLEGAL_INSTR;
+            activate_trap = 1'b1;
+            trap_cause[3:0] = ILLEGAL_INSTR;
+            trap_value = execute.result1; // IR
         end
         else if (branch_success && branch_target[1:0] != 2'b00) begin
             // Instructions can only be jumped to at 4B boundary
             // And this only needs to be checked for unconditional jumps 
             // or successful branches
-            exception_caught = 1'b1;
-            exception_cause = INSTR_ADDR_MISALIGNED;
+            activate_trap = 1'b1;
+            trap_cause[3:0] = INSTR_ADDR_MISALIGNED;
+        end
+        else if (execute.system && execute.ecall) begin
+            activate_trap = 1'b1;
+            trap_cause[3:0] = ECALL_MACHINE;
         end
     end
-end
-
-always_ff @(posedge clk) begin
-    if (exception_caught) exception_cause_reg <= exception_cause;
 end
 
 endmodule

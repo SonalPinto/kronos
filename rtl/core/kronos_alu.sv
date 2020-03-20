@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos RISC-V ALU
+Kronos ALU
 
 The ALU has two tracks, OP1/2 are consumed by the Primary Track
 to produce RESULT1 and OP3/4 are consumed by the Secondary Track 

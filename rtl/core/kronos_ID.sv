@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos RISC-V 32I Decoder
+Kronos Decoder
 The 32b instruction and PC from the IF stage is decoded
 into a generic form:
 
@@ -12,6 +12,7 @@ into a generic form:
     WB_CTRL
     System
     Exceptions
+    PC
 
 where,
     OP1-4       : Operands, where OP1/2 are primary kronos_ALU operands,
@@ -44,6 +45,9 @@ System
 
 Exceptions
     is_illegal
+
+PC:
+    forward PC
 
 Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
     if compare(rs1, rs2):
@@ -588,6 +592,8 @@ always_ff @(posedge clk or negedge rstz) begin
         end
         else if(pipe_in_vld && pipe_in_rdy) begin
             pipe_out_vld <= ~is_nop;
+
+            decode.pc   <= PC;
 
             // EX controls
             decode.cin   <= cin;

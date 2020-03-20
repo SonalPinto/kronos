@@ -136,6 +136,7 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
 
     //=========================
     // EXECUTE
+    execute.pc      = 0;
     execute.result1 = 0;
     execute.result2 = op3 + op4;
 

@@ -13,6 +13,7 @@ typedef struct packed {
 } pipeIFID_t;
 
 typedef struct packed {
+    logic [31:0] pc;
     logic [31:0] op1;
     logic [31:0] op2;
     logic [31:0] op3;
@@ -45,6 +46,7 @@ typedef struct packed {
 } pipeIDEX_t;
 
 typedef struct packed {
+    logic [31:0] pc;
     logic [31:0] result1;
     logic [31:0] result2;
     // ------------------------
@@ -105,11 +107,15 @@ parameter logic [31:0] ZERO   = 32'h0;
 parameter logic [31:0] FOUR   = 32'h4;
 
 // ============================================================
+// Interrupts
+parameter logic [3:0] SOFTWARE_INTERRUPT    = 4'd3;
+parameter logic [3:0] TIMER_INTERRUPT       = 4'd7;
+parameter logic [3:0] EXTERNAL_INTERRUPT    = 4'd11;
+
+// ============================================================
 // Exceptions
 parameter logic [3:0] INSTR_ADDR_MISALIGNED = 4'd0;
 parameter logic [3:0] ILLEGAL_INSTR         = 4'd2;
-parameter logic [3:0] LOAD_ACCESS_FAULT     = 4'd5;
-parameter logic [3:0] STORE_ACCESS_FAULT    = 4'd7;
 parameter logic [3:0] ECALL_MACHINE         = 4'd11;
 
 // ============================================================
@@ -121,9 +127,24 @@ parameter logic [1:0]  CSR_RS       = 2'b10;
 parameter logic [1:0]  CSR_RC       = 2'b11;
 
 // CSR Address
+parameter logic [11:0] MSTATUS      = 12'h300;
+parameter logic [11:0] MIE          = 12'h304;
+parameter logic [11:0] MTVEC        = 12'h305;
+
+parameter logic [11:0] MSCRATCH     = 12'h340;
+parameter logic [11:0] MEPC         = 12'h341;
+parameter logic [11:0] MCAUSE       = 12'h342;
+parameter logic [11:0] MTVAL        = 12'h343;
+parameter logic [11:0] MIP          = 12'h344;
+
 parameter logic [11:0] MCYCLE       = 12'hB00;
 parameter logic [11:0] MINSTRET     = 12'hB02;
 parameter logic [11:0] MCYCLEH      = 12'hB80;
 parameter logic [11:0] MINSTRETH    = 12'hB82;
 
+// Privilege levels
+parameter logic [1:0] PRIVILEGE_MACHINE = 2'b11;
+// mtvec modes
+parameter logic [1:0] DIRECT_MODE   = 2'b00;
+ 
 endpackage

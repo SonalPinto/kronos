@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos RISC-V 32I Instruction Fetch
+Kronos Instruction Fetch
 
 Simple Pipelined Fetch with single cycle throughput, One Block Lookahead fetch
 */
@@ -10,7 +10,7 @@ Simple Pipelined Fetch with single cycle throughput, One Block Lookahead fetch
 module kronos_IF
     import kronos_types::*;
 #(
-    parameter PC_START = 32'h0
+    parameter BOOT_ADDR = 32'h0
 )(
     input  logic    clk,
     input  logic    rstz,
@@ -43,7 +43,7 @@ enum logic [1:0] {
 // Program Counter (PC) Generation
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
-        pc <= PC_START;
+        pc <= BOOT_ADDR;
         pc_last <= '0;
     end
     else begin
