@@ -161,7 +161,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     logic [4:0] zimm;
 
     // generate scenario
-    op = $urandom_range(0,44);
+    op = $urandom_range(0,46);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -198,8 +198,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     decode.funct3 = 0;
     // ------------------------
     // System
-    decode.system = 0;
+    decode.csr = 0;
     decode.ecall = 0;
+    decode.ret = 0;
+    decode.wfi = 0;
     // ------------------------
     // Exceptions
     decode.is_illegal = 0;
@@ -712,7 +714,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -727,7 +729,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -742,7 +744,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -757,7 +759,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -772,7 +774,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -787,7 +789,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op4 = 0;
 
             decode.rd = rd;
-            decode.system = 1;
+            decode.csr = 1;
 
             write_back = 1;
         end
@@ -801,8 +803,31 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.op3 = 0;
             decode.op4 = 0;
 
-            decode.system = 1;
             decode.ecall = 1;
+        end
+
+        45: begin
+            optype = "MRET";
+            instr.ir = rv32_mret();
+
+            decode.op1 = 0;
+            decode.op2 = instr.ir;
+            decode.op3 = 0;
+            decode.op4 = 0;
+
+            decode.ret = 1;
+        end
+
+        46: begin
+            optype = "WFI";
+            instr.ir = rv32_wfi();
+
+            decode.op1 = 0;
+            decode.op2 = instr.ir;
+            decode.op3 = 0;
+            decode.op4 = 0;
+
+            decode.wfi = 1;
         end
     endcase // instr
 

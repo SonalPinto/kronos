@@ -41,7 +41,7 @@ WB_CTRL
     rd, rd_write, branch, branch_cond, ld, st, funct3 (load/store data size+sign)
 
 System
-    system, ecall, funct3 (csr operation: rw/set/clr)
+    csr, ecall, ret, wfi, funct3 (csr operation: rw/set/clr)
 
 Exceptions
     is_illegal
@@ -86,7 +86,10 @@ logic [6:0] funct7;
 
 logic is_nop;
 logic is_fencei;
+logic is_csr;
 logic is_ecall;
+logic is_mret;
+logic is_wfi;
 
 logic is_illegal;
 logic instr_valid;
@@ -301,7 +304,10 @@ always_comb begin
     instr_valid     = 1'b0;
     is_nop          = 1'b0;
     is_fencei       = 1'b0;
+    is_csr          = 1'b0;
     is_ecall        = 1'b0;
+    is_mret         = 1'b0;
+    is_wfi          = 1'b0;
 
     // ALU Controls are decoded using {funct7, funct3, OP}
     /* verilator lint_off CASEINCOMPLETE */
@@ -508,13 +514,13 @@ always_comb begin
     INSTR_MISC: begin
         case(funct3)
             3'b000: begin // FENCE
-                if (funct7[6:3] == '0 && zimm == '0 && rd == '0) begin
+                if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) begin
                     is_nop = 1'b1;
                     instr_valid = 1'b1;
                 end
             end
             3'b001: begin // FENCE.I
-                if (IR[31:20] == 12'b0 && zimm == '0 && rd == '0) begin
+                if (IR[31:20] == 12'b0 && rs1 == '0 && rd =='0) begin
                     // implementing fence.i as `j f1` (jump to pc+4) 
                     // as this will flush the pipeline and cause a fresh 
                     // fetch of the instructions after the fence.i instruction
@@ -528,13 +534,23 @@ always_comb begin
     INSTR_SYS: begin
         case(funct3)
             3'b000: begin
-                if (IR[31:20] == 12'b0 && zimm == '0 && rd =='0) begin // EBREAK
-                    is_nop = 1'b1;
-                    instr_valid = 1'b1;
-                end
-                else if (IR[31:20] == 12'b1 && zimm == '0 && rd =='0) begin // ECALL
-                    is_ecall = 1'b1;
-                    instr_valid = 1'b1;
+                if (rs1 == '0 && rd =='0) begin
+                    if (IR[31:20] == 12'h000) begin // EBREAK
+                        is_nop = 1'b1;
+                        instr_valid = 1'b1;
+                    end
+                    else if (IR[31:20] == 12'h001) begin // ECALL
+                        is_ecall = 1'b1;
+                        instr_valid = 1'b1;
+                    end
+                    else if (IR[31:20] == 12'h302) begin // MRET
+                        is_mret = 1'b1;
+                        instr_valid = 1'b1;
+                    end
+                    else if (IR[31:20] == 12'h105) begin // WFI
+                        is_wfi = 1'b1;
+                        instr_valid = 1'b1;
+                    end
                 end
             end
             3'b001,       // CSRRW
@@ -543,6 +559,7 @@ always_comb begin
             3'b101,       // CSRRWI
             3'b110,       // CSRRSI
             3'b111: begin // CSRRCI
+                is_csr = 1'b1;
                 instr_valid = 1'b1;
             end
         endcase // funct3
@@ -614,8 +631,10 @@ always_ff @(posedge clk or negedge rstz) begin
             decode.funct3       <= funct3;
 
             // System
-            decode.system       <= OP == INSTR_SYS;
+            decode.csr          <= is_csr;
             decode.ecall        <= is_ecall;
+            decode.ret          <= is_mret;
+            decode.wfi          <= is_wfi;
 
             // Exceptions
             decode.is_illegal   <= is_illegal;

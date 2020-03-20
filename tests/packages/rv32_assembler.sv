@@ -259,5 +259,13 @@ function instr_t rv32_ecall();
     return {12'b1, 5'b0, 3'b000, 5'b0, 7'b11_100_11};
 endfunction
 
+function instr_t rv32_mret();
+    return {12'b0011000_00010, 5'b0, 3'b000, 5'b0, 7'b11_100_11};
+endfunction
+
+function instr_t rv32_wfi();
+    return {12'b0001000_00101, 5'b0, 3'b000, 5'b0, 7'b11_100_11};
+endfunction
+
 /* verilator lint_on UNUSED */
 endpackage

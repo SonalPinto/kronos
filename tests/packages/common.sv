@@ -31,8 +31,10 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  st: %h",            d.st);
     $display("  funct3: %h",        d.funct3);    
     $display("---- System ----");
-    $display("  system: %h",        d.system);
+    $display("  csr: %h",           d.csr);
     $display("  ecall: %h",         d.ecall);
+    $display("  ret: %h",           d.ret);
+    $display("  wfi: %h",           d.wfi);
     $display("---- Exception ----");
     $display("  is_illegal: %h",    d.is_illegal);
 endtask
@@ -51,8 +53,10 @@ task automatic print_execute(input pipeEXWB_t e);
     $display("  branch_cond: %h", e.branch_cond);
     $display("  funct3: %h",      e.funct3);    
     $display("---- System ----");
-    $display("  system: %h",      e.system);
+    $display("  csr: %h",         e.csr);
     $display("  ecall: %h",       e.ecall);
+    $display("  ret: %h",         e.ret);
+    $display("  wfi: %h",         e.wfi);
     $display("---- Exception ----");
     $display("  is_illegal: %h",  e.is_illegal);
 endtask

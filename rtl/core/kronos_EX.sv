@@ -75,8 +75,10 @@ always_ff @(posedge clk or negedge rstz) begin
             execute.st          <= decode.st;
             execute.funct3      <= decode.funct3;
             // Forward System controls
-            execute.system      <= decode.system;
+            execute.csr         <= decode.csr;
             execute.ecall       <= decode.ecall;
+            execute.ret         <= decode.ret;
+            execute.wfi         <= decode.wfi;
             // Forward caught exceptions
             execute.is_illegal  <= decode.is_illegal;
 

@@ -38,8 +38,10 @@ typedef struct packed {
     logic [2:0]  funct3;
     // ------------------------
     // System
-    logic        system;
+    logic        csr;
     logic        ecall;
+    logic        ret;
+    logic        wfi;
     // ------------------------
     // Exceptions
     logic        is_illegal;
@@ -60,8 +62,10 @@ typedef struct packed {
     logic [2:0]  funct3;
     // ------------------------
     // System
-    logic        system;
+    logic        csr;
     logic        ecall;
+    logic        ret;
+    logic        wfi;
     // ------------------------
     // Exceptions
     logic        is_illegal;

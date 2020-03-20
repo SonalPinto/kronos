@@ -190,7 +190,7 @@ endclocking
 
         // setup a CSRRW on mcycleh
         execute = '0;
-        execute.system = 1;
+        execute.csr = 1;
         execute.rd = 1;
         execute.result1 = rv32_csrrs(1, 0, MCYCLEH);
         execute.result2 = 0;
@@ -241,7 +241,7 @@ endclocking
                 // setup a blank CSRRS on minstret/h
                 // higher, then lower
                 execute = '0;
-                execute.system = 1;
+                execute.csr = 1;
                 execute.rd = 1;
                 execute.result1 = rv32_csrrs(1, 0, MINSTRETH);
                 execute.result2 = 0;
@@ -252,7 +252,7 @@ endclocking
 
                 @(cb iff cb.execute_rdy);
                 execute = '0;
-                execute.system = 1;
+                execute.csr = 1;
                 execute.rd = 1;
                 execute.result1 = rv32_csrrs(1, 0, MINSTRET);
                 execute.result2 = 0;
@@ -260,7 +260,7 @@ endclocking
 
                 @(cb iff cb.execute_rdy);
                 execute = '0;
-                execute.system = 1;
+                execute.csr = 1;
                 execute.rd = 1;
                 execute.result1 = rv32_csrrs(1, 0, MINSTRETH);
                 execute.result2 = 0;
@@ -333,7 +333,7 @@ task automatic rand_csr(logic [11:0] csr, output pipeEXWB_t execute, output stri
 
     // generate random CSR operartion
     execute = '0;
-    execute.system = 1;
+    execute.csr = 1;
     execute.rd = rd;
 
     // coin toss for imm or reg source

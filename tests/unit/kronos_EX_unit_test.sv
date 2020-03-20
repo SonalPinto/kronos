@@ -147,8 +147,10 @@ task automatic rand_decode_simple(output pipeIDEX_t decode, output pipeEXWB_t ex
     execute.ld          = decode.ld;
     execute.st          = decode.st;
     execute.funct3      = decode.funct3;
-    execute.system      = decode.system;
+    execute.csr         = decode.csr;
     execute.ecall       = decode.ecall;
+    execute.ret         = decode.ret;
+    execute.wfi         = decode.wfi;
     execute.is_illegal  = decode.is_illegal;
 
     case(aluop)

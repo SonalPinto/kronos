@@ -57,8 +57,6 @@ logic [1:0] op;
 logic [11:0] addr;
 logic [31:0] twdata;
 
-logic setup_trap, return_from_trap;
-
 logic [31:0] csr_rd_data, csr_wr_data;
 logic csr_rd_vld, csr_wr_vld;
 logic csr_rd_en, csr_wr_en;
@@ -100,8 +98,7 @@ logic [63:0] minstret;
 enum logic [1:0] {
     IDLE,
     READ,
-    WRITE,
-    TRAP
+    WRITE
 } state, next_state;
 
 // ============================================================
@@ -119,11 +116,9 @@ always_comb begin
         IDLE: begin
             // Atomic Read/Modify/Write
             if (csr_start) next_state = READ;
-            else if (activate_trap) next_state = TRAP;
         end
         READ: if (csr_rd_vld) next_state = WRITE;
         WRITE: next_state = IDLE;
-        TRAP: next_state = IDLE;
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -164,16 +159,13 @@ end
 assign done = state == WRITE;
 
 // Trap Handling ----------------------------------------------
-assign setup_trap = state == IDLE && activate_trap;
-assign return_from_trap = state == IDLE && return_trap;
-
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) trap_jump <= 1'b0;
-    else if (setup_trap) begin
+    else if (activate_trap) begin
         trap_jump <= 1'b1;
         trap_addr <= mtvec; // Direct Mode
     end
-    else if (return_from_trap) begin
+    else if (return_trap) begin
         trap_jump <= 1'b1;
         trap_addr <= mepc;
     end
@@ -284,14 +276,14 @@ always_ff @(posedge clk or negedge rstz) begin
             endcase // addr
             /* verilator lint_on CASEINCOMPLETE */
         end
-        else if (setup_trap) begin
+        else if (activate_trap) begin
             mstatus.mie <= 1'b0;
             mstatus.mpie <= mstatus.mie;
             mepc <= {trapped_pc[31:2], 2'b00};
             mcause <= trap_cause;
             mtval <= trap_value;
         end
-        else if (return_from_trap) begin
+        else if (return_trap) begin
             mstatus.mie <= mstatus.mpie;
             mstatus.mpie <= 1'b1;
         end
