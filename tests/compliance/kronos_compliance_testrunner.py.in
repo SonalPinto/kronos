@@ -32,11 +32,14 @@ NM = open(nmfile, "r")
 
 for s in NM.readlines():
     items = re.split("\s+", s)
+    label = items[2]
     addr = "32'h"+items[0]
-    if "begin_signature" in s:
+    if label == "begin_signature":
         begin_signature = addr
-    elif "end_signature" in s:
+    elif label == "end_signature":
         end_signature = addr
+    elif label == "tohost":
+        tohost = addr
 
 NM.close()
 
@@ -53,6 +56,7 @@ print("Program: {}".format(memfile))
 print("Result: {}".format(resfile))
 print("begin_signature: {}".format(begin_signature))
 print("end_signature: {}".format(end_signature))
+print("tohost: {}".format(tohost))
 print("\n\n")
 
 # -------------------------------------------------------------
@@ -72,6 +76,7 @@ vlog_flags = []
 vlog_flags.append('+define+PROGRAM=' + args.program);
 vlog_flags.append('+define+BEGIN_SIGNATURE=' + begin_signature);
 vlog_flags.append('+define+END_SIGNATURE=' + end_signature);
+vlog_flags.append('+define+TOHOST=' + tohost);
 
 # Additional runtime config
 dump_wave = '-do "add wave -r *"'

@@ -102,15 +102,17 @@ endclocking
     end
 
     `TEST_CASE("compliance") begin
-        int begin_signature, end_signature;
+        int begin_signature, end_signature, tohost;
         logic [31:0] data, addr;
         
         begin_signature = `BEGIN_SIGNATURE;
         end_signature = `END_SIGNATURE;
+        tohost = `TOHOST >> 2;
 
         $display("Program: %s", `q(`PROGRAM));
         $display("begin_signature: %08h", begin_signature);
         $display("end_signature: %08h", end_signature);
+        $display("tohost: %08h", tohost);
 
         // Bootloader -----------------------------------------
         // Load Program into memory
@@ -119,8 +121,16 @@ endclocking
         // De-assert reset
         ##4 rstz = 1;
 
-        // Wait
-        ##1024;
+        fork 
+            // Wait
+            ##1024;
+
+            // End triggered by writing to host
+            forever @(cb) begin
+                if (data_wr_req && mem_addr == tohost && mem_wdata == 32'h1)
+                    break;
+            end
+        join_any
 
         // Print Result Memory
         $display("<<START>> %08h", begin_signature);
