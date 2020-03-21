@@ -7,7 +7,7 @@ module tb_kronos_WB_ut;
 
 import kronos_types::*;
 import rv32_assembler::*;
-import common::*;
+import utils::*;
 
 logic clk;
 logic rstz;

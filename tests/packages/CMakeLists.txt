@@ -1,7 +1,7 @@
 # Copyright (c) 2020 Sonal Pinto
 # SPDX-License-Identifier: Apache-2.0
 
-add_hdl_source(common.sv
+add_hdl_source(utils.sv
     DEPENDS
         kronos_types
 )

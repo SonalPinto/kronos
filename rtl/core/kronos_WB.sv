@@ -66,7 +66,7 @@ module kronos_WB
 );
 
 logic wb_valid;
-logic direct_write;
+logic direct_write, direct_jump;
 logic branch_success;
 
 logic lsu_start, lsu_done;
@@ -189,8 +189,9 @@ end
 
 assign branch_target = trap_jump ? trap_addr : execute.result2;
 assign branch_success = execute.branch || (execute.branch_cond && execute.result1[0]);
+assign direct_jump = wb_valid && branch_success;
 
-assign branch = (wb_valid && branch_success) || trap_jump;
+assign branch = direct_jump || trap_jump;
 
 // ============================================================
 // Load Store Unit
@@ -231,7 +232,7 @@ assign csr_start = wb_valid && execute.csr;
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) instret <= 1'b0;
     else instret <= direct_write 
-                    || branch 
+                    || direct_jump 
                     || lsu_done 
                     || csr_done; // FIXME - ret/ecall should count for instructions done
 end

@@ -13,26 +13,33 @@ add_hdl_unit_test(kronos_ID_unit_test.sv
     DEPENDS
         kronos_ID
         rv32_assembler
-        common
+        utils
 )
 
 add_hdl_unit_test(kronos_EX_unit_test.sv
     DEPENDS
         kronos_EX
-        common
+        utils
 )
 
-add_hdl_unit_test(kronos_WB_lsu_unit_test.sv
+add_hdl_unit_test(lsu_unit_test.sv
     DEPENDS
         spsram32_model
         kronos_WB
 )
 
-add_hdl_unit_test(kronos_WB_counters_unit_test.sv
+add_hdl_unit_test(counters_unit_test.sv
     DEPENDS
         kronos_WB
         rv32_assembler
-        common
+        utils
+)
+
+add_hdl_unit_test(csr_unit_test.sv
+    DEPENDS
+        kronos_WB
+        rv32_assembler
+        utils
 )
 
 add_hdl_unit_test(core_basic_unit_test.sv
@@ -56,7 +63,7 @@ add_hdl_unit_test(hcu_unit_test.sv
     DEPENDS
         kronos_ID
         rv32_assembler
-        common
+        utils
 )
 
 add_hdl_unit_test(branch_unit_test.sv

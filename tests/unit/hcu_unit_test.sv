@@ -8,7 +8,7 @@ module tb_hcu_ut;
 
 import kronos_types::*;
 import rv32_assembler::*;
-import common::*;
+import utils::*;
 
 logic clk;
 logic rstz;

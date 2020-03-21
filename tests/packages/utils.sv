@@ -1,9 +1,9 @@
 // Copyright (c) 2020 Sonal Pinto
 // SPDX-License-Identifier: Apache-2.0
 
-// Common test helper functions
+// Test helper functions
 
-package common;
+package utils;
 
 import kronos_types::*;
 
