@@ -282,6 +282,7 @@ always_comb begin
             // or successful branches
             exception_caught = 1'b1;
             tcause[3:0] = INSTR_ADDR_MISALIGNED;
+            tvalue = branch_target;
         end
 
     end
