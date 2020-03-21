@@ -85,6 +85,8 @@ logic exception_caught;
 logic [3:0] tcause;
 logic [31:0] tvalue;
 
+logic system_call;
+
 logic activate_trap, return_trap;
 logic [31:0] trap_cause, trap_addr, trap_value, trapped_pc;
 logic trap_jump;
@@ -236,7 +238,8 @@ always_ff @(posedge clk or negedge rstz) begin
     else instret <= direct_write 
                     || direct_jump 
                     || lsu_done 
-                    || csr_done; // FIXME - ret/ecall should count for instructions done
+                    || csr_done
+                    || (system_call && trap_jump);
 end
 
 kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
@@ -295,11 +298,11 @@ always_ff @(posedge clk) begin
         trap_cause <= {28'b0, tcause};
         trap_value <= tvalue;
     end
-    else if (state == STEADY && execute.ecall) begin
+    else if (pipe_in_vld && state == STEADY && execute.ecall) begin
         trap_cause <= {28'b0, ECALL_MACHINE};
         trap_value <= '0;
     end
-    else if (state == STEADY && execute.ebreak) begin
+    else if (pipe_in_vld && state == STEADY && execute.ebreak) begin
         trap_cause <= {28'b0, BREAKPOINT};
         trap_value <= execute.pc;
     end
@@ -307,7 +310,20 @@ end
 
 // stow pc
 always_ff @(posedge clk) begin
-    if (state == STEADY && pipe_in_vld) trapped_pc <= execute.pc;
+    if (pipe_in_vld && state == STEADY) trapped_pc <= execute.pc;
+end
+
+// mark system call instructions for instret
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) system_call <= 1'b0;
+    else if (pipe_in_vld && state == STEADY) begin
+        if (execute.ecall || execute.ebreak || execute.ret || execute.wfi) begin
+            system_call <= 1'b1;
+        end
+        else begin
+            system_call <= 1'b0;
+        end
+    end
 end
 
 

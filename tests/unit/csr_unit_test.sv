@@ -150,6 +150,8 @@ endclocking
             $display("-----------------\n\n");
         end
 
+        check_minstret(128);
+
         ##64;
     end
 
@@ -217,6 +219,8 @@ endclocking
 
             $display("-----------------\n\n");
         end
+
+        check_minstret(256);
 
         ##32;
     end
@@ -286,6 +290,8 @@ endclocking
 
             $display("-----------------\n\n");
         end
+
+        check_minstret(256);
 
         ##32;
     end
@@ -500,6 +506,25 @@ task automatic check_csr(input logic [11:0] csr, input logic [31:0] check);
             assert(`csr.mip.meip == check[11]);
         end
     endcase // csr
+endtask
+
+task automatic check_minstret(input logic [31:0] count);
+    // check minstret
+    execute = '0;
+    execute.csr = 1;
+    execute.rd = 1;
+    execute.result1 = rv32_csrrs(1, 0, MINSTRET);
+    execute.result2 = 0;
+    execute.funct3 = CSR_RS;
+
+    @(cb);
+    cb.execute_vld <= 1;
+    ##1 cb.execute_vld <= 0;
+
+    @(cb iff cb.regwr_en);
+    $display("minstret: %d", cb.regwr_data);
+    assert(cb.regwr_data == count);
+    assert(cb.regwr_sel == 1);
 endtask
 
 endmodule

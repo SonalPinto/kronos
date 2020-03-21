@@ -3,7 +3,7 @@
 
 /*
 Kronos 
-    4-stage RISC-V RV32I Core
+    4-stage RISC-V RV32I_Zicsr_Zifencei Core
 */
 
 module kronos_core 
