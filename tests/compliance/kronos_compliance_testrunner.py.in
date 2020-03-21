@@ -9,8 +9,8 @@ from vunit.verilog import VUnit
 test_name = "kronos_compliance"
 
 cli = VUnitCLI()
-cli.parser.add_argument('--program',default=None,help="rv32i compiled verilog memory file")
-cli.parser.add_argument('--out',default=None,help="rv32i output signature result")
+cli.parser.add_argument('--program', default=None, help="rv32i compiled verilog memory file")
+cli.parser.add_argument('--out', default=None, help="rv32i output signature result")
 
 args = cli.parse_args()
 

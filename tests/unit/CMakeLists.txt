@@ -73,3 +73,8 @@ add_hdl_unit_test(branch_unit_test.sv
         kronos_WB
         rv32_assembler
 )
+
+add_hdl_unit_test(icebreaker_memory_unit_test.sv
+    DEPENDS
+        icebreaker_memory
+)

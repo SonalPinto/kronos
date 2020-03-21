@@ -24,5 +24,9 @@ include(AddHDL)
 include(AddVUnit)
 include(AddRISCV)
 
+# Globals
+# pre-compliled lattice primitive/simulation library for modelsim
+set(LATTICE_LIBRARY $ENV{LATTICE_LIBRARY})
+
 add_subdirectory(rtl)
 add_subdirectory(tests)

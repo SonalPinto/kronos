@@ -73,6 +73,7 @@ function(add_hdl_unit_test hdl_test_file)
 
     # Get HDL Sources
     get_hdl_sources(${ARG_NAME} TEST_SOURCES)
+    get_hdl_libs(${ARG_NAME} EXTERNAL_LIBS)
 
     # Configure VUnit testrunner script using ARGS defined so far
     set(testrunner_script "${CMAKE_CURRENT_BINARY_DIR}/${ARG_NAME}_testrunner.py")

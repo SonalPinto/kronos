@@ -51,3 +51,47 @@ function(get_hdl_sources hdl_target hdl_sources_out)
     set(${hdl_sources_out} ${hdl_sources} PARENT_SCOPE)
 
 endfunction()
+
+
+function(get_hdl_includes hdl_target hdl_includes_out)
+    # Get extrnal library dependancies for this target
+
+    set(hdl_includes "")
+
+    # get dependancies
+    get_hdl_depends(${hdl_target} all_hdl_targets)
+    # add self to the list
+    set(all_hdl_targets ${all_hdl_targets} ${hdl_target})
+
+    # collect INCLUDES property
+    foreach(target ${all_hdl_targets})
+        get_target_property(sources ${target} HDL_INCLUDES)
+
+        list(APPEND hdl_includes ${sources})
+    endforeach()
+
+    set(${hdl_includes_out} ${hdl_includes} PARENT_SCOPE)
+
+endfunction()
+
+
+function(get_hdl_libs hdl_target hdl_libs_out)
+    # Get extrnal library dependancies for this target
+
+    set(hdl_libraries "")
+
+    # get dependancies
+    get_hdl_depends(${hdl_target} all_hdl_targets)
+    # add self to the list
+    set(all_hdl_targets ${all_hdl_targets} ${hdl_target})
+
+    # collect LIBRARIES property
+    foreach(target ${all_hdl_targets})
+        get_target_property(sources ${target} HDL_LIBRARIES)
+
+        list(APPEND hdl_libraries ${sources})
+    endforeach()
+
+    set(${hdl_libs_out} ${hdl_libraries} PARENT_SCOPE)
+
+endfunction()

@@ -8,6 +8,8 @@ from vunit.verilog import VUnit
 test_name = "@ARG_NAME@"
 
 cli = VUnitCLI()
+cli.parser.add_argument('--sv_seed', default=0, help="-sv_seed <seed|random>  Specify seed value (or 'random') for simulator RNG")
+
 args = cli.parse_args()
 args.output_path = "@TEST_OUTPUT_DIR@"
 
@@ -15,19 +17,39 @@ vu = VUnit.from_args(args=args)
 
 lib = vu.add_library('lib')
 
+vlog_flags = []
+vsim_flags = []
+
+# -------------------------------------------------------------
+# Compile flags
+
 source_files = "@TEST_SOURCES@".split(';')
 for f in source_files:
     lib.add_source_files(f)
 
-# Additional runtime config
-dump_wave = '-do "add wave -r *"'
-sv_seed = ''
+external_libs = "@EXTERNAL_LIBS@".split(';')
+for xlib in external_libs:
+    name = os.path.basename(xlib)
+    vu.add_external_library(name, xlib)
 
+# -------------------------------------------------------------
+# Sim flags
+
+# dump trace
+vsim_flags.append('-do "add wave -r *"')
+
+seed = None
 if 'SV_SEED' in os.environ:
     seed = os.environ['SV_SEED']
-    print("SV_SEED: ", seed)
-    sv_seed = "-sv_seed {}".format(seed)
+elif args.sv_seed:
+    seed = args.sv_seed
 
-vu.set_sim_option("modelsim.vsim_flags", [dump_wave, sv_seed])
+if seed is not None:
+    print("SV_SEED: ", seed)
+    vsim_flags.append("-sv_seed {}".format(seed))
+
+# -------------------------------------------------------------
+vu.set_sim_option("modelsim.vsim_flags", vsim_flags)
+vu.set_compile_option("modelsim.vlog_flags", vlog_flags)
 
 vu.main()

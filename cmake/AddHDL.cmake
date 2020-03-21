@@ -27,6 +27,7 @@ function(add_hdl_source hdl_file)
         DEFINES
         DEPENDS
         INCLUDES
+        LIBRARIES
     )
 
     # Resolve keywords into ARG_#
@@ -53,10 +54,11 @@ function(add_hdl_source hdl_file)
     init_arg(ARG_DEFINES "")
     init_arg(ARG_DEPENDS "")
     init_arg(ARG_INCLUDES "")
+    init_arg(ARG_LIBRARIES "")
 
     set_realpath(ARG_SOURCES)
     set_realpath(ARG_INCLUDES)
-
+    set_realpath(ARG_LIBRARIES)
 
     # Create source file target and bind it's properties
     # This target doesn't do anything on its own
