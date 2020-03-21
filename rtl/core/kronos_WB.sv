@@ -73,6 +73,7 @@ logic lsu_start, lsu_done;
 logic [31:0] load_data;
 logic [4:0] load_rd;
 logic load_write;
+logic lsu_addr_misaligned;
 
 logic [31:0] csr_rd_data;
 logic csr_start;
@@ -199,27 +200,28 @@ assign branch = direct_jump || trap_jump;
 assign lsu_start = wb_valid && (execute.ld || execute.st);
 
 kronos_lsu u_lsu (
-    .clk         (clk                ),
-    .rstz        (rstz               ),
-    .addr        (execute.result1    ),
-    .load_data   (load_data          ),
-    .load_rd     (load_rd            ),
-    .load_write  (load_write         ),
-    .store_data  (execute.result2    ),
-    .start       (lsu_start          ),
-    .done        (lsu_done           ),
-    .rd          (execute.rd         ),
-    .ld          (execute.ld         ),
-    .st          (execute.st         ),
-    .data_size   (execute.funct3[1:0]),
-    .data_uns    (execute.funct3[2]  ),
-    .data_addr   (data_addr          ),
-    .data_rd_data(data_rd_data       ),
-    .data_wr_data(data_wr_data       ),
-    .data_wr_mask(data_wr_mask       ),
-    .data_rd_req (data_rd_req        ),
-    .data_wr_req (data_wr_req        ),
-    .data_gnt    (data_gnt           )
+    .clk            (clk                ),
+    .rstz           (rstz               ),
+    .addr           (execute.result1    ),
+    .load_data      (load_data          ),
+    .load_rd        (load_rd            ),
+    .load_write     (load_write         ),
+    .store_data     (execute.result2    ),
+    .start          (lsu_start          ),
+    .done           (lsu_done           ),
+    .rd             (execute.rd         ),
+    .ld             (execute.ld         ),
+    .st             (execute.st         ),
+    .data_size      (execute.funct3[1:0]),
+    .data_uns       (execute.funct3[2]  ),
+    .addr_misaligned(lsu_addr_misaligned),
+    .data_addr      (data_addr          ),
+    .data_rd_data   (data_rd_data       ),
+    .data_wr_data   (data_wr_data       ),
+    .data_wr_mask   (data_wr_mask       ),
+    .data_rd_req    (data_rd_req        ),
+    .data_wr_req    (data_wr_req        ),
+    .data_gnt       (data_gnt           )
 );
 
 // ============================================================
@@ -284,7 +286,6 @@ always_comb begin
             tcause[3:0] = INSTR_ADDR_MISALIGNED;
             tvalue = branch_target;
         end
-
     end
 end
 
@@ -309,5 +310,12 @@ always_ff @(posedge clk) begin
     if (state == STEADY && pipe_in_vld) trapped_pc <= execute.pc;
 end
 
+
+// ------------------------------------------------------------
+`ifdef verilator
+logic _unused = &{1'b0
+    , lsu_addr_misaligned
+};
+`endif
 
 endmodule

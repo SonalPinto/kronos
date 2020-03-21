@@ -123,6 +123,8 @@ parameter logic [3:0] EXTERNAL_INTERRUPT    = 4'd11;
 parameter logic [3:0] INSTR_ADDR_MISALIGNED = 4'd0;
 parameter logic [3:0] ILLEGAL_INSTR         = 4'd2;
 parameter logic [3:0] BREAKPOINT            = 4'd3;
+parameter logic [3:0] LOAD_ADDR_MISALIGNED  = 4'd4;
+parameter logic [3:0] STORE_ADDR_MISALIGNED = 4'd6;
 parameter logic [3:0] ECALL_MACHINE         = 4'd11;
 
 // ============================================================

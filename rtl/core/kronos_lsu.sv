@@ -31,6 +31,7 @@ module kronos_lsu
     input  logic        st,
     input  logic [1:0]  data_size,
     input  logic        data_uns,
+    output logic        addr_misaligned,
     // Memory interface
     output logic [31:0] data_addr,
     input  logic [31:0] data_rd_data,
@@ -115,6 +116,9 @@ end
 assign addr_word_index = {addr[31:2], 2'b0};
 assign addr_byte_index = addr[1:0];
 
+assign addr_misaligned = (data_size == HALF && addr_byte_index == 2'b11)
+                        || (data_size == WORD && addr_byte_index != 2'b00);
+
 // Memory access controls
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
@@ -124,8 +128,7 @@ always_ff @(posedge clk or negedge rstz) begin
     end
     else if (state == IDLE && start) begin
         // Detect unaligned access
-        is_unaligned <= (data_size == HALF && addr_byte_index == 2'b11)
-                        || (data_size == WORD && addr_byte_index != 2'b00);
+        is_unaligned <= addr_misaligned;
 
         // stow controls
         load_rd <= rd;
