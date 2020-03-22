@@ -9,12 +9,11 @@ import kronos_types::*;
 import rv32_assembler::*;
 
 logic clk;
-logic rstz;
+logic RSTN;
 logic LED;
 
 icebreaker_lite_top u_dut (
-    .clk (clk ),
-    .rstz(rstz),
+    .RSTN(RSTN),
     .LED (LED )
 );
 
@@ -22,6 +21,7 @@ icebreaker_lite_top u_dut (
 `define core u_dut.u_core
 `define MEM u_dut.u_mem.MEM
 
+assign clk = u_dut.clk;
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
 endclocking
@@ -30,85 +30,44 @@ endclocking
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
-        clk = 0;
-        rstz = 0;
-
-        fork 
-            forever #1ns clk = ~clk;
-        join_none
+        RSTN = 1;
     end
 
     `TEST_CASE("doubler") begin
-        instr_t instr;
-        int index, addr;
-        int data;
         int n;
         int r_exp, r_got;
 
-        // setup program: doubler.c
-        /*
-            void main(int n) {
-                int a, b;
-                a = 1;
-                for(b=0; b<n; b++){
-                    a = 2 * a;
-                }
-                result = a;
-            }
-        */
+        int addr_n, addr_result, addr_done;
+
+        // setup program: doubler2.c
         // Bootloader -------------------------
         // Load text
-        $readmemh("../../../data/doubler.mem", `MEM);
+        $readmemh("../../../data/doubler2.mem", `MEM);
 
-        // ABI --------------------------------
-        // Setup Return Address (ra/x1)
-        `core.u_id.REG1[x1] = 944;
-        `core.u_id.REG2[x1] = 944;
+        // Data addresses
+        addr_n = 32'h404 >> 2;
+        addr_result = addr_n + 1;
 
-        // Store while(1); at 944
-        // 944 = 0x3B0, word 236
-        `MEM[944>>2] = rv32_jal(x0, 0); // j 1b
-
-        // Setup Frame Pointer (s0/x8)
-        `core.u_id.REG1[x8] = 0;
-        `core.u_id.REG2[x8] = 0;
-
-        // Setup Stack Pointer (sp/x2) to the end of the memory (4KB), 0x1000
-        `core.u_id.REG1[x2] = 4096;
-        `core.u_id.REG2[x2] = 4096;
-
-        // Setup Function Argument - "n" - at a0 (x10)
+        // Setup operation argument - "n"
         n = $urandom_range(1,31);
         $display("\n\nARG: n = %0d", n);
-        `core.u_id.REG1[x10] = n;
-        `core.u_id.REG2[x10] = n;
+        `MEM[addr_n] = n;
 
-        // De-assert reset
-        ##4 rstz = 1;
+        reset();
 
         // Run
         $display("\n\nEXEC\n\n");
-        fork 
-            forever @(cb) begin
-                if (`core.instr_req && `core.instr_gnt) begin
-                    addr = `core.instr_addr;
-                    instr = `MEM[addr>>2];
-                    $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
-                    index++;
-                    if (addr == 944) begin
-                        break;
-                    end
-                end
-            end
-
-            ##1024;
+        fork
+            ##1024; // timeout watchdog
+            instruction_monitor();
+            program_done_monitor();
         join_any
         $display("\n\n");
 
         //-------------------------------
         // check
         r_exp = 2**n;
-        r_got = `MEM[960>>2];
+        r_got = `MEM[addr_result];
         $display("RESULT: %d vs %d", r_exp, r_got);
         assert(r_exp == r_got);
 
@@ -117,5 +76,45 @@ endclocking
 end
 
 `WATCHDOG(1ms);
+
+// ============================================================
+// METHODS
+// ============================================================
+
+task automatic reset();
+    // Press reset
+    ##4 RSTN = 0;
+    ##4 RSTN = 1;
+    ##4;
+endtask
+
+task automatic instruction_monitor();
+    instr_t instr;
+    int index, addr;
+
+    // instruction monitor
+    forever @(cb) begin
+        if (`core.instr_req && `core.instr_gnt) begin
+            addr = `core.instr_addr;
+            instr = `MEM[addr>>2];
+            $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
+            index++;
+        end
+    end
+endtask
+
+task automatic program_done_monitor();
+    logic [31:0] addr_done;
+
+    addr_done = 32'h400>>2;
+
+    // instruction monitor
+    forever @(cb) begin
+        if (`MEM[addr_done]) begin
+            $display("DONE!");
+            break;
+        end
+    end
+endtask
 
 endmodule

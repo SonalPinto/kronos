@@ -10,10 +10,11 @@ onto a 4KB EBR-based memory through a simple arbitrated system bus.
 */
 
 module icebreaker_lite_top (
-    input  logic clk,
-    input  logic rstz,
+    input  logic RSTN,
     output logic LED
 );
+
+logic clk, rstz;
 
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
@@ -33,6 +34,30 @@ logic [31:0] mem_wr_data;
 logic mem_en;
 logic mem_wr_en;
 logic [3:0] mem_wr_mask;
+
+logic [1:0] reset_sync;
+
+// ============================================================
+// Clock and Reset
+// ============================================================
+// 24MHz internal oscillator
+HSOSC #(.CLKHF_DIV ("0b01")) u_osc (
+  .CLKHFPU(1'b1),
+  .CLKHFEN(1'b1),
+  .CLKHF  (clk) 
+);
+
+// synchronize reset
+always_ff @(posedge clk or negedge RSTN) begin
+    if (~RSTN) reset_sync <= '0;
+    else reset_sync <= {reset_sync[0], RSTN};
+end
+assign rstz = reset_sync[1];
+
+
+// ============================================================
+// Kronos + System
+// ============================================================
 
 kronos_core u_core (
     .clk         (clk         ),

@@ -31,7 +31,9 @@ function(add_riscv_test_data source)
         LINKER_SCRIPT
     )
 
-    set(multi_value_arguments)
+    set(multi_value_arguments
+        SOURCES
+    )
 
     # Resolve keywords into ARG_#
     cmake_parse_arguments(ARG
@@ -50,7 +52,11 @@ function(add_riscv_test_data source)
     get_filename_component(name "${source}" NAME_WE)
 
     # Init args
+    init_arg(ARG_SOURCES "")
     init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
+
+    set_realpath(ARG_SOURCES)
+    set_realpath(ARG_LINKER_SCRIPT)
 
     set(memfile "${name}.mem")
     set(elf "${name}.elf")
@@ -77,7 +83,7 @@ function(add_riscv_test_data source)
             -nostartfiles
             -ffreestanding
             -T${ARG_LINKER_SCRIPT}
-            ${source} 
+            ${source} ${ARG_SOURCES}
             -o ${elf}
         COMMAND
             ${RISCV_OBJDUMP}

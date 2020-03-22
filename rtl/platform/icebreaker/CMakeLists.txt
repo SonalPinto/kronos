@@ -16,4 +16,6 @@ add_hdl_source(icebreaker_lite_top.sv
         kronos_core
         icebreaker_memory_lite
         icebreaker_system_bus_lite
+    LIBRARIES
+        ${LATTICE_LIBRARY}
 )
