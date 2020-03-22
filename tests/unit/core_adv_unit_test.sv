@@ -9,7 +9,7 @@ module tb_core_ut;
 /*
 For this test suite, the memory is limited to 4KB (1024 words)
 
-The results will be stored in the .data section starting at 960
+The results will be stored in the .data section starting at 960 (0x3C0, word 240)
 */
 
 import kronos_types::*;
@@ -136,15 +136,16 @@ endclocking
         u_dut.u_id.REG2[x1] = 944;
 
         // Store while(1); at 944
+        // 944 = 0x3B0, word 236
         u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)
         u_dut.u_id.REG1[x8] = 0;
         u_dut.u_id.REG2[x8] = 0;
 
-        // Setup Stack Pointer (sp/x2) to the end of the memory (4KB)
-        u_dut.u_id.REG1[x2] = 1024;
-        u_dut.u_id.REG2[x2] = 1024;
+        // Setup Stack Pointer (sp/x2) to the end of the memory (4KB), 0x1000
+        u_dut.u_id.REG1[x2] = 4096;
+        u_dut.u_id.REG2[x2] = 4096;
 
         // Setup Function Argument - "n" - at a0 (x10)
         n = $urandom_range(1,31);
@@ -217,6 +218,7 @@ endclocking
         u_dut.u_id.REG2[x1] = 944;
 
         // Store while(1); at 944
+        // 944 = 0x3B0, word 236
         u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)

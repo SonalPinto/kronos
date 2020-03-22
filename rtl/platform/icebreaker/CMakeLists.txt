@@ -7,3 +7,13 @@ add_hdl_source(icebreaker_memory.sv
     LIBRARIES
         ${LATTICE_LIBRARY}
 )
+
+add_hdl_source(icebreaker_memory_lite.sv)
+add_hdl_source(icebreaker_system_bus_lite.sv)
+
+add_hdl_source(icebreaker_lite_top.sv
+    DEPENDS
+        kronos_core
+        icebreaker_memory_lite
+        icebreaker_system_bus_lite
+)
