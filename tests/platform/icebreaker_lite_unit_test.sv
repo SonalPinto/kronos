@@ -10,11 +10,11 @@ import rv32_assembler::*;
 
 logic clk;
 logic RSTN;
-logic LED;
+logic LEDG;
 
 icebreaker_lite_top u_dut (
     .RSTN(RSTN),
-    .LED (LED )
+    .LEDG(LEDG)
 );
 
 // graybox probes
@@ -70,6 +70,29 @@ endclocking
         r_got = `MEM[addr_result];
         $display("RESULT: %d vs %d", r_exp, r_got);
         assert(r_exp == r_got);
+
+        ##64;
+    end
+
+
+    `TEST_CASE("blinky") begin
+        // setup program: blinky.c
+        // Bootloader -------------------------
+        // Load text
+        $readmemh("../../../data/blinky.mem", `MEM);
+
+        reset();
+
+        // Run
+        $display("\n\nEXEC\n\n");
+        fork
+            ##1024; // timeout watchdog
+            instruction_monitor();
+            forever @(LEDG) begin
+                if (LEDG) $display("LEDG OFF!");
+                else if (~LEDG) $display("LEDG ON!");
+            end
+        join_any
 
         ##64;
     end

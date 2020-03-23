@@ -1,7 +1,8 @@
 OUTPUT_ARCH( "riscv" )
 
 MEMORY {
-    ram (rwx): ORIGIN = 0x00000000, LENGTH = 0x00001000
+    ram  (rwx): ORIGIN = 0x00000000, LENGTH = 0x00001000
+    gpio (rw) : ORIGIN = 0x00001000, LENGTH = 0x00000100
 }
 
 ENTRY(_start)

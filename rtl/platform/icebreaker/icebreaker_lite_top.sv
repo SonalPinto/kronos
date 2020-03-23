@@ -11,7 +11,7 @@ onto a 4KB EBR-based memory through a simple arbitrated system bus.
 
 module icebreaker_lite_top (
     input  logic RSTN,
-    output logic LED
+    output logic LEDG
 );
 
 logic clk, rstz;
@@ -35,7 +35,15 @@ logic mem_en;
 logic mem_wr_en;
 logic [3:0] mem_wr_mask;
 
+logic [31:0] gpio_addr;
+logic [31:0] gpio_rd_data;
+logic [31:0] gpio_wr_data;
+logic gpio_en;
+logic gpio_wr_en;
+
 logic [1:0] reset_sync;
+
+logic gpio_ledg;
 
 // ============================================================
 // Clock and Reset
@@ -94,7 +102,12 @@ icebreaker_system_bus_lite u_sysbus (
     .mem_wr_data (mem_wr_data ),
     .mem_en      (mem_en      ),
     .mem_wr_en   (mem_wr_en   ),
-    .mem_wr_mask (mem_wr_mask )
+    .mem_wr_mask (mem_wr_mask ),
+    .gpio_addr   (gpio_addr   ),
+    .gpio_rd_data(gpio_rd_data),
+    .gpio_wr_data(gpio_wr_data),
+    .gpio_en     (gpio_en     ),
+    .gpio_wr_en  (gpio_wr_en  )
 );
 
 icebreaker_memory_lite u_mem (
@@ -107,6 +120,26 @@ icebreaker_memory_lite u_mem (
     .wr_mask(mem_wr_mask)
 );
 
-assign LED = 1'b0;
+
+// ============================================================
+// GPIO
+// ============================================================
+always_ff @(posedge clk) begin
+    if (gpio_en) begin
+        if (gpio_wr_en) begin
+            case(gpio_addr[7:2])
+                6'h00: gpio_ledg <= gpio_wr_data[0];
+            endcase // gpio_addr
+        end
+        else begin
+            case(gpio_addr[7:2])
+                6'h00: gpio_rd_data <= {31'b0, gpio_ledg};
+            endcase // gpio_addr
+        end
+    end
+end
+
+// inverted
+assign LEDG = ~gpio_ledg;
 
 endmodule
