@@ -1,5 +1,6 @@
 .section .init;
 .globl _start;
 _start:
-    la sp, __stack_pointer$;
+    la gp, _global_pointer;
+    la sp, _stack_pointer;
     j main;

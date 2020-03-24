@@ -11,6 +11,7 @@ onto a 4KB EBR-based memory through a simple arbitrated system bus.
 
 module icebreaker_lite_top (
     input  logic RSTN,
+    output logic LEDR,
     output logic LEDG
 );
 
@@ -43,6 +44,7 @@ logic gpio_wr_en;
 
 logic [1:0] reset_sync;
 
+logic gpio_ledr;
 logic gpio_ledg;
 
 // ============================================================
@@ -128,18 +130,22 @@ always_ff @(posedge clk) begin
     if (gpio_en) begin
         if (gpio_wr_en) begin
             case(gpio_addr[7:2])
-                6'h00: gpio_ledg <= gpio_wr_data[0];
+                6'h00: gpio_ledr <= gpio_wr_data[0];
+                6'h01: gpio_ledg <= gpio_wr_data[0];
             endcase // gpio_addr
         end
         else begin
             case(gpio_addr[7:2])
-                6'h00: gpio_rd_data <= {31'b0, gpio_ledg};
+                6'h00: gpio_rd_data <= {31'b0, gpio_ledr};
+                6'h01: gpio_rd_data <= {31'b0, gpio_ledg};
             endcase // gpio_addr
         end
     end
 end
 
 // inverted
+assign LEDR = ~gpio_ledr;
 assign LEDG = ~gpio_ledg;
+
 
 endmodule

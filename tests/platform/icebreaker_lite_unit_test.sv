@@ -10,11 +10,13 @@ import rv32_assembler::*;
 
 logic clk;
 logic RSTN;
+logic LEDR;
 logic LEDG;
 
 icebreaker_lite_top u_dut (
     .RSTN(RSTN),
-    .LEDG(LEDG)
+    .LEDG(LEDG),
+    .LEDR(LEDR)
 );
 
 // graybox probes
@@ -86,7 +88,7 @@ endclocking
         // Run
         $display("\n\nEXEC\n\n");
         fork
-            ##1024; // timeout watchdog
+            ##10000; // timeout watchdog
             instruction_monitor();
             forever @(LEDG) begin
                 if (LEDG) $display("LEDG OFF!");
@@ -98,7 +100,7 @@ endclocking
     end
 end
 
-`WATCHDOG(1ms);
+`WATCHDOG(10ms);
 
 // ============================================================
 // METHODS
