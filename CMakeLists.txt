@@ -29,4 +29,5 @@ include(AddRISCV)
 set(LATTICE_LIBRARY $ENV{LATTICE_LIBRARY})
 
 add_subdirectory(rtl)
+add_subdirectory(src)
 add_subdirectory(tests)

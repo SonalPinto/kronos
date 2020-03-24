@@ -14,7 +14,7 @@ This module cascades 8 of them to construct the main memory for the system.
 The EBR are arranged as a 4x2 grid.
 */
 
-module icebreaker_memory_lite (
+module icebreaker_lite_memory (
     input  logic                        clk,
     input  logic [31:0]                 addr,
     input  logic [31:0]                 wdata,

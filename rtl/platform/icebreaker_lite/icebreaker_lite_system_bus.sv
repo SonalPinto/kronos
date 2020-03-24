@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Basic System Bus, designed to work with icebreaker_memory_lite
+Basic System Bus, designed to work with icebreaker_lite
 */
 
-module icebreaker_system_bus_lite (
+module icebreaker_lite_system_bus (
     input  logic        clk,
     input  logic        rstz,
     // Core.instr interface

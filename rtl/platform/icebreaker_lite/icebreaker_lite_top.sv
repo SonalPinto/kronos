@@ -83,7 +83,7 @@ kronos_core u_core (
     .data_gnt    (data_gnt    )
 );
 
-icebreaker_system_bus_lite u_sysbus (
+icebreaker_lite_system_bus u_sysbus (
     .clk         (clk         ),
     .rstz        (rstz        ),
     .instr_addr  (instr_addr  ),
@@ -110,7 +110,7 @@ icebreaker_system_bus_lite u_sysbus (
     .gpio_wr_en  (gpio_wr_en  )
 );
 
-icebreaker_memory_lite u_mem (
+icebreaker_lite_memory u_mem (
     .clk    (clk        ),
     .addr   (mem_addr   ),
     .wdata  (mem_wr_data),
