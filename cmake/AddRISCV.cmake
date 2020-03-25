@@ -29,6 +29,7 @@ function(add_riscv_test_data source)
 
     set(one_value_arguments
         LINKER_SCRIPT
+        USING_STDLIB
     )
 
     set(multi_value_arguments
@@ -53,6 +54,7 @@ function(add_riscv_test_data source)
 
     # Init args
     init_arg(ARG_SOURCES "")
+    init_arg(ARG_USING_STDLIB 0)
     init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
 
     set_realpath(ARG_SOURCES)
@@ -63,6 +65,11 @@ function(add_riscv_test_data source)
     set(objdump "${name}.objdump")
     set(binary "${name}.bin")
     set(target "testdata-${name}")
+
+    set(NOSTDLIB "-nostdlib")
+    if (ARG_USING_STDLIB EQUAL 0)
+        set(NOSTDLIB)
+    endif()
 
     # Setup command and target to generate the test data
     add_custom_command(
@@ -79,7 +86,7 @@ function(add_riscv_test_data source)
             -mabi=ilp32
             -static
             -fvisibility=hidden
-            -nostdlib
+            ${NOSTDLIB}
             -nostartfiles
             -ffreestanding
             -T${ARG_LINKER_SCRIPT}

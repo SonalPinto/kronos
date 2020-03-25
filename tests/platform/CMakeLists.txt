@@ -10,4 +10,5 @@ add_hdl_unit_test(icebreaker_lite_unit_test.sv
     TESTDATA
        doubler2
        blinky
+       prime
 )

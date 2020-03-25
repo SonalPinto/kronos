@@ -13,10 +13,27 @@ logic RSTN;
 logic LEDR;
 logic LEDG;
 
+logic CAT;
+logic AA;
+logic AB;
+logic AC;
+logic AD;
+logic AE;
+logic AF;
+logic AG;
+
 icebreaker_lite_top u_dut (
     .RSTN(RSTN),
     .LEDG(LEDG),
-    .LEDR(LEDR)
+    .LEDR(LEDR),
+    .CAT (CAT ),
+    .AA  (AA  ),
+    .AB  (AB  ),
+    .AC  (AC  ),
+    .AD  (AD  ),
+    .AE  (AE  ),
+    .AF  (AF  ),
+    .AG  (AG  )
 );
 
 // graybox probes
@@ -94,6 +111,24 @@ endclocking
                 if (LEDG) $display("LEDG OFF!");
                 else if (~LEDG) $display("LEDG ON!");
             end
+        join_any
+
+        ##64;
+    end
+
+    `TEST_CASE("prime") begin
+        // setup program: prime.c
+        // Bootloader -------------------------
+        // Load text
+        $readmemh("../../../data/prime.mem", `MEM);
+
+        reset();
+
+        // Run
+        $display("\n\nEXEC\n\n");
+        fork
+            ##10000; // timeout watchdog
+            instruction_monitor();
         join_any
 
         ##64;

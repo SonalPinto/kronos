@@ -12,10 +12,19 @@ onto a 4KB EBR-based memory through a simple arbitrated system bus.
 module icebreaker_lite_top (
     input  logic RSTN,
     output logic LEDR,
-    output logic LEDG
+    output logic LEDG,
+    output logic CAT,
+    output logic AA,
+    output logic AB,
+    output logic AC,
+    output logic AD,
+    output logic AE,
+    output logic AF,
+    output logic AG
 );
 
 logic clk, rstz;
+logic [1:0] reset_sync;
 
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
@@ -36,16 +45,17 @@ logic mem_en;
 logic mem_wr_en;
 logic [3:0] mem_wr_mask;
 
-logic [31:0] gpio_addr;
-logic [31:0] gpio_rd_data;
-logic [31:0] gpio_wr_data;
-logic gpio_en;
-logic gpio_wr_en;
-
-logic [1:0] reset_sync;
+logic [31:0] sys_addr;
+logic [31:0] sys_rd_data;
+logic [31:0] sys_wr_data;
+logic sys_en;
+logic sys_wr_en;
 
 logic gpio_ledr;
 logic gpio_ledg;
+
+logic ssd_en, ssd_sel;
+logic [6:0] ssd_a, ssd_b, ssd_disp;
 
 // ============================================================
 // Clock and Reset
@@ -105,11 +115,11 @@ icebreaker_lite_system_bus u_sysbus (
     .mem_en      (mem_en      ),
     .mem_wr_en   (mem_wr_en   ),
     .mem_wr_mask (mem_wr_mask ),
-    .gpio_addr   (gpio_addr   ),
-    .gpio_rd_data(gpio_rd_data),
-    .gpio_wr_data(gpio_wr_data),
-    .gpio_en     (gpio_en     ),
-    .gpio_wr_en  (gpio_wr_en  )
+    .sys_addr    (sys_addr   ),
+    .sys_rd_data (sys_rd_data),
+    .sys_wr_data (sys_wr_data),
+    .sys_en      (sys_en     ),
+    .sys_wr_en   (sys_wr_en  )
 );
 
 icebreaker_lite_memory u_mem (
@@ -124,28 +134,47 @@ icebreaker_lite_memory u_mem (
 
 
 // ============================================================
-// GPIO
+// System
 // ============================================================
 always_ff @(posedge clk) begin
-    if (gpio_en) begin
-        if (gpio_wr_en) begin
-            case(gpio_addr[7:2])
-                6'h00: gpio_ledr <= gpio_wr_data[0];
-                6'h01: gpio_ledg <= gpio_wr_data[0];
-            endcase // gpio_addr
+    if (sys_en) begin
+        if (sys_wr_en) begin
+            case(sys_addr[7:2])
+                6'h00: gpio_ledr <= sys_wr_data[0];
+                6'h01: gpio_ledg <= sys_wr_data[0];
+                6'h02: ssd_en    <= {31'b0, sys_wr_data[0]};
+                6'h03: ssd_a     <= {25'b0, sys_wr_data[6:0]};
+                6'h04: ssd_b     <= {25'b0, sys_wr_data[6:0]};
+            endcase // sys_addr
         end
         else begin
-            case(gpio_addr[7:2])
-                6'h00: gpio_rd_data <= {31'b0, gpio_ledr};
-                6'h01: gpio_rd_data <= {31'b0, gpio_ledg};
-            endcase // gpio_addr
+            case(sys_addr[7:2])
+                6'h00: sys_rd_data <= {31'b0, gpio_ledr};
+                6'h01: sys_rd_data <= {31'b0, gpio_ledg};
+                6'h02: sys_rd_data <= {31'b0, ssd_en};
+                6'h03: sys_rd_data <= {25'b0, ssd_a};
+                6'h04: sys_rd_data <= {25'b0, ssd_b};
+            endcase // sys_addr
         end
     end
 end
 
-// inverted
+// LEDs, inverted
 assign LEDR = ~gpio_ledr;
 assign LEDG = ~gpio_ledg;
 
+// 7-Segment Display PMOD
+icebreaker_7sd_pmod u_7sd (
+    .clk (clk      ),
+    .rstz(rstz     ),
+    .en  (ssd_en  ),
+    .a   (ssd_a   ),
+    .b   (ssd_b   ),
+    .disp(ssd_disp),
+    .sel (ssd_sel )
+);
+
+assign CAT = ssd_sel;
+assign {AG, AF, AE, AD, AC, AB, AA} = ssd_disp;
 
 endmodule

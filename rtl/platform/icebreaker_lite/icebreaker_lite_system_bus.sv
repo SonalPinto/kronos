@@ -28,31 +28,31 @@ module icebreaker_lite_system_bus (
     output logic        mem_en,
     output logic        mem_wr_en,
     output logic [3:0]  mem_wr_mask,
-    // GPIO interface
-    output logic [31:0] gpio_addr,
-    input  logic [31:0] gpio_rd_data,
-    output logic [31:0] gpio_wr_data,
-    output logic        gpio_en,
-    output logic        gpio_wr_en
+    // System interface
+    output logic [31:0] sys_addr,
+    input  logic [31:0] sys_rd_data,
+    output logic [31:0] sys_wr_data,
+    output logic        sys_en,
+    output logic        sys_wr_en
 );
 
-parameter GPIO = 4'h0;
+parameter SYSTEM = 4'h0;
 
 logic mem_instr_rd_req;
 logic mem_data_rd_req;
 logic mem_data_wr_req;
 logic gpio_data_rd_req;
-logic gpio_data_wr_req;
+logic sys_data_wr_req;
 
 logic is_mem_data_access;
-logic is_gpio_data_access;
+logic is_sys_data_access;
 
 logic is_system;
 logic [3:0] system_mask;
 
 logic mem_instr_gnt;
 logic mem_data_gnt;
-logic gpio_data_gnt;
+logic sys_data_gnt;
 
 // ============================================================
 // Main Memory
@@ -83,18 +83,18 @@ end
 
 assign system_mask = data_addr[11:8];
 
-// GPIO: 0x1000 - 0x1000 - 0x10FF
+// SYS: 0x1000 - 0x1000 - 0x10FF
 // 64 words
-assign gpio_data_rd_req  = data_rd_req && is_system && system_mask == GPIO;
-assign gpio_data_wr_req  = data_wr_req && is_system && system_mask == GPIO;
+assign sys_data_rd_req  = data_rd_req && is_system && system_mask == SYSTEM;
+assign sys_data_wr_req  = data_wr_req && is_system && system_mask == SYSTEM;
 
-assign is_gpio_data_access = gpio_data_rd_req | gpio_data_wr_req;
+assign is_sys_data_access = sys_data_rd_req | sys_data_wr_req;
 
 always_comb begin
-    gpio_en      = is_gpio_data_access;
-    gpio_wr_en   = gpio_data_wr_req;
-    gpio_addr    = data_addr;
-    gpio_wr_data = data_wr_data;
+    sys_en      = is_sys_data_access;
+    sys_wr_en   = sys_data_wr_req;
+    sys_addr    = data_addr;
+    sys_wr_data = data_wr_data;
 end
 
 
@@ -104,12 +104,12 @@ always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         mem_instr_gnt <= 1'b0;
         mem_data_gnt <= 1'b0;
-        gpio_data_gnt <= 1'b0;
+        sys_data_gnt <= 1'b0;
     end
     else begin
         mem_instr_gnt <= mem_instr_rd_req & ~is_mem_data_access;
         mem_data_gnt <= is_mem_data_access;
-        gpio_data_gnt <= is_gpio_data_access;
+        sys_data_gnt <= is_sys_data_access;
     end
 end
 
@@ -127,9 +127,9 @@ always_comb begin
     if (mem_data_gnt) begin
         data_gnt = 1'b1;
     end
-    else if (gpio_data_gnt) begin
+    else if (sys_data_gnt) begin
         data_gnt = 1'b1;
-        data_rd_data = gpio_rd_data;
+        data_rd_data = sys_rd_data;
     end
 end
 

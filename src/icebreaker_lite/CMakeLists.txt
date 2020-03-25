@@ -7,3 +7,11 @@ add_riscv_test_data(blinky.c
     LINKER_SCRIPT
         link.ld
 )
+
+add_riscv_test_data(prime.c
+    SOURCES
+        start.S
+    LINKER_SCRIPT
+        link.ld
+    USING_STDLIB
+)
