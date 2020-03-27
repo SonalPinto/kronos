@@ -62,7 +62,11 @@ module kronos_WB
     output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
-    input  logic        data_gnt
+    input  logic        data_gnt,
+    // Interrupt sources
+    input  logic        software_interrupt,
+    input  logic        timer_interrupt,
+    input  logic        external_interrupt
 );
 
 logic wb_valid;
@@ -92,6 +96,7 @@ logic [31:0] trap_cause, trap_addr, trap_value, trapped_pc;
 logic trap_jump;
 
 logic instret;
+logic core_interrupt;
 
 enum logic [2:0] {
     STEADY,
@@ -243,23 +248,27 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
-    .clk          (clk            ),
-    .rstz         (rstz           ),
-    .IR           (execute.result1),
-    .wr_data      (execute.result2),
-    .rd_data      (csr_rd_data    ),
-    .csr_start    (csr_start      ),
-    .csr_rd       (csr_rd         ),
-    .csr_write    (csr_write      ),
-    .done         (csr_done       ),
-    .instret      (instret        ),
-    .activate_trap(activate_trap  ),
-    .return_trap  (return_trap    ),
-    .trapped_pc   (trapped_pc     ),
-    .trap_cause   (trap_cause     ),
-    .trap_value   (trap_value     ),
-    .trap_addr    (trap_addr      ),
-    .trap_jump    (trap_jump      )
+    .clk               (clk               ),
+    .rstz              (rstz              ),
+    .IR                (execute.result1   ),
+    .wr_data           (execute.result2   ),
+    .rd_data           (csr_rd_data       ),
+    .csr_start         (csr_start         ),
+    .csr_rd            (csr_rd            ),
+    .csr_write         (csr_write         ),
+    .done              (csr_done          ),
+    .instret           (instret           ),
+    .activate_trap     (activate_trap     ),
+    .return_trap       (return_trap       ),
+    .trapped_pc        (trapped_pc        ),
+    .trap_cause        (trap_cause        ),
+    .trap_value        (trap_value        ),
+    .trap_addr         (trap_addr         ),
+    .trap_jump         (trap_jump         ),
+    .software_interrupt(software_interrupt),
+    .timer_interrupt   (timer_interrupt   ),
+    .external_interrupt(external_interrupt),
+    .core_interrupt    (core_interrupt    )
 );
 
 assign activate_trap = state == EXCEPT;
@@ -331,6 +340,7 @@ end
 `ifdef verilator
 logic _unused = &{1'b0
     , lsu_addr_misaligned
+    , core_interrupt
 };
 `endif
 

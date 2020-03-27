@@ -23,7 +23,11 @@ module kronos_core
     output logic [3:0]  data_wr_mask,
     output logic        data_rd_req,
     output logic        data_wr_req,
-    input  logic        data_gnt
+    input  logic        data_gnt,
+    // Interrupt sources
+    input  logic        software_interrupt,
+    input  logic        timer_interrupt,
+    input  logic        external_interrupt
 );
 
 parameter logic [31:0] BOOT_ADDR = 32'h0;
@@ -102,23 +106,26 @@ kronos_EX u_ex (
 // ============================================================
 
 kronos_WB #(.BOOT_ADDR(BOOT_ADDR)) u_wb (
-    .clk          (clk          ),
-    .rstz         (rstz         ),
-    .execute      (execute      ),
-    .pipe_in_vld  (execute_vld  ),
-    .pipe_in_rdy  (execute_rdy  ),
-    .regwr_data   (regwr_data   ),
-    .regwr_sel    (regwr_sel    ),
-    .regwr_en     (regwr_en     ),
-    .branch_target(branch_target),
-    .branch       (branch       ),
-    .data_addr    (data_addr    ),
-    .data_rd_data (data_rd_data ),
-    .data_wr_data (data_wr_data ),
-    .data_wr_mask (data_wr_mask ),
-    .data_rd_req  (data_rd_req  ),
-    .data_wr_req  (data_wr_req  ),
-    .data_gnt     (data_gnt     )
+    .clk               (clk               ),
+    .rstz              (rstz              ),
+    .execute           (execute           ),
+    .pipe_in_vld       (execute_vld       ),
+    .pipe_in_rdy       (execute_rdy       ),
+    .regwr_data        (regwr_data        ),
+    .regwr_sel         (regwr_sel         ),
+    .regwr_en          (regwr_en          ),
+    .branch_target     (branch_target     ),
+    .branch            (branch            ),
+    .data_addr         (data_addr         ),
+    .data_rd_data      (data_rd_data      ),
+    .data_wr_data      (data_wr_data      ),
+    .data_wr_mask      (data_wr_mask      ),
+    .data_rd_req       (data_rd_req       ),
+    .data_wr_req       (data_wr_req       ),
+    .data_gnt          (data_gnt          ),
+    .software_interrupt(software_interrupt),
+    .timer_interrupt   (timer_interrupt   ),
+    .external_interrupt(external_interrupt)
 );
 
 // Flush pipeline on branch

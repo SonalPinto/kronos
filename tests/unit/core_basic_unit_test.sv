@@ -32,19 +32,22 @@ logic data_gnt;
 logic run;
 
 kronos_core u_dut (
-    .clk         (clk            ),
-    .rstz        (rstz           ),
-    .instr_addr  (instr_addr     ),
-    .instr_data  (instr_data     ),
-    .instr_req   (instr_req      ),
-    .instr_gnt   (instr_gnt & run),
-    .data_addr   (data_addr      ),
-    .data_rd_data(data_rd_data   ),
-    .data_wr_data(data_wr_data   ),
-    .data_wr_mask(data_wr_mask   ),
-    .data_rd_req (data_rd_req    ),
-    .data_wr_req (data_wr_req    ),
-    .data_gnt    (data_gnt       )
+    .clk               (clk            ),
+    .rstz              (rstz           ),
+    .instr_addr        (instr_addr     ),
+    .instr_data        (instr_data     ),
+    .instr_req         (instr_req      ),
+    .instr_gnt         (instr_gnt & run),
+    .data_addr         (data_addr      ),
+    .data_rd_data      (data_rd_data   ),
+    .data_wr_data      (data_wr_data   ),
+    .data_wr_mask      (data_wr_mask   ),
+    .data_rd_req       (data_rd_req    ),
+    .data_wr_req       (data_wr_req    ),
+    .data_gnt          (data_gnt       ),
+    .software_interrupt(1'b0           ),
+    .timer_interrupt   (1'b0           ),
+    .external_interrupt(1'b0           )
 );
 
 logic [31:0] mem_addr;

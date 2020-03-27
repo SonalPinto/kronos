@@ -61,23 +61,26 @@ kronos_EX u_ex (
 );
 
 kronos_WB u_wb (
-    .clk          (clk          ),
-    .rstz         (rstz         ),
-    .execute      (execute      ),
-    .pipe_in_vld  (execute_vld  ),
-    .pipe_in_rdy  (execute_rdy  ),
-    .regwr_data   (regwr_data   ),
-    .regwr_sel    (regwr_sel    ),
-    .regwr_en     (regwr_en     ),
-    .branch_target(branch_target),
-    .branch       (branch       ),
-    .data_addr    (data_addr    ),
-    .data_rd_data (data_rd_data ),
-    .data_wr_data (data_wr_data ),
-    .data_wr_mask (data_wr_mask ),
-    .data_rd_req  (data_rd_req  ),
-    .data_wr_req  (data_wr_req  ),
-    .data_gnt     (data_gnt     )
+    .clk               (clk          ),
+    .rstz              (rstz         ),
+    .execute           (execute      ),
+    .pipe_in_vld       (execute_vld  ),
+    .pipe_in_rdy       (execute_rdy  ),
+    .regwr_data        (regwr_data   ),
+    .regwr_sel         (regwr_sel    ),
+    .regwr_en          (regwr_en     ),
+    .branch_target     (branch_target),
+    .branch            (branch       ),
+    .data_addr         (data_addr    ),
+    .data_rd_data      (data_rd_data ),
+    .data_wr_data      (data_wr_data ),
+    .data_wr_mask      (data_wr_mask ),
+    .data_rd_req       (data_rd_req  ),
+    .data_wr_req       (data_wr_req  ),
+    .data_gnt          (data_gnt     ),
+    .software_interrupt(1'b0         ),
+    .timer_interrupt   (1'b0         ),
+    .external_interrupt(1'b0         )
 );
 
 default clocking cb @(posedge clk);

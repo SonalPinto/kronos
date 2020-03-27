@@ -41,6 +41,7 @@ module kronos_csr
     output logic [4:0]  csr_rd,
     output logic        csr_write,
     output logic        done,
+    input  logic        instret,
     // trap handling
     input  logic        activate_trap,
     input  logic        return_trap,
@@ -49,8 +50,11 @@ module kronos_csr
     input  logic [31:0] trap_value,
     output logic [31:0] trap_addr,
     output logic        trap_jump,
-    // external
-    input  logic        instret
+    // interrupts
+    input  logic        software_interrupt,
+    input  logic        timer_interrupt,
+    input  logic        external_interrupt,
+    output logic        core_interrupt
 );
 
 logic [1:0] op;
@@ -293,11 +297,14 @@ always_ff @(posedge clk or negedge rstz) begin
         // msip: clear the memory mapped software interrupt register
         // mtip: cleared by writing to mtimecmp
         // meip: cleared by addressing external intettupt handler (PLIC)
-        mip.msip <= 1'b0 & mstatus.mie & mie.msie;
-        mip.mtip <= 1'b0 & mstatus.mie & mie.mtie;
-        mip.meip <= 1'b0 & mstatus.mie & mie.meie;
+        mip.msip <= software_interrupt & mstatus.mie & mie.msie;
+        mip.mtip <= timer_interrupt    & mstatus.mie & mie.mtie;
+        mip.meip <= external_interrupt & mstatus.mie & mie.meie;
     end
 end
+
+// Inform the WB stage about pending interrupts
+assign core_interrupt = |{mip.msip, mip.mtip, mip.meip};
 
 // ============================================================
 // Hardware Performance Monitors
