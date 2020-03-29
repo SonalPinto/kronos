@@ -12,11 +12,11 @@ Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPG
 # Features
 
 - RV32I_Zicsr_Zifencei compliance tested with [riscv-compliance suite](https://github.com/SonalPinto/riscv-compliance).
-  * Complete implementation of the Unprivilege Architecuture:
+  * Complete implementation of the Unprivileged Architecture:
     - RV32I Base Integer ISA, v2.1
     - Zifenci Instruction Fetch Fence extension, v2.0
     - Zicsr Control and Status Register extension, v2.0
-  * Partial platform-specific implementation of the Privilieged Architecture:
+  * Partial platform-specific implementation of the Privileged Architecture:
     - Machine-Level ISA, v1.11
 - Optimized for single cycle instruction execution.
 - Native support for misaligned data access.
@@ -26,7 +26,7 @@ Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPG
  
 # Documentation
 
-- Todo
+https://sonalpinto.github.io/kronos/
 
 
 # Todo
