@@ -6,7 +6,7 @@ The design was developed on the [iCEBreaker](https://1bitsquared.com/products/ic
 
 Kronos is 4-stage pipelined in-order RISC-V core. The RISC-V ISA is well suited to be implemented as a classic pipelined risc architecture, and this core is no exception. An overview of the kronos core is illustrated below, visualizing the four stages.
 
-![Kronos Architecture](_images/kronos_arch.png)
+![Kronos Architecture](_images/kronos_arch.svg)
 
 
 ## Fetch

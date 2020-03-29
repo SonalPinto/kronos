@@ -1,0 +1,3 @@
+# ALU Design
+
+On a platform like the iCE40UP5K (not the speediest FPGA out there, but definitely one of the least power hungry ones), the Execute stage is truly going to be the critical path. Those adder chains and comparison operations do not come cheap. In order to optimize the EX stage, I decided to move all of the control logic and operand selection to the Decode stage. As well as hazard checks. Those register forward muxes and hazard detections add to the critical path! Yes, this does come at the cost of one extra cycle for hazard resolution (the Decode stage has 2 stages ahead of it), but I decided it was worth it for some sweet **fmax**.

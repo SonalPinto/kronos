@@ -1,8 +1,8 @@
 - Architecture
   - [Overview](arch_overview.md)
   - [RV32I Base Integer ISA Study](rv32_study.md)
-  - Instruction Fetch
-  - ALU Design
+  - [Instruction Fetch](instr_fetch.md)
+  - [ALU Design](alu_design.md)
   - Instruction Decode
   - Hazard Control
   - Load Store Unit

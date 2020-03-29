@@ -82,7 +82,6 @@ always_comb begin
     /* verilator lint_on CASEINCOMPLETE */
 end
 
-// FIXME - Swap this out to a skid buffer ?
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         fetch_vld <= '0;
