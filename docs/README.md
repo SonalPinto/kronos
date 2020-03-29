@@ -1,5 +1,3 @@
-![project status](https://img.shields.io/badge/work-in%20progress-orange)
-
 # Kronos RISC-V
 
 Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPGA implementations.
@@ -22,22 +20,12 @@ Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPG
 - Native support for misaligned data access.
 - One block lookahead instruction fetch.
 - Direct mode trap handler jumps.
- 
- 
-# Documentation
-
-- Todo
-
-
-# Todo
-
-- Complete implementation `wfi` instruction and interrupt handling. Only exceptions are handled right now.
-- Intense documentation
 
 
 # License
 
 Licensed under Apache License, Version 2.0 (see [LICENSE](https://github.com/SonalPinto/kronos/blob/master/LICENSE) for full text).
+
 
 # Miscellaneous
 
