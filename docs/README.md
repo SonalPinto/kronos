@@ -1,6 +1,6 @@
 # Kronos RISC-V
 
-Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPGA implementations.
+Kronos is a 4-stage in-order `RISC-V RV32I_Zicsr_Zifencei` core geared towards FPGA implementations.
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 

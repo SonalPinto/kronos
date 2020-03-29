@@ -1,2 +1,20 @@
 - Architecture
   - [Overview](arch_overview.md)
+  - [RV32I Base Integer ISA Study](rv32_study.md)
+  - Instruction Fetch
+  - ALU Design
+  - Instruction Decode
+  - Hazard Control
+  - Load Store Unit
+  - Control Status Registers
+  - Write Back
+  - Exceptions and Interrupts
+- Development
+  - Environment
+  - Testing
+  - RISC-V Compliance
+- Integration
+  - kronos_core
+- Platforms
+  - iCEBreaker_lite
+  - iCEBreaker

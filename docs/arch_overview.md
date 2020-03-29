@@ -19,7 +19,7 @@ The instruction (`IR`) from the Fetch stage is decoded into four operands (`op1-
 
 ## Execute
 
-The Kronos Execute stage contains an handcrafted `ALU` (Arithmetic Logic Unit) with two tracks (primary and secondary). The primary track calculated `result1` from `op1` and `op2` as per the alu operation decoded. The secondary tracks generates `result2` from `op3` and `op4`. Most instructions use one track (the primary one). Write back controls are simply forwarded to the next next stage.
+The Kronos Execute stage contains an handcrafted `ALU` (Arithmetic Logic Unit) with two tracks (primary and secondary). The primary track calculates `result1` from `op1` and `op2` as per the alu operation decoded. The secondary tracks generates `result2` from `op3` and `op4`. Most instructions use one track (the primary one). Write back controls are simply forwarded to the next next stage.
 
 ## Write Back
 
