@@ -33,13 +33,13 @@ Where r[0-5] are the intermediate results of these major functions
     5: BARREL SHIFTER
 
 Secondary Track Functions
-    ADD         : s[0] = op1 + op2
-    ADD_ALIGN   : s[0] = (op1 + op2) & ~1
+    ADD         : s[0] = op3 + op4
+    ADD_ALIGN   : s[0] = (op3 + op4) & ~1
 
 ALU controls signals:
-    cin         : Carry In for subtration, Negate OP2 for subtraction and comparision
+    cin         : Carry In for subtraction, Negate OP2 for subtraction and comparison
     rev         : Reverse OP1 for shift-left
-    uns         : Unsigned flag for unsigned comparision
+    uns         : Unsigned flag for unsigned comparison
     eq          : Equality check
     inv         : Invert comparator result
     align       : blank out the LSB of the secondary adder result
@@ -118,7 +118,7 @@ always_comb begin
     R_sign = r_adder[31];
 
     // Signed Less Than (LT)
-    // Greater Than or Equal (GTE) comparision is inverse of the LT result
+    // Greater Than or Equal (GTE) comparison is inverse of the LT result
     // 
     // If the operands have the same sign, we use r_sign
     // The result is negative if op1<op2
