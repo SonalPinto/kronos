@@ -20,21 +20,21 @@ Finally, the logical operations, AND, OR and XOR generate R_AND, R_OR and R_XOR.
 
 Primary track functions | Operation | cin | uns | eq | inv | rev | result
 :----|----|----|----|----|----|----|----|
-ADD  | result1 = op1 + op2          | 0 | 0 | 0 | 0 | 0 | R_ADD
-SUB  | result1 = op1 - op2          | 1 | 0 | 0 | 0 | 0 | R_ADD
-AND  | result1 = op1 & op2          | 0 | 0 | 0 | 0 | 0 | R_AND
-OR   | result1 = op1 \| op2         | 0 | 0 | 0 | 0 | 0 | R_OR
-XOR  | result1 = op1 ^ op2          | 0 | 0 | 0 | 0 | 0 | R_XOR
-LT   | result1 = op1 < op2          | 1 | 0 | 0 | 0 | 0 | R_COMP
-LTU  | result1 = op1 <u op2         | 1 | 1 | 0 | 0 | 0 | R_COMP
-GTE  | result1 = op1 >= op2         | 1 | 0 | 0 | 0 | 1 | R_COMP
-GTEU | result1 = op1 >=u op2        | 1 | 1 | 0 | 0 | 1 | R_COMP
-EQ   | result1 = op1 == op2         | 0 | 0 | 0 | 1 | 0 | R_COMP
-NEQ  | result1 = op1 != op2         | 0 | 0 | 0 | 1 | 1 | R_COMP
-SHL  | result1 = op1 << op2[4:0]    | 0 | 1 | 0 | 0 | 1 | R_SHIFT
-SHR  | result1 = op1 >> op2[4:0]    | 0 | 1 | 0 | 0 | 0 | R_SHIFT
-SHRA | result1 = op1 >>> op2[4:0]   | 0 | 0 | 0 | 0 | 0 | R_SHIFT
-
+ADD  | result1 = op1 + op2          | 0   | 0   | 0  | 0   | 0   | R_ADD
+SUB  | result1 = op1 - op2          | 1   | 0   | 0  | 0   | 0   | R_ADD
+AND  | result1 = op1 & op2          | 0   | 0   | 0  | 0   | 0   | R_AND
+OR   | result1 = op1 \| op2         | 0   | 0   | 0  | 0   | 0   | R_OR
+XOR  | result1 = op1 ^ op2          | 0   | 0   | 0  | 0   | 0   | R_XOR
+LT   | result1 = op1 < op2          | 1   | 0   | 0  | 0   | 0   | R_COMP
+LTU  | result1 = op1 <u op2         | 1   | 1   | 0  | 0   | 0   | R_COMP
+GTE  | result1 = op1 >= op2         | 1   | 0   | 0  | 1   | 0   | R_COMP
+GTEU | result1 = op1 >=u op2        | 1   | 1   | 0  | 1   | 0   | R_COMP
+EQ   | result1 = op1 == op2         | 0   | 0   | 1  | 0   | 0   | R_COMP
+NEQ  | result1 = op1 != op2         | 0   | 0   | 1  | 1   | 0   | R_COMP
+SHL  | result1 = op1 << op2[4:0]    | 0   | 1   | 0  | 0   | 1   | R_SHIFT
+SHR  | result1 = op1 >> op2[4:0]    | 0   | 1   | 0  | 0   | 0   | R_SHIFT
+SHRA | result1 = op1 >>> op2[4:0]   | 0   | 0   | 0  | 0   | 0   | R_SHIFT
+ 
 
 The decoder generates the above minimal control signals (and there is no further decoding at the ALU at all!). The Primary track generates 5 result pathways, and the output mux deciding `result1` is set by the decoder.
 
