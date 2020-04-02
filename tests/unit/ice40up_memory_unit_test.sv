@@ -16,7 +16,7 @@ logic en;
 logic wr_en;
 logic [3:0] wr_mask;
 
-icebreaker_memory u_mem (
+ice40up_memory u_mem (
     .clk    (clk    ),
     .addr   (addr   ),
     .wdata  (wdata  ),

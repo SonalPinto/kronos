@@ -7,9 +7,13 @@ Simple implementation of the Kronos RV32I core for the iCEBreaker FGPA platform
 The board houses a Lattice iCE40UP5K. This implementation straps the Kronos core
 onto a 4KB EBR-based memory through a simple arbitrated system bus.
 
+IO:
+    - LEDG, LEDR - active low
+    - 7 Segment Display pmod driver (2 character)
+
 */
 
-module icebreaker_lite_top (
+module snowflake_top (
     input  logic RSTN,
     output logic LEDR,
     output logic LEDG,
@@ -98,7 +102,7 @@ kronos_core u_core (
     .external_interrupt(1'b0        )
 );
 
-icebreaker_lite_system_bus u_sysbus (
+snowflake_system_bus u_sysbus (
     .clk         (clk         ),
     .rstz        (rstz        ),
     .instr_addr  (instr_addr  ),
@@ -125,7 +129,7 @@ icebreaker_lite_system_bus u_sysbus (
     .sys_wr_en   (sys_wr_en  )
 );
 
-icebreaker_lite_memory u_mem (
+ice40up_memory_lite u_mem (
     .clk    (clk        ),
     .addr   (mem_addr   ),
     .wdata  (mem_wr_data),
@@ -166,8 +170,8 @@ end
 assign LEDR = ~gpio_ledr;
 assign LEDG = ~gpio_ledg;
 
-// 7-Segment Display PMOD
-icebreaker_7sd_pmod u_7sd (
+// 7-Segment Display PMOD driver
+snowflake_7sd_driver u_7sd (
     .clk (clk      ),
     .rstz(rstz     ),
     .en  (ssd_en  ),

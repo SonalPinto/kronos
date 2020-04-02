@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Basic System Bus, designed to work with icebreaker_lite
+Basic System Bus for snowflake platform
 */
 
-module icebreaker_lite_system_bus (
+module snowflake_system_bus (
     input  logic        clk,
     input  logic        rstz,
     // Core.instr interface

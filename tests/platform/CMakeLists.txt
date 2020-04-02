@@ -3,9 +3,9 @@
 
 add_subdirectory(src)
 
-add_hdl_unit_test(icebreaker_lite_unit_test.sv
+add_hdl_unit_test(snowflake_unit_test.sv
     DEPENDS
-        icebreaker_lite_top
+        snowflake_top
         rv32_assembler
     TESTDATA
        doubler2

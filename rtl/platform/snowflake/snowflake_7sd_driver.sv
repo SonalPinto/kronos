@@ -34,7 +34,7 @@ F : 7'b0001110
 
 */
 
-module icebreaker_7sd_pmod (
+module snowflake_7sd_driver (
     input  logic        clk,
     input  logic        rstz,
     input  logic        en,

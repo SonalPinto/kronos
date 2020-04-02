@@ -76,7 +76,7 @@ function(add_hdl_source hdl_file)
     # Check and Bind dependencies
     foreach (dep ${ARG_DEPENDS})
         if (NOT TARGET ${dep})
-            message(FATAL_ERROR "${target}'s HDL dependancy doesn't exist: ${name}")
+            message(FATAL_ERROR "${target}'s HDL dependancy doesn't exist: ${dep}")
         endif()
         add_dependencies(${target} ${dep})
     endforeach()

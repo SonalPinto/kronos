@@ -22,7 +22,7 @@ logic AE;
 logic AF;
 logic AG;
 
-icebreaker_lite_top u_dut (
+snowflake_top u_dut (
     .RSTN(RSTN),
     .LEDG(LEDG),
     .LEDR(LEDR),
