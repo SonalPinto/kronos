@@ -20,14 +20,14 @@ logic rstz;
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
-logic instr_gnt;
+logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
 logic [3:0] data_wr_mask;
-logic data_rd_req;
-logic data_wr_req;
-logic data_gnt;
+logic data_wr_en;
+logic data_req;
+logic data_ack;
 
 logic run;
 
@@ -37,14 +37,14 @@ kronos_core u_dut (
     .instr_addr        (instr_addr     ),
     .instr_data        (instr_data     ),
     .instr_req         (instr_req      ),
-    .instr_gnt         (instr_gnt & run),
+    .instr_ack         (instr_ack & run),
     .data_addr         (data_addr      ),
     .data_rd_data      (data_rd_data   ),
     .data_wr_data      (data_wr_data   ),
     .data_wr_mask      (data_wr_mask   ),
-    .data_rd_req       (data_rd_req    ),
-    .data_wr_req       (data_wr_req    ),
-    .data_gnt          (data_gnt       ),
+    .data_wr_en        (data_wr_en     ),
+    .data_req          (data_req       ),
+    .data_ack          (data_ack       ),
     .software_interrupt(1'b0           ),
     .timer_interrupt   (1'b0           ),
     .external_interrupt(1'b0           )
@@ -57,7 +57,7 @@ logic mem_en, mem_wren;
 logic [3:0] mem_wmask;
 
 spsram32_model #(.DEPTH(1024)) u_imem (
-    .clk    (clk      ),
+    .clk    (~clk     ),
     .addr   (mem_addr ),
     .wdata  (mem_wdata),
     .rdata  (mem_rdata),
@@ -68,12 +68,11 @@ spsram32_model #(.DEPTH(1024)) u_imem (
 
 // Data has Priority
 always_comb begin
-    mem_en = |{instr_req, data_rd_req, data_wr_req};
-    mem_wren = data_wr_req;
+    mem_en = instr_req || data_req;
+    mem_wren = data_wr_en;
 
     mem_addr = 0;
-    mem_addr = (data_rd_req | data_wr_req) ?
-        data_addr[2+:10] : instr_addr[2+:10];
+    mem_addr = data_req ? data_addr[2+:10] : instr_addr[2+:10];
 
     instr_data = mem_rdata;
     data_rd_data = mem_rdata;
@@ -82,15 +81,15 @@ always_comb begin
     mem_wmask = data_wr_mask;
 end
 
-always_ff @(posedge clk) begin
-    instr_gnt <= (instr_req) & ~(data_rd_req | data_wr_req) && run;
-    data_gnt <= (data_rd_req | data_wr_req);
+always_ff @(negedge clk) begin
+    instr_ack <= instr_req & ~data_req & run;
+    data_ack <= data_req;
 end
 
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
-    input instr_req, instr_addr, instr_gnt;
+    input instr_req, instr_addr, instr_ack;
     output negedge run;
 endclocking
 
@@ -149,7 +148,7 @@ endclocking
             end
 
             forever @(cb) begin
-                if (instr_req && instr_gnt) begin
+                if (instr_req && instr_ack) begin
                     index = cb.instr_addr>>2;
                     if (index >= prog_size) begin
                         cb.run <= 0;
@@ -222,7 +221,7 @@ endclocking
             end
 
             forever @(cb) begin
-                if (instr_req && instr_gnt) begin
+                if (instr_req && instr_ack) begin
                     index = cb.instr_addr>>2;
                     if (index >= prog_size) begin
                         cb.run <= 0;

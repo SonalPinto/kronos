@@ -60,9 +60,9 @@ module kronos_WB
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
     output logic [3:0]  data_wr_mask,
-    output logic        data_rd_req,
-    output logic        data_wr_req,
-    input  logic        data_gnt,
+    output logic        data_wr_en,
+    output logic        data_req,
+    input  logic        data_ack,
     // Interrupt sources
     input  logic        software_interrupt,
     input  logic        timer_interrupt,
@@ -158,10 +158,10 @@ Registers are written by multiple sources
      - memory load
      - CSR
 
-Direct writes are commited in the same cycle as execute goes valid
+Direct writes are committed in the same cycle as execute goes valid
 and is evaluated as a safe direct write
 
-Loads will take 1 cycle for aligned access and 2 for unaligned 
+Loads (and  store) will take 2 cycle for aligned access and 3 for unaligned 
 immediate memory access (longer for far memory, i.e memory mapped,
 flash, etc)
 
@@ -226,9 +226,9 @@ kronos_lsu u_lsu (
     .data_rd_data   (data_rd_data       ),
     .data_wr_data   (data_wr_data       ),
     .data_wr_mask   (data_wr_mask       ),
-    .data_rd_req    (data_rd_req        ),
-    .data_wr_req    (data_wr_req        ),
-    .data_gnt       (data_gnt           )
+    .data_wr_en     (data_wr_en         ),
+    .data_req       (data_req           ),
+    .data_ack       (data_ack           )
 );
 
 // ============================================================

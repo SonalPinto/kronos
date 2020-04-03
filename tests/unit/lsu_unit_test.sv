@@ -21,9 +21,9 @@ logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
 logic [3:0] data_wr_mask;
-logic data_rd_req;
-logic data_wr_req;
-logic data_gnt;
+logic data_wr_en;
+logic data_req;
+logic data_ack;
 
 kronos_WB u_wb (
     .clk               (clk          ),
@@ -40,31 +40,31 @@ kronos_WB u_wb (
     .data_rd_data      (data_rd_data ),
     .data_wr_data      (data_wr_data ),
     .data_wr_mask      (data_wr_mask ),
-    .data_rd_req       (data_rd_req  ),
-    .data_wr_req       (data_wr_req  ),
-    .data_gnt          (data_gnt     ),
+    .data_wr_en        (data_wr_en   ),
+    .data_req          (data_req     ),
+    .data_ack          (data_ack     ),
     .software_interrupt(1'b0         ),
     .timer_interrupt   (1'b0         ),
     .external_interrupt(1'b0         )
 );
 
 spsram32_model #(.DEPTH(1024)) u_dmem (
-    .clk    (clk                      ),
-    .addr   (data_addr>>2             ),
-    .wdata  (data_wr_data             ),
-    .rdata  (data_rd_data             ),
-    .en     ((data_rd_req|data_wr_req)),
-    .wr_en  (data_wr_req              ),
-    .wr_mask(data_wr_mask             )
+    .clk    (~clk        ),
+    .addr   (data_addr>>2),
+    .wdata  (data_wr_data),
+    .rdata  (data_rd_data),
+    .en     (data_req    ),
+    .wr_en  (data_wr_en  ),
+    .wr_mask(data_wr_mask)
 );
 
-always_ff @(posedge clk) begin
-    if (data_rd_req | data_wr_req) begin
-        data_gnt <= 1;
+always_ff @(negedge clk) begin
+    if (data_req) begin
+        data_ack <= 1;
         // Confirm that access is always 4B aligned
         assert(data_addr[1:0] == 2'b00);
     end
-    else data_gnt <= 0;
+    else data_ack <= 0;
 end
 
 default clocking cb @(posedge clk);
@@ -229,7 +229,6 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
 
             execute.result1 = maddr;
             execute.rd = rd;
-            execute.rd_write = 1;
             execute.ld = 1;
             execute.funct3 = {1'b0, BYTE};
 
@@ -243,7 +242,6 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
 
             execute.result1 = maddr;
             execute.rd = rd;
-            execute.rd_write = 1;
             execute.ld = 1;
             execute.funct3 = {1'b1, BYTE};
 
@@ -257,7 +255,6 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
 
             execute.result1 = maddr;
             execute.rd = rd;
-            execute.rd_write = 1;
             execute.ld = 1;
             execute.funct3 = {1'b0, HALF};
 
@@ -273,7 +270,6 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
 
             execute.result1 = maddr;
             execute.rd = rd;
-            execute.rd_write = 1;
             execute.ld = 1;
             execute.funct3 = {1'b1, HALF};
 
@@ -289,7 +285,6 @@ task automatic rand_load(output pipeEXWB_t execute, output string optype);
 
             execute.result1 = maddr;
             execute.rd = rd;
-            execute.rd_write = 1;
             execute.ld = 1;
             execute.funct3 = {1'b0, WORD};
 

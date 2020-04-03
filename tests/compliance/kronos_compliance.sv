@@ -18,29 +18,32 @@ logic rstz;
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
-logic instr_gnt;
+logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
 logic [3:0] data_wr_mask;
-logic data_rd_req;
-logic data_wr_req;
-logic data_gnt;
+logic data_wr_en;
+logic data_req;
+logic data_ack;
 
 kronos_core u_dut (
-    .clk         (clk         ),
-    .rstz        (rstz        ),
-    .instr_addr  (instr_addr  ),
-    .instr_data  (instr_data  ),
-    .instr_req   (instr_req   ),
-    .instr_gnt   (instr_gnt   ),
-    .data_addr   (data_addr   ),
-    .data_rd_data(data_rd_data),
-    .data_wr_data(data_wr_data),
-    .data_wr_mask(data_wr_mask),
-    .data_rd_req (data_rd_req ),
-    .data_wr_req (data_wr_req ),
-    .data_gnt    (data_gnt    )
+    .clk               (clk         ),
+    .rstz              (rstz        ),
+    .instr_addr        (instr_addr  ),
+    .instr_data        (instr_data  ),
+    .instr_req         (instr_req   ),
+    .instr_ack         (instr_ack   ),
+    .data_addr         (data_addr   ),
+    .data_rd_data      (data_rd_data),
+    .data_wr_data      (data_wr_data),
+    .data_wr_mask      (data_wr_mask),
+    .data_wr_en        (data_wr_en  ),
+    .data_req          (data_req    ),
+    .data_ack          (data_ack    ),
+    .software_interrupt(1'b0        ),
+    .timer_interrupt   (1'b0        ),
+    .external_interrupt(1'b0        )
 );
 
 logic [31:0] mem_addr;
@@ -50,7 +53,7 @@ logic mem_en, mem_wren;
 logic [3:0] mem_wmask;
 
 spsram32_model #(.DEPTH(2**(MEMSIZE))) u_mem (
-    .clk    (clk      ),
+    .clk    (~clk     ),
     .addr   (mem_addr ),
     .wdata  (mem_wdata),
     .rdata  (mem_rdata),
@@ -61,12 +64,11 @@ spsram32_model #(.DEPTH(2**(MEMSIZE))) u_mem (
 
 // Data has Priority
 always_comb begin
-    mem_en = |{instr_req, data_rd_req, data_wr_req};
-    mem_wren = data_wr_req;
+    mem_en = instr_req || data_req;
+    mem_wren = data_wr_en;
 
     mem_addr = 0;
-    mem_addr = (data_rd_req | data_wr_req) ?
-        data_addr[2+:MEMSIZE] : instr_addr[2+:MEMSIZE];
+    mem_addr = data_req ? data_addr[2+:10] : instr_addr[2+:10];
 
     instr_data = mem_rdata;
     data_rd_data = mem_rdata;
@@ -75,17 +77,17 @@ always_comb begin
     mem_wmask = data_wr_mask;
 end
 
-always_ff @(posedge clk) begin
-    instr_gnt <= instr_req & ~(data_rd_req | data_wr_req);
-    data_gnt <= (data_rd_req | data_wr_req);
+always_ff @(negedge clk) begin
+    instr_ack <= instr_req & ~data_req;
+    data_ack <= data_req;
 end
 
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
-    input instr_req, instr_gnt;
+    input instr_req, instr_ack;
     input instr_addr;
-    input data_rd_req, data_wr_req, data_gnt;
+    input data_req, data_wr_en, data_ack;
     input data_addr;
 endclocking
 
@@ -127,7 +129,7 @@ endclocking
 
             // End triggered by writing to host
             forever @(cb) begin
-                if (data_wr_req && mem_addr == tohost && mem_wdata == 32'h1)
+                if (data_wr_en && mem_addr == tohost && mem_wdata == 32'h1)
                     break;
             end
         join_any

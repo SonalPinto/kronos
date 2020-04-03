@@ -4,8 +4,8 @@
 /*
 Kronos Load Store Unit
 
-Control unit that interfaces with "Data" memory and fullfills
-Load/Store intstructions
+Control unit that interfaces with "Data" memory and fulfills
+Load/Store instructions
 
 Unaligned access are handled by the LSU as two aligned accesses.
 As seen from the outside, the memory access interface is always word aligned.
@@ -37,9 +37,9 @@ module kronos_lsu
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
     output logic [3:0]  data_wr_mask,
-    output logic        data_rd_req,
-    output logic        data_wr_req,
-    input  logic        data_gnt
+    output logic        data_wr_en,
+    output logic        data_req,
+    input  logic        data_ack
 );
 
 logic [31:0] addr_word_index;
@@ -50,7 +50,6 @@ logic is_unaligned;
 logic [1:0] mem_size;
 logic load_uns;
 logic load_write_ok;
-logic [31:0] mem_addr, mem_addr_next;
 
 logic [3:0][7:0] mdata, rdata, trdata;
 
@@ -62,15 +61,18 @@ logic [31:0] load_half_data;
 logic [31:0] load_word_data;
 
 logic store_done;
-logic [3:0][7:0] sdata, wdata, twdata;
-logic [1:0][3:0] wmask, twmask;
+logic [3:0][7:0] sdata, wdata;
+logic [1:0][3:0] wmask;
+logic [3:0] twmask;
 
 enum logic [2:0] {
     IDLE,
     READ1,
     READ2,
+    LOAD,
     WRITE1,
-    WRITE2
+    WRITE2,
+    STORE
 } state, next_state;
 
 // ============================================================
@@ -90,21 +92,25 @@ always_comb begin
             else if (st) next_state = WRITE1;
         end
 
-        READ1: if (data_gnt) begin
+        READ1: if (data_ack) begin
             // Aligned access complete in 1 read, else you need the next word
             if (is_unaligned) next_state = READ2;
-            else next_state = IDLE;
+            else next_state = LOAD;
         end
 
-        READ2: if (data_gnt) next_state = IDLE;
+        READ2: if (data_ack) next_state = LOAD;
 
-        WRITE1: if (data_gnt) begin
+        LOAD: next_state = IDLE;
+
+        WRITE1: if (data_ack) begin
             // Write onto two words if access is unaligned
             if (is_unaligned) next_state = WRITE2;
-            else next_state = IDLE;
+            else next_state = STORE;
         end
 
-        WRITE2: if (data_gnt) next_state = IDLE;
+        WRITE2: if (data_ack) next_state = STORE;
+
+        STORE: next_state = IDLE;
 
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
@@ -123,8 +129,6 @@ assign addr_misaligned = (data_size == HALF && addr_byte_index == 2'b11)
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         is_unaligned <= 1'b1;
-        mem_addr <= '0;
-        mem_addr_next <= '0;
     end
     else if (state == IDLE && start) begin
         // Detect unaligned access
@@ -135,12 +139,8 @@ always_ff @(posedge clk or negedge rstz) begin
         mem_size <= data_size;
         load_uns <= data_uns;
 
-        // Cancel the register writeback for rd == 0
+        // Cancel the register write back for rd == 0
         load_write_ok <= rd != '0;
-
-        // Memory address - 4B aligned
-        mem_addr <= addr_word_index;
-        mem_addr_next <= addr_word_index + 32'h4;
 
         // LSByte offset
         offset <= addr_byte_index;
@@ -150,18 +150,24 @@ end
 // ============================================================
 // Load
 
-always_comb begin
-    // byte cast
-    mdata = data_rd_data;
+// byte cast
+assign mdata = data_rd_data;
 
+// register read data
+always_ff @(posedge clk) begin
     // setup write data
-    // Barrel Rotate Right memory read bytes as per offset
-    case(offset)
-        2'b00: rdata = mdata;
-        2'b01: rdata = {mdata[0]  , mdata[3:1]};
-        2'b10: rdata = {mdata[1:0], mdata[3:2]};
-        2'b11: rdata = {mdata[2:0], mdata[3]};
-    endcase
+    if (data_ack) begin
+        // Barrel Rotate Right memory read bytes as per offset
+        case(offset)
+            2'b00: rdata <= mdata;
+            2'b01: rdata <= {mdata[0]  , mdata[3:1]};
+            2'b10: rdata <= {mdata[1:0], mdata[3:2]};
+            2'b11: rdata <= {mdata[2:0], mdata[3]};
+        endcase
+
+        // store for misaligned access
+        trdata <= rdata;
+    end
 end
 
 // select BYTE data
@@ -203,13 +209,6 @@ always_comb begin
     endcase // offset
 end
 
-always_ff @(posedge clk) begin
-    if (data_gnt) begin
-        // store for misaligned access
-        trdata <= rdata;
-    end
-end
-
 // Setup Load Data
 // Some loads take 2 cycles, if misaligned
 always_comb begin
@@ -219,7 +218,7 @@ always_comb begin
 end
 
 // Load operation done status
-assign load_done = (state == READ1 || state == READ2) && next_state == IDLE;
+assign load_done = state == LOAD;
 
 // Cancel register write back if destination is x0
 assign load_write = load_done && load_write_ok;
@@ -256,55 +255,66 @@ end
 
 always_ff @(posedge clk) begin
     if (state == IDLE && start) begin
-        // Stow data/mask
-        twdata <= wdata;
-        twmask <= wmask;
+        // Stow mask
+        twmask <= wmask[1];
     end
 end
 
 // Store operation done status
-assign store_done = (state == WRITE1 || state == WRITE2) && next_state == IDLE;
+assign store_done = state == STORE;
 
 // ============================================================
-// Memory Inerface
-// look-ahead access to the memory (same as fetch stage)
-always_comb begin
-    if (state == READ1 || state == WRITE1) begin
-        data_addr = (data_gnt) ? mem_addr_next : mem_addr;
-    end
-    else if (state == READ2 || state == WRITE2) begin
-        data_addr = mem_addr_next;
-    end 
-    else begin 
-        data_addr = addr_word_index;
-    end
-end
+// Memory Interface
 
-assign data_rd_req = (state == IDLE && next_state == READ1)
-                    || (state == READ1 && (~data_gnt | is_unaligned))
-                    || (state == READ2 && ~data_gnt);
-
-assign data_wr_req = (state == IDLE && next_state == WRITE1)
-                    || (state == WRITE1 && (~data_gnt | is_unaligned))
-                    || (state == WRITE2 && ~data_gnt);
-
-always_comb begin
-    if (state == WRITE1) begin
-        data_wr_mask = (data_gnt) ? twmask[1] : twmask[0];
-        data_wr_data = twdata;
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
+        data_req <= 1'b0;
+        data_wr_en <= 1'b0;
     end
-    else if (state == WRITE2) begin
-        data_wr_mask = twmask[1];
-        data_wr_data = twdata;
-    end 
-    else begin 
-        data_wr_mask = wmask[0];
-        data_wr_data = wdata;
+    else begin
+        /* verilator lint_off CASEINCOMPLETE */
+        case (state)
+            IDLE: if (start) begin
+                data_req <= 1'b1;
+
+                // Memory address - 4B aligned
+                data_addr <= addr_word_index;
+
+                // data write
+                data_wr_en <= st;
+                data_wr_data <= wdata;
+                data_wr_mask <= wmask[0];
+            end
+
+            READ1,
+            WRITE1: if (data_ack) begin
+                if (is_unaligned) begin
+                    data_req <= 1'b1;
+
+                    // Next address for misaligned access
+                    data_addr <= data_addr + 32'h4;
+
+                    // continue write
+                    if (data_wr_en) data_wr_mask <= twmask;
+                end
+                else begin
+                    data_req <= 1'b0;
+                    data_wr_en <= 1'b0;
+                end
+            end
+
+            READ2,
+            WRITE2: if (data_ack) begin 
+                data_req <= 1'b0;
+                data_wr_en <= 1'b0;
+            end
+        endcase
+        /* verilator lint_on CASEINCOMPLETE */
     end
 end
 
 // WB Done status
-assign done = load_done | store_done;
+assign done = load_done || store_done;
 
 // ------------------------------------------------------------
 `ifdef verilator
