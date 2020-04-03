@@ -6,7 +6,7 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 
-*Finding prime numbers ([prime.c](https://github.com/SonalPinto/kronos/blob/master/src/icebreaker_lite/prime.c)) with Kronos implemeneted on iCEBreaker*
+*Finding prime numbers ([prime.c](https://github.com/SonalPinto/kronos/blob/master/src/snowflake/prime.c)) with Kronos implemeneted on iCEBreaker*
 
 
 # Features
