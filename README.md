@@ -29,12 +29,6 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 https://sonalpinto.github.io/kronos/
 
 
-# Todo
-
-- Complete implementation `wfi` instruction and interrupt handling. Only exceptions are handled right now.
-- Intense documentation
-
-
 # License
 
 Licensed under Apache License, Version 2.0 (see [LICENSE](https://github.com/SonalPinto/kronos/blob/master/LICENSE) for full text).

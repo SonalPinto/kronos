@@ -54,7 +54,8 @@ module kronos_csr
     input  logic        software_interrupt,
     input  logic        timer_interrupt,
     input  logic        external_interrupt,
-    output logic        core_interrupt
+    output logic        core_interrupt,
+    output logic [3:0]  core_interrupt_cause
 );
 
 logic [1:0] op;
@@ -296,15 +297,34 @@ always_ff @(posedge clk or negedge rstz) begin
         // The interrupt is cleared by addressing the interrupt
         // msip: clear the memory mapped software interrupt register
         // mtip: cleared by writing to mtimecmp
-        // meip: cleared by addressing external intettupt handler (PLIC)
+        // meip: cleared by addressing external interrupt handler (PLIC)
         mip.msip <= software_interrupt & mstatus.mie & mie.msie;
         mip.mtip <= timer_interrupt    & mstatus.mie & mie.mtie;
         mip.meip <= external_interrupt & mstatus.mie & mie.meie;
     end
 end
 
-// Inform the WB stage about pending interrupts
-assign core_interrupt = |{mip.msip, mip.mtip, mip.meip};
+// ============================================================
+// Core Interrupter
+
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
+        core_interrupt <= 1'b0;
+    end
+    else begin
+        // Inform the WB stage about pending interrupts
+        core_interrupt <= |{mip};
+
+        // core_interrupt_cause maps the interrupt cause according to priority
+        if (mip.meip)
+            core_interrupt_cause <= EXTERNAL_INTERRUPT;
+        else if (mip.msip) 
+            core_interrupt_cause <= SOFTWARE_INTERRUPT;
+        else if (mip.mtip) 
+            core_interrupt_cause <= TIMER_INTERRUPT;
+    end
+end
+
 
 // ============================================================
 // Hardware Performance Monitors

@@ -97,12 +97,13 @@ logic trap_jump;
 
 logic instret;
 logic core_interrupt;
+logic [3:0] core_interrupt_cause;
 
 enum logic [2:0] {
     STEADY,
     LSU,
     CSR,
-    EXCEPT,
+    TRAP,
     RETURN,
     WFI,
     JUMP
@@ -124,22 +125,28 @@ always_comb begin
     /* verilator lint_off CASEINCOMPLETE */
     case (state)
         STEADY: if (pipe_in_vld) begin
-            if (exception_caught)               next_state = EXCEPT;
-            else if (execute.ld || execute.st)  next_state = LSU;
-            else if (execute.csr)               next_state = CSR;
+            if (core_interrupt || exception_caught) 
+                                                next_state = TRAP;
             else if (execute.ecall || execute.ebreak)
-                                                next_state = EXCEPT;
+                                                next_state = TRAP;
             else if (execute.ret)               next_state = RETURN;
             else if (execute.wfi)               next_state = WFI;
+            else if (execute.csr)               next_state = CSR;
+            else if (execute.ld || execute.st)  next_state = LSU;
         end
 
         LSU: if (lsu_done) next_state = STEADY;
 
         CSR: if (csr_done) next_state = STEADY;
 
-        EXCEPT: next_state = JUMP;
+        WFI: if (core_interrupt) next_state = TRAP;
+
+        TRAP: next_state = JUMP;
+
         RETURN: next_state = JUMP;
+
         JUMP: if (trap_jump) next_state = STEADY;
+
     endcase // state
     /* verilator lint_on CASEINCOMPLETE */
 end
@@ -148,7 +155,7 @@ end
 assign pipe_in_rdy = state == STEADY;
 
 // Direct write-back is always valid in continued steady state
-assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught;
+assign wb_valid = pipe_in_vld && state == STEADY && ~exception_caught && ~core_interrupt;
 
 // ============================================================
 /*
@@ -248,72 +255,84 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
-    .clk               (clk               ),
-    .rstz              (rstz              ),
-    .IR                (execute.result1   ),
-    .wr_data           (execute.result2   ),
-    .rd_data           (csr_rd_data       ),
-    .csr_start         (csr_start         ),
-    .csr_rd            (csr_rd            ),
-    .csr_write         (csr_write         ),
-    .done              (csr_done          ),
-    .instret           (instret           ),
-    .activate_trap     (activate_trap     ),
-    .return_trap       (return_trap       ),
-    .trapped_pc        (trapped_pc        ),
-    .trap_cause        (trap_cause        ),
-    .trap_value        (trap_value        ),
-    .trap_addr         (trap_addr         ),
-    .trap_jump         (trap_jump         ),
-    .software_interrupt(software_interrupt),
-    .timer_interrupt   (timer_interrupt   ),
-    .external_interrupt(external_interrupt),
-    .core_interrupt    (core_interrupt    )
+    .clk                 (clk                 ),
+    .rstz                (rstz                ),
+    .IR                  (execute.result1     ),
+    .wr_data             (execute.result2     ),
+    .rd_data             (csr_rd_data         ),
+    .csr_start           (csr_start           ),
+    .csr_rd              (csr_rd              ),
+    .csr_write           (csr_write           ),
+    .done                (csr_done            ),
+    .instret             (instret             ),
+    .activate_trap       (activate_trap       ),
+    .return_trap         (return_trap         ),
+    .trapped_pc          (trapped_pc          ),
+    .trap_cause          (trap_cause          ),
+    .trap_value          (trap_value          ),
+    .trap_addr           (trap_addr           ),
+    .trap_jump           (trap_jump           ),
+    .software_interrupt  (software_interrupt  ),
+    .timer_interrupt     (timer_interrupt     ),
+    .external_interrupt  (external_interrupt  ),
+    .core_interrupt      (core_interrupt      ),
+    .core_interrupt_cause(core_interrupt_cause)
 );
 
-assign activate_trap = state == EXCEPT;
+assign activate_trap = state == TRAP;
 assign return_trap = state == RETURN;
 
 // ============================================================
 // Trap Handling
 
-// Catch direct exceptions/interrupts at STEADY state
+// Catch direct exceptions/interrupts
+// The WB sequencer will only respond to them at the STEADY_STATE
 always_comb begin
     exception_caught = 1'b0;
     tcause = '0;
     tvalue = '0;
 
-    if (pipe_in_vld && state == STEADY) begin
-        if (execute.is_illegal) begin
-            // Illegal instructions detected by the decoder
-            exception_caught = 1'b1;
-            tcause[3:0] = ILLEGAL_INSTR;
-            tvalue = execute.result1; // IR
-        end
-        else if (branch_success && branch_target[1:0] != 2'b00) begin
-            // Instructions can only be jumped to at 4B boundary
-            // And this only needs to be checked for unconditional jumps 
-            // or successful branches
-            exception_caught = 1'b1;
-            tcause[3:0] = INSTR_ADDR_MISALIGNED;
-            tvalue = branch_target;
-        end
+    if (execute.is_illegal) begin
+        // Illegal instructions detected by the decoder
+        exception_caught = 1'b1;
+        tcause[3:0] = ILLEGAL_INSTR;
+        tvalue = execute.result1; // IR
+    end
+    else if (branch_success && branch_target[1:0] != 2'b00) begin
+        // Instructions can only be jumped to at 4B boundary
+        // And this only needs to be checked for unconditional jumps 
+        // or successful branches
+        exception_caught = 1'b1;
+        tcause[3:0] = INSTR_ADDR_MISALIGNED;
+        tvalue = branch_target;
     end
 end
 
 // setup for trap
 always_ff @(posedge clk) begin
-    if (state == STEADY && exception_caught) begin
-        trap_cause <= {28'b0, tcause};
-        trap_value <= tvalue;
+    if (pipe_in_vld && state == STEADY) begin
+        if (core_interrupt) begin
+            trap_cause <= {1'b1, 27'b0, core_interrupt_cause};
+            trap_value <= '0;
+        end
+        else if (exception_caught) begin
+            trap_cause <= {28'b0, tcause};
+            trap_value <= tvalue;
+        end
+        else if (execute.ecall) begin
+            trap_cause <= {28'b0, ECALL_MACHINE};
+            trap_value <= '0;
+        end
+        else if (execute.ebreak) begin
+            trap_cause <= {28'b0, BREAKPOINT};
+            trap_value <= execute.pc;
+        end 
     end
-    else if (pipe_in_vld && state == STEADY && execute.ecall) begin
-        trap_cause <= {28'b0, ECALL_MACHINE};
-        trap_value <= '0;
-    end
-    else if (pipe_in_vld && state == STEADY && execute.ebreak) begin
-        trap_cause <= {28'b0, BREAKPOINT};
-        trap_value <= execute.pc;
+    else if (state == WFI) begin
+        if (core_interrupt) begin
+            trap_cause <= {1'b1, 27'b0, core_interrupt_cause};
+            trap_value <= '0;
+        end
     end
 end
 
@@ -340,7 +359,6 @@ end
 `ifdef verilator
 logic _unused = &{1'b0
     , lsu_addr_misaligned
-    , core_interrupt
 };
 `endif
 
