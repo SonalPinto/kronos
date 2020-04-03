@@ -2,7 +2,7 @@
 
 # Kronos RISC-V
 
-Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPGA implementations.
+Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards FPGA implementations.
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 
@@ -11,7 +11,7 @@ Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPG
 
 # Features
 
-- RV32I_Zicsr_Zifencei compliance tested with [riscv-compliance suite](https://github.com/SonalPinto/riscv-compliance).
+ - RISC-V `RV32I_Zicsr_Zifencei` compliance tested with [riscv-compliance suite](https://github.com/SonalPinto/riscv-compliance).
   * Complete implementation of the Unprivileged Architecture:
     - RV32I Base Integer ISA, v2.1
     - Zifenci Instruction Fetch Fence extension, v2.0
@@ -20,8 +20,8 @@ Kronos is a 4-stage in-order RISC-V RV32I_Zicsr_Zifencei core geared towards FPG
     - Machine-Level ISA, v1.11
 - Optimized for single cycle instruction execution.
 - Native support for misaligned data access.
-- One block lookahead instruction fetch.
 - Direct mode trap handler jumps.
+- Dual **Wishbone** master interface for instruction and data.
  
  
 # Documentation
@@ -38,6 +38,7 @@ https://sonalpinto.github.io/kronos/
 # License
 
 Licensed under Apache License, Version 2.0 (see [LICENSE](https://github.com/SonalPinto/kronos/blob/master/LICENSE) for full text).
+
 
 # Miscellaneous
 

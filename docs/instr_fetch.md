@@ -2,7 +2,7 @@
 
 The Fetch stage is the feed belt to the processor. The stage needs to fetch instructions as fast as possible because the feed rate will critically decide the performance of the core. The Kronos core is designed to target a single-cycle execution rate, and the thus, the Fetch stage needs to be able to read an instruction from the memory at th same rate.
 
-The Fetch stage is designed with a wishbone master interface. The `instr_addr` (ADR_O) and `instr_req` (STB_O) are presented on the active edge, and the `instr_ack` (ACK_I) is expected from the memory or arbiter. Each cycle that the `instr_req` is high is to be considered a complete bus cycle (STB_O == CYC_O). An ideal interaction is shown below.
+The Fetch stage is designed with a Wishbone master interface. The `instr_addr` (ADR_O) and `instr_req` (STB_O) are presented on the active edge, and the `instr_ack` (ACK_I) is expected from the memory or arbiter. Each cycle that the `instr_req` is high is to be considered a complete bus cycle (STB_O == CYC_O). An ideal interaction is shown below.
 
 ![sram read](_images/sram_read.svg)
 

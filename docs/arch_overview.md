@@ -11,7 +11,7 @@ Kronos is 4-stage pipelined in-order RISC-V core. The RISC-V ISA is well suited 
 
 ## Fetch
 
-The instruction fetch stage reads word-aligned (4B) 32-bit instructions over a simple `req`/`gnt` style synchronous interface, designed to play well with synchronous single-port SRAM. The Program Counter (`PC`) is 32b wide as per RV32I spec (`XLEN = 32`). Under ideal circumstances an instruction is fetched every cycle, offering ideal throughput. The `PC` always increments to the next word (`PC+4`) unless the core needs to jump as a result of an instruction or to the trap handler.
+The instruction fetch stage reads word-aligned (4B) 32-bit instructions over a simple **Wishbone** master style synchronous interface, designed to play well with synchronous single-port SRAM. The Program Counter (`PC`) is 32b wide as per RV32I spec (`XLEN = 32`). Under ideal circumstances an instruction is fetched every cycle, offering ideal throughput. The `PC` always increments to the next word (`PC+4`) unless the core needs to jump as a result of an instruction or to the trap handler.
 
 ## Decode
 
@@ -23,4 +23,4 @@ The Kronos Execute stage contains an handcrafted `ALU` (Arithmetic Logic Unit) w
 
 ## Write Back
 
-The final stage of the Kronos core is responsible for quite a bit of work. Aside from writing back results to the integer registers, and branching conditionally or not, it also sequences memory access operations (data load/store) and Control-Status Register (`CSR`) operations. And, catches exceptions and responds to interrupts. Register write backs can be either the result of an instruction, some data loaded from the memory, or data read from the CSR. When a branch occurs, the entire pipeline is flushed.
+The final stage of the Kronos core is responsible for quite a bit of work. Aside from writing back results to the integer registers, and branching conditionally or not, it also sequences memory access operations (data load/store) and Control-Status Register (`CSR`) operations. And, catches exceptions and responds to interrupts. Register write backs can be either the result of an instruction, some data loaded from the memory, or data read from the CSR. When a branch occurs, the entire pipeline is flushed. The data memory interface is also a synchronous **Wishbone** master.
