@@ -12,15 +12,15 @@ module snowflake_system_bus (
     input  logic [31:0] instr_addr,
     output logic [31:0] instr_data,
     input  logic        instr_req,
-    output logic        instr_gnt,
+    output logic        instr_ack,
     // Core.data interface
     input  logic [31:0] data_addr,
     output logic [31:0] data_rd_data,
     input  logic [31:0] data_wr_data,
     input  logic [3:0]  data_wr_mask,
-    input  logic        data_rd_req,
-    input  logic        data_wr_req,
-    output logic        data_gnt,
+    input  logic        data_wr_en,
+    input  logic        data_req,
+    output logic        data_ack,
     // Main Memory interface
     output logic [31:0] mem_addr,
     input  logic [31:0] mem_rd_data,
@@ -38,21 +38,16 @@ module snowflake_system_bus (
 
 parameter SYSTEM = 4'h0;
 
-logic mem_instr_rd_req;
-logic mem_data_rd_req;
-logic mem_data_wr_req;
-logic gpio_data_rd_req;
-logic sys_data_wr_req;
-
-logic is_mem_data_access;
-logic is_sys_data_access;
+logic mem_instr_req;
+logic mem_data_req;
+logic sys_data_req;
 
 logic is_system;
 logic [3:0] system_mask;
 
-logic mem_instr_gnt;
-logic mem_data_gnt;
-logic sys_data_gnt;
+logic mem_instr_ack;
+logic mem_data_ack;
+logic sys_data_ack;
 
 // ============================================================
 // Main Memory
@@ -60,18 +55,15 @@ logic sys_data_gnt;
 
 assign is_system = data_addr[12];
 
-assign mem_instr_rd_req = instr_req;
-assign mem_data_rd_req  = data_rd_req && ~is_system;
-assign mem_data_wr_req  = data_wr_req && ~is_system;
-
-assign is_mem_data_access = mem_data_rd_req | mem_data_wr_req;
+assign mem_instr_req = instr_req;
+assign mem_data_req  = data_req && ~is_system;
 
 // Data has Priority
 always_comb begin
-    mem_en      = |{mem_instr_rd_req, mem_data_rd_req, mem_data_wr_req};
-    mem_wr_en   = mem_data_wr_req;
+    mem_en      = mem_instr_req || mem_data_req;
+    mem_wr_en   = mem_data_req && data_wr_en;
 
-    mem_addr    = is_mem_data_access ? data_addr : instr_addr;
+    mem_addr    = mem_data_req ? data_addr : instr_addr;
 
     mem_wr_data = data_wr_data;
     mem_wr_mask = data_wr_mask;
@@ -85,14 +77,11 @@ assign system_mask = data_addr[11:8];
 
 // SYS: 0x1000 - 0x1000 - 0x10FF
 // 64 words
-assign sys_data_rd_req  = data_rd_req && is_system && system_mask == SYSTEM;
-assign sys_data_wr_req  = data_wr_req && is_system && system_mask == SYSTEM;
-
-assign is_sys_data_access = sys_data_rd_req | sys_data_wr_req;
+assign sys_data_req  = data_req && is_system && system_mask == SYSTEM;
 
 always_comb begin
-    sys_en      = is_sys_data_access;
-    sys_wr_en   = sys_data_wr_req;
+    sys_en      = sys_data_req;
+    sys_wr_en   = sys_data_req && data_wr_en;
     sys_addr    = data_addr;
     sys_wr_data = data_wr_data;
 end
@@ -100,16 +89,16 @@ end
 
 // ============================================================
 // Grant
-always_ff @(posedge clk or negedge rstz) begin
+always_ff @(negedge clk or negedge rstz) begin
     if (~rstz) begin
-        mem_instr_gnt <= 1'b0;
-        mem_data_gnt <= 1'b0;
-        sys_data_gnt <= 1'b0;
+        mem_instr_ack <= 1'b0;
+        mem_data_ack <= 1'b0;
+        sys_data_ack <= 1'b0;
     end
     else begin
-        mem_instr_gnt <= mem_instr_rd_req & ~is_mem_data_access;
-        mem_data_gnt <= is_mem_data_access;
-        sys_data_gnt <= is_sys_data_access;
+        mem_instr_ack <= mem_instr_req & ~mem_data_req;
+        mem_data_ack <= mem_data_req;
+        sys_data_ack <= sys_data_req;
     end
 end
 
@@ -117,18 +106,18 @@ end
 always_comb begin
     instr_data = mem_rd_data;
     data_rd_data = mem_rd_data;
-    instr_gnt = 1'b0;
-    data_gnt= 1'b0;
+    instr_ack = 1'b0;
+    data_ack = 1'b0;
 
-    if (mem_instr_gnt) begin
-        instr_gnt = 1'b1;
+    if (mem_instr_ack) begin
+        instr_ack = 1'b1;
     end
     
-    if (mem_data_gnt) begin
-        data_gnt = 1'b1;
+    if (mem_data_ack) begin
+        data_ack = 1'b1;
     end
-    else if (sys_data_gnt) begin
-        data_gnt = 1'b1;
+    else if (sys_data_ack) begin
+        data_ack = 1'b1;
         data_rd_data = sys_rd_data;
     end
 end

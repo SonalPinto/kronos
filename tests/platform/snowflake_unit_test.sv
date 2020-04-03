@@ -68,7 +68,7 @@ endclocking
         addr_result = addr_n + 1;
 
         // Setup operation argument - "n"
-        n = $urandom_range(1,31);
+        n = $urandom_range(1,15);
         $display("\n\nARG: n = %0d", n);
         `MEM[addr_n] = n;
 
@@ -154,7 +154,7 @@ task automatic instruction_monitor();
 
     // instruction monitor
     forever @(cb) begin
-        if (`core.instr_req && `core.instr_gnt) begin
+        if (`core.instr_req && `core.instr_ack) begin
             addr = `core.instr_addr;
             instr = `MEM[addr>>2];
             $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);

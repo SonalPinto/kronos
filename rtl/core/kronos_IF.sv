@@ -26,23 +26,54 @@ module kronos_IF
     input logic         branch
 );
 
-logic [31:0] pc;
+logic [31:0] pc, pc_last;
 logic fetch_rdy, fetch_vld;
 logic fetch_success;
+
+enum logic {
+    FETCH,
+    STALL
+} state, next_state;
 
 // ============================================================
 // Program Counter (PC) Generation
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) pc <= BOOT_ADDR;
-    else if (branch) pc <= branch_target;
-    else if (fetch_success) pc <= (pc + 32'h4);
+    if (~rstz) begin
+        pc <= BOOT_ADDR;
+        pc_last <= '0;
+    end
+    else if (branch || (state == FETCH && instr_req)) begin
+        pc <= branch ? branch_target : (pc + 32'h4);
+        pc_last <= pc;
+    end
 end
-
-// Successful fetch if instruction is read and the pipeline can accept it
-assign fetch_success = instr_req && instr_ack && fetch_rdy;
 
 // ============================================================
 //  Instruction Fetch
+
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) state <= FETCH;
+    else state <= next_state;
+end
+
+always_comb begin
+    next_state = state;
+    /* verilator lint_off CASEINCOMPLETE */
+    case (state)
+        FETCH:
+            if (branch) next_state = FETCH;
+            else if (instr_req) begin
+                if (fetch_success) next_state = FETCH;
+                else next_state = STALL;
+            end
+
+        STALL:
+            if (branch) next_state = FETCH;
+            else if (fetch_success) next_state = FETCH;
+
+    endcase // state
+    /* verilator lint_on CASEINCOMPLETE */
+end
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
@@ -53,7 +84,7 @@ always_ff @(posedge clk or negedge rstz) begin
             fetch_vld <= 1'b0;
         end
         else if (fetch_success) begin
-            fetch.pc <= pc;
+            fetch.pc <= instr_addr;
             fetch.ir <= instr_data;
             fetch_vld <= 1'b1;
         end
@@ -63,15 +94,19 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
+// Attempt to fetch if the pipeline is ready
 assign fetch_rdy = ~fetch_vld | pipe_out_rdy;
+
+// Successful fetch if instruction is read and the pipeline can accept it
+assign fetch_success = instr_ack && fetch_rdy;
 
 // Memory Interface
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz)  instr_req <= 1'b0;
+    if (~rstz) instr_req <= 1'b0;
     else instr_req <= fetch_rdy;
 end
 
-assign instr_addr = pc;
+assign instr_addr = (state == STALL) ? pc_last : pc;
 
 // Next Stage pipe interface
 assign pipe_out_vld = fetch_vld;

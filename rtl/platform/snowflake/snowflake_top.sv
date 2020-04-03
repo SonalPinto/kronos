@@ -33,14 +33,14 @@ logic [1:0] reset_sync;
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
-logic instr_gnt;
+logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
 logic [3:0] data_wr_mask;
-logic data_rd_req;
-logic data_wr_req;
-logic data_gnt;
+logic data_wr_en;
+logic data_req;
+logic data_ack;
 
 logic [31:0] mem_addr;
 logic [31:0] mem_rd_data;
@@ -89,14 +89,14 @@ kronos_core u_core (
     .instr_addr        (instr_addr  ),
     .instr_data        (instr_data  ),
     .instr_req         (instr_req   ),
-    .instr_gnt         (instr_gnt   ),
+    .instr_ack         (instr_ack   ),
     .data_addr         (data_addr   ),
     .data_rd_data      (data_rd_data),
     .data_wr_data      (data_wr_data),
     .data_wr_mask      (data_wr_mask),
-    .data_rd_req       (data_rd_req ),
-    .data_wr_req       (data_wr_req ),
-    .data_gnt          (data_gnt    ),
+    .data_wr_en        (data_wr_en  ),
+    .data_req          (data_req    ),
+    .data_ack          (data_ack    ),
     .software_interrupt(1'b0        ),
     .timer_interrupt   (1'b0        ),
     .external_interrupt(1'b0        )
@@ -108,29 +108,29 @@ snowflake_system_bus u_sysbus (
     .instr_addr  (instr_addr  ),
     .instr_data  (instr_data  ),
     .instr_req   (instr_req   ),
-    .instr_gnt   (instr_gnt   ),
+    .instr_ack   (instr_ack   ),
     .data_addr   (data_addr   ),
     .data_rd_data(data_rd_data),
     .data_wr_data(data_wr_data),
     .data_wr_mask(data_wr_mask),
-    .data_rd_req (data_rd_req ),
-    .data_wr_req (data_wr_req ),
-    .data_gnt    (data_gnt    ),
+    .data_wr_en  (data_wr_en  ),
+    .data_req    (data_req    ),
+    .data_ack    (data_ack    ),
     .mem_addr    (mem_addr    ),
     .mem_rd_data (mem_rd_data ),
     .mem_wr_data (mem_wr_data ),
     .mem_en      (mem_en      ),
     .mem_wr_en   (mem_wr_en   ),
     .mem_wr_mask (mem_wr_mask ),
-    .sys_addr    (sys_addr   ),
-    .sys_rd_data (sys_rd_data),
-    .sys_wr_data (sys_wr_data),
-    .sys_en      (sys_en     ),
-    .sys_wr_en   (sys_wr_en  )
+    .sys_addr    (sys_addr    ),
+    .sys_rd_data (sys_rd_data ),
+    .sys_wr_data (sys_wr_data ),
+    .sys_en      (sys_en      ),
+    .sys_wr_en   (sys_wr_en   )
 );
 
 ice40up_memory_lite u_mem (
-    .clk    (clk        ),
+    .clk    (~clk       ),
     .addr   (mem_addr   ),
     .wdata  (mem_wr_data),
     .rdata  (mem_rd_data),
@@ -143,15 +143,15 @@ ice40up_memory_lite u_mem (
 // ============================================================
 // System
 // ============================================================
-always_ff @(posedge clk) begin
+always_ff @(negedge clk) begin
     if (sys_en) begin
         if (sys_wr_en) begin
             case(sys_addr[7:2])
                 6'h00: gpio_ledr <= sys_wr_data[0];
                 6'h01: gpio_ledg <= sys_wr_data[0];
-                6'h02: ssd_en    <= {31'b0, sys_wr_data[0]};
-                6'h03: ssd_a     <= {25'b0, sys_wr_data[6:0]};
-                6'h04: ssd_b     <= {25'b0, sys_wr_data[6:0]};
+                6'h02: ssd_en    <= sys_wr_data[0];
+                6'h03: ssd_a     <= sys_wr_data[6:0];
+                6'h04: ssd_b     <= sys_wr_data[6:0];
             endcase // sys_addr
         end
         else begin
