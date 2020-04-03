@@ -3,8 +3,6 @@
 
 /*
 Kronos Instruction Fetch
-
-Simple Pipelined Fetch with single cycle throughput, One Block Lookahead fetch
 */
 
 module kronos_IF
@@ -18,7 +16,7 @@ module kronos_IF
     output logic [31:0] instr_addr,
     input  logic [31:0] instr_data,
     output logic        instr_req,
-    input  logic        instr_gnt,
+    input  logic        instr_ack,
     // IF/ID interface
     output pipeIFID_t   fetch,
     output logic        pipe_out_vld,
@@ -28,59 +26,23 @@ module kronos_IF
     input logic         branch
 );
 
-logic [31:0] pc, pc_last;
-logic update_pc;
+logic [31:0] pc;
 logic fetch_rdy, fetch_vld;
-
-enum logic [1:0] {
-    INIT,
-    FETCH,
-    STALL
-} state, next_state;
-
+logic fetch_success;
 
 // ============================================================
 // Program Counter (PC) Generation
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        pc <= BOOT_ADDR;
-        pc_last <= '0;
-    end
-    else begin
-        if (update_pc) begin
-            pc <= branch ? branch_target : (pc + 32'h4);
-            pc_last <= pc;
-        end
-    end
+    if (~rstz) pc <= BOOT_ADDR;
+    else if (branch) pc <= branch_target;
+    else if (fetch_success) pc <= (pc + 32'h4);
 end
 
-assign update_pc = (next_state == FETCH) || branch;
+// Successful fetch if instruction is read and the pipeline can accept it
+assign fetch_success = instr_req && instr_ack && fetch_rdy;
 
 // ============================================================
 //  Instruction Fetch
-
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= INIT;
-    else if (branch) state <= INIT;
-    else state <= next_state;
-end
-
-always_comb begin
-    next_state = state;
-    /* verilator lint_off CASEINCOMPLETE */
-    case (state)
-        INIT: next_state = FETCH;
-
-        FETCH:
-            if (instr_gnt && fetch_rdy) next_state = FETCH;
-            else next_state = STALL;
-
-        STALL:
-            if (instr_gnt && fetch_rdy) next_state = FETCH;
-
-    endcase // state
-    /* verilator lint_on CASEINCOMPLETE */
-end
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
@@ -90,8 +52,8 @@ always_ff @(posedge clk or negedge rstz) begin
         if (branch) begin
             fetch_vld <= 1'b0;
         end
-        else if (instr_gnt && fetch_rdy && (state == FETCH || state == STALL)) begin
-            fetch.pc <= pc_last;
+        else if (fetch_success) begin
+            fetch.pc <= pc;
             fetch.ir <= instr_data;
             fetch_vld <= 1'b1;
         end
@@ -104,8 +66,12 @@ end
 assign fetch_rdy = ~fetch_vld | pipe_out_rdy;
 
 // Memory Interface
-assign instr_addr = (next_state != FETCH) ? pc_last : pc;
-assign instr_req = fetch_rdy;
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz)  instr_req <= 1'b0;
+    else instr_req <= fetch_rdy;
+end
+
+assign instr_addr = pc;
 
 // Next Stage pipe interface
 assign pipe_out_vld = fetch_vld;

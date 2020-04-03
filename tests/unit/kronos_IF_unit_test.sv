@@ -13,7 +13,7 @@ logic rstz;
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
 logic instr_req;
-logic instr_gnt;
+logic instr_ack;
 pipeIFID_t fetch;
 logic pipe_out_vld;
 logic pipe_out_rdy;
@@ -23,21 +23,21 @@ logic branch;
 logic miss;
 
 kronos_IF u_dut (
-    .clk          (clk              ),
-    .rstz         (rstz             ),
-    .instr_addr   (instr_addr       ),
-    .instr_data   (instr_data       ),
-    .instr_req    (instr_req        ),
-    .instr_gnt    (instr_gnt & ~miss),
-    .fetch        (fetch            ),
-    .pipe_out_vld (pipe_out_vld     ),
-    .pipe_out_rdy (pipe_out_rdy     ),
-    .branch_target(branch_target    ),
-    .branch       (branch           )
+    .clk          (clk          ),
+    .rstz         (rstz         ),
+    .instr_addr   (instr_addr   ),
+    .instr_data   (instr_data   ),
+    .instr_req    (instr_req    ),
+    .instr_ack    (instr_ack    ),
+    .fetch        (fetch        ),
+    .pipe_out_vld (pipe_out_vld ),
+    .pipe_out_rdy (pipe_out_rdy ),
+    .branch_target(branch_target),
+    .branch       (branch       )
 );
 
 spsram32_model #(.DEPTH(256)) u_imem (
-    .clk    (clk       ),
+    .clk    (~clk       ),
     .addr   (instr_addr),
     .wdata  (32'b0     ),
     .rdata  (instr_data),
@@ -46,8 +46,9 @@ spsram32_model #(.DEPTH(256)) u_imem (
     .wr_mask(4'b0      )
 );
 
-always_ff @(posedge clk) instr_gnt <= instr_req;
-
+always_ff @(negedge clk) begin
+    instr_ack <= instr_req & ~miss;
+end
 
 default clocking cb @(posedge clk);
     default input #10ps output #10ps;
