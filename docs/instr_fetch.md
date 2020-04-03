@@ -2,20 +2,18 @@
 
 The Fetch stage is the feed belt to the processor. The stage needs to fetch instructions as fast as possible because the feed rate will critically decide the performance of the core. The Kronos core is designed to target a single-cycle execution rate, and the thus, the Fetch stage needs to be able to read an instruction from the memory at th same rate.
 
-I designed the fetch stage to interface with synchronous SRAM, where you set the `read address` and the `read data` is valid one cycle later. Technically, this read is a two-cycle operation. The `req` and `gnt` act as access control signals can be mapped to popular bus standards or even wired directly to SRAM (the iCE40UP5K has 128KB of single port synchronous SRAM).
+The Fetch stage is designed with a wishbone master interface. The `instr_addr` (ADR_O) and `instr_req` (STB_O) are presented on the active edge, and the `instr_ack` (ACK_I) is expected from the memory or arbiter. Each cycle that the `instr_req` is high is to be considered a complete bus cycle (STB_O == CYC_O). An ideal interaction is shown below.
 
 ![sram read](_images/sram_read.svg)
 
-To read from the SRAM every cycle, the next read request (alongside address) needs to overlap the read grant (and data) from the previous request. The Fetch stage attempts to read the next address while waiting on the grant from the current read. This maximizes throughput, and is one of the simplest memory prefetch techniques called One Block Look-Ahead (OBL) is often used for cache read optimization.
-
-![sram read](_images/sram_read_olb.svg)
-
-The above waveform is ideal. In case of a delayed grant (cache miss or arbitration loss) or pipeline stall, the Fetch stage needs to be clever enough to re-sequence the reads. When the grant is delayed, the Fetch stage needs to revert its request to the current address seamlessly.
+The iCE40UP5K has 128KB of single port synchronous SRAM. In order to achieve high throughput with clocked SRAM, where the control and address is clocked and the read data is registered, the memory (and arbitration) needs to be clocked at the off-edge.
 
 ![sram read](_images/sram_read_delay.svg)
 
-All of the above control logic can be boiled down to a simple 3-state FSM.
+The control logic of the Fetch Stage is boiled down to a simple 2-state FSM. The `instr_addr` is the `PC` under ideal circumstances. And, the `PC` is updated during the FETCH state, regardless of result of the current instruction fetch. Normally, in case of the **miss** (`ack` doesn't appear right after a `req`), delayed ack, arbitration loss or pipeline stall, the `instr_addr` needs to revert to the previous value of `PC` seamlessly. This is the STALL state. In this design, A shadow of the `PC`, called `PC_LAST` is maintained. Upon stalling or missing, the `instr_addr` is driven by `PC_LAST`.
 
 ![sram read](_images/kronos_fetch.svg)
 
-In the above illustration, the `rdy` signal indicates when the pipeline is ready for the next instruction. It is low when the pipeline is stalling. There is no need to read from the memory when the pipeline can't consume any new instructions. The control waits in STALL when stalling or when a fetch **misses** (`gnt` doesn't appear right after a `req`). The FETCH state updates the PC regardless of `gnt`, while storing a copy of the current PC. The previous PC is used to drive the read address when not in steady throughput. Lastly, when the core branches, the cycle needs to restart.
+When you clock the `instr_ack` on the off-edge, the critical path is now on the half-cycle path from the memory's read data (`instr_data`) and the `instr_ack`. The Fetch stage is design to have minimal logic on these paths, and thus, the Program Counter (`PC`) update (a 32-bit addition) does not depend on `instr_ack`. Similarly, there is minimal logic on the `instr_req` (registered) and `instr_addr` (1 mux between `PC` and `PC_LAST`) paths.
+
+When the core issues a branch, the `PC` is updated to the branch target, and a fresh FETCH is attempted.
