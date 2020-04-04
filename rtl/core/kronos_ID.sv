@@ -97,6 +97,7 @@ logic instr_valid;
 logic illegal_opcode;
 
 logic regrd_rs1_en, regrd_rs2_en;
+logic [31:0] tregrd_rs1, tregrd_rs2;
 logic [31:0] regrd_rs1, regrd_rs2;
 logic regwr_rd_en, is_reg_write;
 
@@ -139,6 +140,8 @@ logic [2:0] sel;
 logic hcu_upgrade;
 logic hcu_downgrade;
 logic hcu_stall;
+logic hcu_rs1_forward;
+logic hcu_rs2_forward;
 
 // CSR register access
 logic csr_regrd, csr_regwr;
@@ -226,9 +229,14 @@ assign csr_regwr = OP == INSTR_SYS && (funct3 == 3'b001
 
 // REG read
 always_ff @(negedge clk) begin
-    if (regrd_rs1_en) regrd_rs1 <= (rs1 != 0) ? REG1[rs1] : '0;
-    if (regrd_rs2_en) regrd_rs2 <= (rs2 != 0) ? REG2[rs2] : '0;
+    if (regrd_rs1_en) tregrd_rs1 <= (rs1 != 0) ? REG1[rs1] : '0;
+    if (regrd_rs2_en) tregrd_rs2 <= (rs2 != 0) ? REG2[rs2] : '0;
 end
+
+// Register forwarding
+// Note: this is the critical path in the design.
+assign regrd_rs1 = hcu_rs1_forward ? regwr_data : tregrd_rs1;
+assign regrd_rs2 = hcu_rs2_forward ? regwr_data : tregrd_rs2;
 
 // REG Write
 always_ff @(posedge clk) begin
@@ -583,18 +591,20 @@ assign hcu_upgrade = is_reg_write && pipe_in_vld && pipe_in_rdy;
 assign hcu_downgrade = regwr_en;
 
 kronos_hcu u_hcu (
-    .clk         (clk          ),
-    .rstz        (rstz         ),
-    .flush       (flush        ),
-    .rs1         (rs1          ),
-    .rs2         (rs2          ),
-    .rd          (rd           ),
-    .regrd_rs1_en(regrd_rs1_en ),
-    .regrd_rs2_en(regrd_rs2_en ),
-    .upgrade     (hcu_upgrade  ),
-    .regwr_sel   (regwr_sel    ),
-    .downgrade   (hcu_downgrade),
-    .stall       (hcu_stall    )
+    .clk         (clk            ),
+    .rstz        (rstz           ),
+    .flush       (flush          ),
+    .rs1         (rs1            ),
+    .rs2         (rs2            ),
+    .rd          (rd             ),
+    .regrd_rs1_en(regrd_rs1_en   ),
+    .regrd_rs2_en(regrd_rs2_en   ),
+    .upgrade     (hcu_upgrade    ),
+    .regwr_sel   (regwr_sel      ),
+    .downgrade   (hcu_downgrade  ),
+    .rs1_forward (hcu_rs1_forward),
+    .rs2_forward (hcu_rs2_forward),
+    .stall       (hcu_stall      )
 );
 
 

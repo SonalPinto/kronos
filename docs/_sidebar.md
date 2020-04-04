@@ -4,14 +4,13 @@
   - [Instruction Fetch](instr_fetch.md)
   - [ALU Design](alu_design.md)
   - [Instruction Decode](instr_decode.md)
-  - Hazard Control
+  - [Hazard Control](hazard_ctrl.md)
   - Load Store Unit
   - Control Status Registers
   - Write Back
   - Exceptions and Interrupts
 - Development
   - Environment
-  - Testing
   - RISC-V Compliance
 - Integration
   - kronos_core

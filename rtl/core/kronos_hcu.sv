@@ -28,7 +28,9 @@ module kronos_hcu
     // Write Back inputs
     input  logic [4:0]  regwr_sel,
     input  logic        downgrade,
-    // Decoder Stall status
+    // Decoder Stall & forward status
+    output logic        rs1_forward,
+    output logic        rs2_forward,
     output logic        stall
 );
 
@@ -54,17 +56,16 @@ Downgrade   : write back is valid, i.e. regwr_en
 Note,
 1. This HCU design scales really well. For deeper levels of 
 pending write-backs (downgrades), the hazard vector needs to be widened.
-However, the stall conditioned only checks the LSB.
-This architecture can pretty much be used anywhere if the IO is generalized
+However, the stall condition only checks the LSB.
 
-2. There is no forwarding of register data. Register write data can only be 
-forwarded if the hazard level is 1. This could easily be implemented here, 
-but I didn't feel the resources (and delay on fetch_rdy thru stall) 
-were worth it for Kronos.
+2. Register forwarding is possible when the hazard level is 1
+
+This architecture can pretty much be used anywhere and at any stage if the IO is generalized
 
 */
 
 logic [31:0][1:0] rpend;
+logic rs1_stall, rs2_stall;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
@@ -94,7 +95,15 @@ always_ff @(posedge clk or negedge rstz) begin
     end
 end
 
-// Stall if rs1 or rs2 is pending
-assign stall = (regrd_rs1_en && rpend[rs1][0]) || (regrd_rs2_en && rpend[rs2][0]);
+// Detect register forwarding
+assign rs1_forward = downgrade && rs1 == regwr_sel && rpend[rs1] == 2'b01;
+assign rs2_forward = downgrade && rs2 == regwr_sel && rpend[rs2] == 2'b01;
+
+// Stall conditions
+assign rs1_stall = regrd_rs1_en && rpend[rs1][0] && ~rs1_forward;
+assign rs2_stall = regrd_rs2_en && rpend[rs2][0] && ~rs2_forward;
+
+// Stall if rs1 or rs2 is pending, and the register operands aren't being forwarded
+assign stall = rs1_stall || rs2_stall;
 
 endmodule
