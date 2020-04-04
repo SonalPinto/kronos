@@ -5,7 +5,7 @@
   - [ALU Design](alu_design.md)
   - [Instruction Decode](instr_decode.md)
   - [Hazard Control](hazard_ctrl.md)
-  - Load Store Unit
+  - [Load Store Unit](ldst_unit.md)
   - Control Status Registers
   - Write Back
   - Exceptions and Interrupts

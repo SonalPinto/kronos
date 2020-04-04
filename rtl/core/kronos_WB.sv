@@ -13,7 +13,7 @@ This is the last stage of the Kronos pipeline and is responsible for these funct
 - Trapping exceptions and interrupts and setting up CSR for jumping to trap handler
 - Returning from trap handler
 
-Unaligned access is handled by the LSU and will never throw the
+Misaligned access is handled by the LSU and will never throw the
 Load/Store address aligned exception
 
 WB_CTRL
@@ -306,6 +306,18 @@ always_comb begin
         tcause[3:0] = INSTR_ADDR_MISALIGNED;
         tvalue = branch_target;
     end
+    /*
+    else if (execute.ld && lsu_addr_misaligned) begin
+        exception_caught = 1'b1;
+        tcause[3:0] = LOAD_ADDR_MISALIGNED;
+        tvalue = execute.result1;
+    end
+    else if (execute.st && lsu_addr_misaligned) begin
+        exception_caught = 1'b1;
+        tcause[3:0] = STORE_ADDR_MISALIGNED;
+        tvalue = execute.result1;
+    end
+    */
 end
 
 // setup for trap

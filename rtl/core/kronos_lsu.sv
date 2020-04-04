@@ -7,7 +7,7 @@ Kronos Load Store Unit
 Control unit that interfaces with "Data" memory and fulfills
 Load/Store instructions
 
-Unaligned access are handled by the LSU as two aligned accesses.
+Misaligned access which require a boundary cross are handled by the LSU as two aligned accesses.
 As seen from the outside, the memory access interface is always word aligned.
 
 */
@@ -46,7 +46,7 @@ logic [31:0] addr_word_index;
 logic [1:0] addr_byte_index;
 logic [1:0] offset;
 
-logic is_unaligned;
+logic boundary_cross;
 logic [1:0] mem_size;
 logic load_uns;
 logic load_write_ok;
@@ -94,7 +94,7 @@ always_comb begin
 
         READ1: if (data_ack) begin
             // Aligned access complete in 1 read, else you need the next word
-            if (is_unaligned) next_state = READ2;
+            if (boundary_cross) next_state = READ2;
             else next_state = LOAD;
         end
 
@@ -103,8 +103,8 @@ always_comb begin
         LOAD: next_state = IDLE;
 
         WRITE1: if (data_ack) begin
-            // Write onto two words if access is unaligned
-            if (is_unaligned) next_state = WRITE2;
+            // Write onto two words if access requires a boundary cross
+            if (boundary_cross) next_state = WRITE2;
             else next_state = STORE;
         end
 
@@ -122,17 +122,19 @@ end
 assign addr_word_index = {addr[31:2], 2'b0};
 assign addr_byte_index = addr[1:0];
 
-assign addr_misaligned = (data_size == HALF && addr_byte_index == 2'b11)
-                        || (data_size == WORD && addr_byte_index != 2'b00);
+// Address is misaligned if the ADDR % size != 0
+// Byte access is always aligned - since bytes are the smalled addressable unit
+// Halfword access is unaligned if the byte index is 1 or 3, i.e. addr[1] is set
+// Word access is unaligned if the byte index is not 0, i.e. addr[1:0] is non 0
+assign addr_misaligned = (data_size == HALF && addr_byte_index[1])
+                || (data_size == WORD && |{addr_byte_index});
 
 // Memory access controls
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        is_unaligned <= 1'b1;
-    end
-    else if (state == IDLE && start) begin
-        // Detect unaligned access
-        is_unaligned <= addr_misaligned;
+    if (state == IDLE && start) begin
+        // Boundary cross is required if the access needs to happen across two memory addresses
+        boundary_cross <= (data_size == HALF && addr_byte_index == 2'b11)
+                        || (data_size == WORD && |{addr_byte_index});
 
         // stow controls
         load_rd <= rd;
@@ -165,14 +167,14 @@ always_ff @(posedge clk) begin
             2'b11: rdata <= {mdata[2:0], mdata[3]};
         endcase
 
-        // store for misaligned access
+        // store for boundary cross access
         trdata <= rdata;
     end
 end
 
 // select BYTE data
 always_comb begin
-    // BYTE loads are always aligned
+    // BYTE loads are always aligned, and don't need a boundary cross
     byte_data = rdata[0];
     
     // Sign extend
@@ -182,9 +184,9 @@ end
 
 // Select HALF data
 always_comb begin
-    // HALF loads are misaligned if offset is 3
-    // Hence for misaligned HALF loads, the load_data is only
-    // when two reads are done
+    // HALF loads need a boundary cross if offset is 3
+    // Hence for such HALF loads, the load_data is only
+    // valid when two reads are done
     case(offset)
         2'b00,
         2'b01,
@@ -199,8 +201,8 @@ end
 
 // Select WORD data
 always_comb begin
-    // WORD loads are misaligned if offset is not 0
-    // Hence for misaligned WORD loads, you need 2 reads, same as HALF
+    // WORD loads need a boundary cross if offset is not 0
+    // Hence for such WORD loads, you need 2 reads, same as HALF
     case(offset)
         2'b00: load_word_data = rdata;
         2'b01: load_word_data = {rdata[3]  , trdata[2:0]};
@@ -210,7 +212,7 @@ always_comb begin
 end
 
 // Setup Load Data
-// Some loads take 2 cycles, if misaligned
+// Some loads take 2 cycles, if boundary cross is required
 always_comb begin
     if (mem_size == BYTE) load_data = load_byte_data;
     else if (mem_size == HALF) load_data = load_half_data;
@@ -241,7 +243,7 @@ always_comb begin
 
     // Setup write byte-level mask
     // The lower nibble is used as a mask in the first write
-    // and the higher nibble in the second write (for unaligned access only)
+    // and the higher nibble in the second write (for boundary cross)
     if (data_size == BYTE) begin
         wmask = 8'h1 << addr_byte_index;
     end
@@ -288,10 +290,10 @@ always_ff @(posedge clk or negedge rstz) begin
 
             READ1,
             WRITE1: if (data_ack) begin
-                if (is_unaligned) begin
+                if (boundary_cross) begin
                     data_req <= 1'b1;
 
-                    // Next address for misaligned access
+                    // Next address for boundary cross access
                     data_addr <= data_addr + 32'h4;
 
                     // continue write
