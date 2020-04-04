@@ -1,9 +1,9 @@
 - Architecture
   - [Overview](arch_overview.md)
-  - [RV32I Base Integer ISA Study](rv32_study.md)
+  - [RISC-V ISA Study](rv32_study.md)
   - [Instruction Fetch](instr_fetch.md)
   - [ALU Design](alu_design.md)
-  - Instruction Decode
+  - [Instruction Decode](instr_decode.md)
   - Hazard Control
   - Load Store Unit
   - Control Status Registers
@@ -16,5 +16,5 @@
 - Integration
   - kronos_core
 - Platforms
-  - iCEBreaker_lite
-  - iCEBreaker
+  - snowflake
+  - snowball
