@@ -28,6 +28,12 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 https://sonalpinto.github.io/kronos/
 
+# Status
+
+- The `kronos_core` is feature complete and RISC-V compliant. Pending testing of interrupt and `wfi` functionality. You can start using the core right now!
+- Documentation - in perpetual progress
+- Kronos-powered ArduinoCore - `icewing` -  platform in progress
+- **Goal**: icewing running Arduboy on the iCEBreaker. Custom loader to boot any game from a library on the onboard flash. Interface: 1 oled, 6 buttons and a piezo speaker.
 
 # License
 
