@@ -45,7 +45,7 @@ kronos_core u_core (
 );
 ```
 
-The Kronos core is a dual **Wishbone** master. Reference: [Wishbone B4 specification]((https://cdn.opencores.org/downloads/wbspec_b4.pdf)).
+The Kronos core is a dual **Wishbone** master. Reference: [Wishbone B4 specification](https://cdn.opencores.org/downloads/wbspec_b4.pdf).
 
 ## Clocking and Reset
 `clk` decides the rate of instruction execution and is the heartbeat of the core. The `rstz` signal resets the entire core, and is an asynchronous reset, and may require de-assert synchronization outside the core.
