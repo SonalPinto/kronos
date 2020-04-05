@@ -18,6 +18,6 @@ For store instructions (SB, SH and SW), the data memory write address is generat
 
 ![Kronos LSU Store](_images/kronos_lsu-store.svg)
 
-Overall, the control logic is represented by this FSM. Under ideal circumstances, aligned or misaligned with no boundary crossing memory operations take 2 cycles, and boundary crossing ones take 3 cycles. Surely this could be cut down by a cycle, but I chose to register the memory controls, address and data.
+Overall, the control logic is represented by this control sequencer. Under ideal circumstances, aligned or misaligned with no boundary crossing memory operations take 2 cycles, and boundary crossing ones take 3 cycles. Surely this could be cut down by a cycle, but I chose to register the memory controls, address and data.
 
 ![Kronos LSU FSM](_images/kronos_lsu-ctrl.svg)

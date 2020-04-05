@@ -285,7 +285,7 @@ always_ff @(posedge clk or negedge rstz) begin
                 // data write
                 data_wr_en <= st;
                 data_wr_data <= wdata;
-                data_wr_mask <= wmask[0];
+                data_wr_mask <= st ? wmask[0] : 4'hF;
             end
 
             READ1,

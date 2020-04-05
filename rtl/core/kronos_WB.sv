@@ -168,7 +168,7 @@ Registers are written by multiple sources
 Direct writes are committed in the same cycle as execute goes valid
 and is evaluated as a safe direct write
 
-Loads (and  store) will take 2 cycle for aligned access and 3 for unaligned 
+Loads (and  store) will take 2 cycle for aligned access and 3 for boundary cross
 immediate memory access (longer for far memory, i.e memory mapped,
 flash, etc)
 

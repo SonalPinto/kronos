@@ -15,7 +15,10 @@ STORE  | REG[rs1]| Imm-S   | 0       | REG[rs2]|         |          | MEM[res1] 
 OP     | REG[rs1]| REG[rs2]|         |         | ALUOP   |          | REG[rd] = res1
 OPIMM  | REG[rs1]| Imm-I   |         |         | ALUOP   |          | REG[rd] = res1
 SYS    | 0       | IR      | Zimm/REG[rs1] | 0 | |                  | REG[rd] = REG[csr], REG[csr] = f(res2), res1 = IR
+illegal| 0       | IR      |         |         |         |          |
 
 The ALU ops are extracted from the `funct3` and `funct7`. Same goes for System CSR operations. Those IR segments also contain the load/store data sizes and whether the load data should be sign-extended or not. One off decodes for FENCE, FENCE.I, ECALL, EBREAK, MRET and WFI are treated as special signals.
+
+The Decode stage also catches illegal instructions, and this exception is acted upon at the Write Back stage. The `IR` that caused the exception is passed along as the trap value.
 
 > Implementing the 32 integer registers using LUTs is a non-starter. That's 1024 bits. The iCE40UP5K has 16b wide Dual-Port Embedded Block RAM (EBR). The EBR is a synchronous module and the access is clocked, with one read port. I could either spend 2 cycles reading the EBR for the two operands, or keep a shadow of the registers in another EBR (pseudo dual-port read). I chose the latter for Kronos on the iCE40UP5K, which inefficiently takes up four EBR. I also need to read two registers on the off-edge to have it ready by the next active edge, for a single cycle decode.

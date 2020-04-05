@@ -6,14 +6,13 @@
   - [Instruction Decode](instr_decode.md)
   - [Hazard Control](hazard_ctrl.md)
   - [Load Store Unit](ldst_unit.md)
-  - Control Status Registers
-  - Write Back
-  - Exceptions and Interrupts
+  - [Control Status Registers](csr.md)
+  - [Write Back](write_back.md)
+  - [Exceptions and Interrupts](excpt_intr.md)
 - Development
-  - Environment
-  - RISC-V Compliance
+  - [Environment](dev_env.md)
+  - [RISC-V Compliance](compliance.md)
 - Integration
-  - kronos_core
+  - [kronos_core](integration.md)
 - Platforms
   - snowflake
-  - snowball
