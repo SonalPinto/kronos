@@ -39,9 +39,7 @@ System Controls
 
 module kronos_WB
     import kronos_types::*;
-#(
-    parameter BOOT_ADDR = 32'h0
-)(
+(
     input  logic        clk,
     input  logic        rstz,
     // IF/ID interface
@@ -68,6 +66,10 @@ module kronos_WB
     input  logic        timer_interrupt,
     input  logic        external_interrupt
 );
+
+parameter logic [31:0]  BOOT_ADDR = 32'h0;
+parameter logic         MCYCLE_IS_32BIT = 1'b0;
+parameter logic         MINSTRET_IS_32BIT = 1'b0;
 
 logic wb_valid;
 logic direct_write, direct_jump;
@@ -254,7 +256,11 @@ always_ff @(posedge clk or negedge rstz) begin
                     || (system_call && trap_jump);
 end
 
-kronos_csr #(.BOOT_ADDR(BOOT_ADDR)) u_csr (
+kronos_csr #(
+    .BOOT_ADDR(BOOT_ADDR),
+    .MCYCLE_IS_32BIT(MCYCLE_IS_32BIT),
+    .MINSTRET_IS_32BIT(MINSTRET_IS_32BIT)
+) u_csr (
     .clk                 (clk                 ),
     .rstz                (rstz                ),
     .IR                  (execute.result1     ),

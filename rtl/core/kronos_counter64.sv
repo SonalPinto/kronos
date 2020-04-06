@@ -9,7 +9,7 @@ for lower-end implementations (ex: Lattice iCE40UP)
 The upper word update is delayed by a cycle
 */
 
-module kronos_counter64(
+module kronos_counter64 (
     input  logic        clk,
     input  logic        rstz,
     input  logic        incr,
@@ -19,6 +19,8 @@ module kronos_counter64(
     output logic [63:0] count,
     output logic        count_vld
 );
+
+parameter logic IS_32BIT = 1'b0;
 
 logic [31:0] count_low, count_high;
 logic incr_high;
@@ -48,7 +50,15 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 // the output 64b count is valid when the upper word update has settled
-assign count_vld = ~incr_high; 
-assign count = {count_high, count_low};
+assign count_vld = ~incr_high;
+
+generate
+    if (IS_32BIT == 1'b1)
+        // the upper word will be optimized out
+        assign count = {32'b0, count_low};
+    else
+        assign count = {count_high, count_low};
+endgenerate
+
 
 endmodule

@@ -28,9 +28,7 @@ and Software interrupts
 
 module kronos_csr
     import kronos_types::*;
-#(
-    parameter BOOT_ADDR = 32'h0
-)(
+(
     input  logic        clk,
     input  logic        rstz,
     // WB Controls
@@ -57,6 +55,10 @@ module kronos_csr
     output logic        core_interrupt,
     output logic [3:0]  core_interrupt_cause
 );
+
+parameter logic [31:0]  BOOT_ADDR = 32'h0;
+parameter logic         MCYCLE_IS_32BIT = 1'b0;
+parameter logic         MINSTRET_IS_32BIT = 1'b0;
 
 logic [1:0] op;
 logic [11:0] addr;
@@ -333,7 +335,7 @@ end
 assign mcycle_wrenl = csr_wr_en && addr == MCYCLE;
 assign mcycle_wrenh = csr_wr_en && addr == MCYCLEH;
 
-kronos_counter64 u_hpmcounter0 (
+kronos_counter64 #(.IS_32BIT(MCYCLE_IS_32BIT)) u_hpmcounter0 (
     .clk      (clk          ),
     .rstz     (rstz         ),
     .incr     (1'b1         ),
@@ -348,7 +350,7 @@ kronos_counter64 u_hpmcounter0 (
 assign minstret_wrenl = csr_wr_en && addr == MINSTRET;
 assign minstret_wrenh = csr_wr_en && addr == MINSTRETH;
 
-kronos_counter64 u_hpmcounter1 (
+kronos_counter64 #(.IS_32BIT(MINSTRET_IS_32BIT)) u_hpmcounter1 (
     .clk      (clk            ),
     .rstz     (rstz           ),
     .incr     (instret        ),

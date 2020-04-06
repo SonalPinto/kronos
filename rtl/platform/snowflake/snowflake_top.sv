@@ -83,7 +83,11 @@ assign rstz = reset_sync[1];
 // Kronos + System
 // ============================================================
 
-kronos_core u_core (
+kronos_core #(
+    .BOOT_ADDR(32'h0),
+    .MCYCLE_IS_32BIT(1'b1),
+    .MINSTRET_IS_32BIT(1'b1)
+) u_core (
     .clk               (clk         ),
     .rstz              (rstz        ),
     .instr_addr        (instr_addr  ),

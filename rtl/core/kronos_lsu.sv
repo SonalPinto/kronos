@@ -130,7 +130,7 @@ assign addr_misaligned = (data_size == HALF && addr_byte_index[1])
                 || (data_size == WORD && |{addr_byte_index});
 
 // Memory access controls
-always_ff @(posedge clk or negedge rstz) begin
+always_ff @(posedge clk) begin
     if (state == IDLE && start) begin
         // Boundary cross is required if the access needs to happen across two memory addresses
         boundary_cross <= (data_size == HALF && addr_byte_index == 2'b11)
