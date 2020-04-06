@@ -49,7 +49,7 @@ contention between the two interfaces. The system can run at its peak performanc
 
 */
 
-module krz_interconn (
+module krz_intercon (
     input  logic        clk,
     input  logic        rstz,
     // Core.instr interface

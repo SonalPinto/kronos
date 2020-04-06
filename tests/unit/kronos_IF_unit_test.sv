@@ -36,8 +36,8 @@ kronos_IF u_dut (
     .branch       (branch       )
 );
 
-spsram32_model #(.DEPTH(256)) u_imem (
-    .clk    (~clk       ),
+spsram32_model #(.WORDS(256)) u_imem (
+    .clk    (~clk      ),
     .addr   (instr_addr),
     .wdata  (32'b0     ),
     .rdata  (instr_data),
@@ -87,7 +87,7 @@ endclocking
         repeat(1024) begin
             @(cb iff pipe_out_vld) begin        
                 $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
-                assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                assert(fetch.ir == u_imem.MEM[fetch.pc[9:2]]);
                 assert(expected_pc == fetch.pc);
                 expected_pc += 4;
             end
@@ -110,7 +110,7 @@ endclocking
                 cb.pipe_out_rdy <= 1;
 
                 $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
-                assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                assert(fetch.ir == u_imem.MEM[fetch.pc[9:2]]);
                 assert(expected_pc == fetch.pc);
                 expected_pc += 4;
             end
@@ -139,7 +139,7 @@ endclocking
             repeat(1024) begin
                 @(cb iff pipe_out_vld) begin        
                     $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
-                    assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                    assert(fetch.ir == u_imem.MEM[fetch.pc[9:2]]);
                     assert(expected_pc == fetch.pc);
                     expected_pc += 4;
                 end
@@ -176,7 +176,7 @@ endclocking
                     cb.pipe_out_rdy <= 1;
 
                     $display("PC=%h, IR=%h", fetch.pc, fetch.ir);
-                    assert(fetch.ir == u_imem.MEM[fetch.pc[7:0]]);
+                    assert(fetch.ir == u_imem.MEM[fetch.pc[9:2]]);
                     assert(expected_pc == fetch.pc);
                     expected_pc += 4;
                 end

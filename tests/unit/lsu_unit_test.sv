@@ -48,9 +48,9 @@ kronos_WB u_wb (
     .external_interrupt(1'b0         )
 );
 
-spsram32_model #(.DEPTH(1024)) u_dmem (
+spsram32_model #(.WORDS(1024)) u_dmem (
     .clk    (~clk        ),
-    .addr   (data_addr>>2),
+    .addr   (data_addr),
     .wdata  (data_wr_data),
     .rdata  (data_rd_data),
     .en     (data_req    ),

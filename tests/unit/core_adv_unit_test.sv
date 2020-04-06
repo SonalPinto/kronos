@@ -56,7 +56,7 @@ logic [31:0] mem_rdata;
 logic mem_en, mem_wren;
 logic [3:0] mem_wmask;
 
-spsram32_model #(.DEPTH(1024)) u_mem (
+spsram32_model #(.WORDS(1024)) u_mem (
     .clk    (~clk     ),
     .addr   (mem_addr ),
     .wdata  (mem_wdata),
@@ -72,7 +72,7 @@ always_comb begin
     mem_wren = data_wr_en;
 
     mem_addr = 0;
-    mem_addr = data_req ? data_addr[2+:10] : instr_addr[2+:10];
+    mem_addr = data_req ? data_addr : instr_addr;
 
     instr_data = mem_rdata;
     data_rd_data = mem_rdata;

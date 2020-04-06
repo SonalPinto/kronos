@@ -12,3 +12,9 @@ add_hdl_unit_test(snowflake_unit_test.sv
        blinky
        prime
 )
+
+add_hdl_unit_test(krz_intercon_unit_test.sv
+    DEPENDS
+        krz_intercon
+        spsram32_model
+)
