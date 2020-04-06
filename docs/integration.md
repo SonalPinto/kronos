@@ -25,7 +25,9 @@ logic software_interrupt;
 logic timer_interrupt;
 logic external_interrupt;
 
-kronos_core u_core (
+kronos_core #(
+    .BOOT_ADDR(32'h0)
+) u_core (
     .clk               (clk               ),
     .rstz              (rstz              ),
     .instr_addr        (instr_addr        ),

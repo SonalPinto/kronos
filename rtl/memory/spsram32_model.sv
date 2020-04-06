@@ -4,15 +4,16 @@
 // 32-bit byte-addressable Single Port SRAM model
 
 module spsram32_model #(
-    parameter WORDS = 256
+    parameter WORDS = 256,
+    parameter AWIDTH = 32
 )(
-    input  logic        clk,
-    input  logic [31:0] addr,
-    input  logic [31:0] wdata,
-    output logic [31:0] rdata,
-    input  logic        en,
-    input  logic        wr_en,
-    input  logic [3:0]  wr_mask
+    input  logic                clk,
+    input  logic [AWIDTH-1:0]   addr,
+    input  logic [31:0]         wdata,
+    output logic [31:0]         rdata,
+    input  logic                en,
+    input  logic                wr_en,
+    input  logic [3:0]          wr_mask
 );
 
 parameter D = $clog2(WORDS);
