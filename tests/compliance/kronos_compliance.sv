@@ -8,7 +8,7 @@ module tb_compliance;
 // Macros
 `define q(_s) `"_s`"
 
-// Memory Size: 8KB (2024 words)
+// Memory Size: 8KB (2048 words)
 parameter MEMSIZE = 11; // log2
 
 import kronos_types::*;
@@ -52,7 +52,7 @@ logic [31:0] mem_rdata;
 logic mem_en, mem_wren;
 logic [3:0] mem_wmask;
 
-spsram32_model #(.DEPTH(2**(MEMSIZE))) u_mem (
+spsram32_model #(.WORDS(2**(MEMSIZE-2))) u_mem (
     .clk    (~clk     ),
     .addr   (mem_addr ),
     .wdata  (mem_wdata),
@@ -68,7 +68,7 @@ always_comb begin
     mem_wren = data_wr_en;
 
     mem_addr = 0;
-    mem_addr = data_req ? data_addr[2+:10] : instr_addr[2+:10];
+    mem_addr = data_req ? data_addr : instr_addr;
 
     instr_data = mem_rdata;
     data_rd_data = mem_rdata;
