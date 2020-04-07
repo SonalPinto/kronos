@@ -6,16 +6,19 @@
 
 Features:    
     - 32K x 32
-    - only word accessible (addr[1:0] is ignored)
+    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and wr_mask
+      should be used to access specific bytes
 
 There are four SP256K (16K x 16) single port SRAM hard macros in iCE40UP5K.
 This module cascades all of them to construct the main memory for the system.
 The SP256K are arranged as a 2x2 grid.
 */
 
-module ice40up_memory (
+module ice40up_sram128K #(
+    parameter AWIDTH = 32
+)(
     input  logic                        clk,
-    input  logic [31:0]                 addr,
+    input  logic [AWIDTH-1:0]           addr,
     input  logic [31:0]                 wdata,
     output logic [31:0]                 rdata,
     input  logic                        en,

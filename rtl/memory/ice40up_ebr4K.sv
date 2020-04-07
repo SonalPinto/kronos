@@ -6,17 +6,20 @@
 
 Features:    
     - 1K x 32
-    - only word accessible (addr[1:0] is ignored)
-    - Can be initialized while building
+    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and wr_mask
+      should be used to access specific bytes
+    - Can be initialized while building using the macro PROGRAM
 
 There are 30 EBR or Embedded Block Ram (256x16) in iCE40UP5K.
 This module cascades 8 of them to construct the main memory for the system.
 The EBR are arranged as a 4x2 grid.
 */
 
-module ice40up_memory_lite (
+module ice40up_ebr4K #(
+    parameter AWIDTH = 32
+)(
     input  logic                        clk,
-    input  logic [31:0]                 addr,
+    input  logic [AWIDTH-1:0]           addr,
     input  logic [31:0]                 wdata,
     output logic [31:0]                 rdata,
     input  logic                        en,
@@ -55,7 +58,7 @@ end
 // ------------------------------------------------------------
 `ifdef verilator
 logic _unused = &{1'b0
-    , addr[31:12]
+    , addr[AWIDTH-1:12]
     , addr[1:0]
 };
 `endif

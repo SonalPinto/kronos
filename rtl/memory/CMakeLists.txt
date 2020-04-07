@@ -7,9 +7,15 @@ add_hdl_source(spsram32_model.sv
     LINT FALSE
 )
 
-add_hdl_source(ice40up_memory_lite.sv)
+add_hdl_source(ice40up_ebr4K.sv)
 
-add_hdl_source(ice40up_memory.sv
+add_hdl_source(ice40up_sram64K.sv
+    LINT FALSE
+    LIBRARIES
+        ${LATTICE_LIBRARY}
+)
+
+add_hdl_source(ice40up_sram128K.sv
     LINT FALSE
     LIBRARIES
         ${LATTICE_LIBRARY}

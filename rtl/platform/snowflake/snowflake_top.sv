@@ -133,7 +133,7 @@ snowflake_system_bus u_sysbus (
     .sys_wr_en   (sys_wr_en   )
 );
 
-ice40up_memory_lite u_mem (
+ice40up_ebr4K u_mem (
     .clk    (~clk       ),
     .addr   (mem_addr   ),
     .wdata  (mem_wr_data),

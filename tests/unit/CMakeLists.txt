@@ -74,7 +74,7 @@ add_hdl_unit_test(branch_unit_test.sv
         rv32_assembler
 )
 
-add_hdl_unit_test(ice40up_memory_unit_test.sv
+add_hdl_unit_test(ice40up_sram_unit_test.sv
     DEPENDS
-        ice40up_memory
+        ice40up_sram128K
 )
