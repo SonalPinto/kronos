@@ -82,7 +82,14 @@ module krz_intercon (
     output logic [31:0] mem1_wr_data,
     output logic        mem1_en,
     output logic        mem1_wr_en,
-    output logic [3:0]  mem1_wr_mask
+    output logic [3:0]  mem1_wr_mask,
+    // System interface
+    output logic [23:0] sys_adr_o,
+    input  logic [31:0] sys_dat_i,
+    output logic [31:0] sys_dat_o,
+    output logic        sys_stb_o,
+    output logic        sys_we_o,
+    input  logic        sys_ack_i
 );
 
 logic instr_addr_in_bootrom;
@@ -91,7 +98,7 @@ logic instr_addr_in_mem0;
 logic data_addr_in_mem0;
 logic instr_addr_in_mem1;
 logic data_addr_in_mem1;
-// logic data_addr_in_system;
+logic data_addr_in_sys;
 
 logic bootrom_instr_req;
 logic bootrom_data_req;
@@ -99,12 +106,14 @@ logic mem0_instr_req;
 logic mem0_data_req;
 logic mem1_instr_req;
 logic mem1_data_req;
+logic sys_data_req;
 
-enum logic [1:0] {
+enum logic [2:0] {
     NONE,
     BOOTROM,
     MEM0,
-    MEM1
+    MEM1,
+    SYS
 } instr_gnt, data_gnt;
 
 
@@ -139,7 +148,7 @@ assign data_addr_in_mem1 = (data_addr[17:16] == 2'b10) && ~data_addr[23];
 System, 8M: 0x800000 - 0xffffff
 Only the Data interfaces can access this segment
 */
-// assign data_addr_in_system = data_addr[23];
+assign data_addr_in_sys = data_addr[23];
 
 // ============================================================
 // Arbitration
@@ -162,12 +171,9 @@ always_comb begin
     mem0_en =  mem0_instr_req | mem0_data_req;
     mem0_addr = (mem0_data_req) ? data_addr : instr_addr;
 
-    // wr_mask acts as SEL_O, and should read the whole word for instr reads
-    // Similarly, the data_wr_mask is 4'hF during reads (handled by the Kronos LSU)
-    mem0_wr_mask = (mem0_data_req) ? data_wr_mask : 4'hF;
+    mem0_wr_mask = data_wr_mask;
     mem0_wr_data = data_wr_data;
-
-    mem0_wr_en = mem0_data_req & data_wr_en;
+    mem0_wr_en = data_wr_en;
 end
 
 // Main Memory Bank1, same routing as Bank0
@@ -178,11 +184,21 @@ always_comb begin
     mem1_en =  mem1_instr_req | mem1_data_req;
     mem1_addr = (mem1_data_req) ? data_addr : instr_addr;
 
-    mem1_wr_mask = (mem1_data_req) ? data_wr_mask : 4'hF;
+    mem1_wr_mask = data_wr_mask;
     mem1_wr_data = data_wr_data;
-
-    mem1_wr_en = mem1_data_req & data_wr_en;
+    mem1_wr_en = data_wr_en;
 end
+
+// System access - data interface only
+always_comb begin
+    sys_data_req = data_req & data_addr_in_sys;
+
+    // wishbone pass-thru
+    sys_stb_o = sys_data_req;
+    sys_adr_o = data_addr;
+    sys_we_o = data_wr_en;
+    sys_dat_o = data_wr_data;
+end 
 
 // ============================================================
 // Grant Mux
@@ -207,9 +223,12 @@ always_ff @(negedge clk or negedge rstz) begin
         data_gnt <= NONE;
     end
     else begin
+        // if in a bus cycle for the system, then wait for the ack
+        // memory access are single cycle
         if (bootrom_data_req) data_gnt <= BOOTROM;
         else if (mem0_data_req) data_gnt <= MEM0;
         else if (mem1_data_req) data_gnt <= MEM1;
+        else if (sys_data_req && sys_ack_i) data_gnt <= SYS;
         else data_gnt <= NONE;
     end
 end
@@ -219,10 +238,9 @@ always_comb begin
     instr_ack = instr_gnt != NONE;
 
     case (instr_gnt)
-        BOOTROM : instr_data = bootrom_rd_data;
         MEM0    : instr_data = mem0_rd_data;
         MEM1    : instr_data = mem1_rd_data;
-        default : instr_data = '0;
+        default : instr_data = bootrom_rd_data;
     endcase // instr_gnt
 end
 
@@ -231,10 +249,10 @@ always_comb begin
     data_ack = data_gnt != NONE;
 
     case (data_gnt)
-        BOOTROM : data_rd_data = bootrom_rd_data;
         MEM0    : data_rd_data = mem0_rd_data;
         MEM1    : data_rd_data = mem1_rd_data;
-        default : data_rd_data = '0;
+        SYS     : data_rd_data = sys_dat_i;
+        default : data_rd_data = bootrom_rd_data;
     endcase // instr_gnt
 end
 

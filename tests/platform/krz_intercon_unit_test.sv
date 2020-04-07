@@ -33,6 +33,12 @@ logic [31:0] mem1_wr_data;
 logic mem1_en;
 logic mem1_wr_en;
 logic [3:0] mem1_wr_mask;
+logic [23:0] sys_adr_o;
+logic [31:0] sys_dat_i;
+logic [31:0] sys_dat_o;
+logic sys_stb_o;
+logic sys_we_o;
+logic sys_ack_i;
 
 krz_intercon u_dut (
     .clk            (clk            ),
@@ -62,7 +68,13 @@ krz_intercon u_dut (
     .mem1_wr_data   (mem1_wr_data   ),
     .mem1_en        (mem1_en        ),
     .mem1_wr_en     (mem1_wr_en     ),
-    .mem1_wr_mask   (mem1_wr_mask   )
+    .mem1_wr_mask   (mem1_wr_mask   ),
+    .sys_adr_o      (sys_adr_o      ),
+    .sys_dat_i      (sys_dat_i      ),
+    .sys_dat_o      (sys_dat_o      ),
+    .sys_stb_o      (sys_stb_o      ),
+    .sys_we_o       (sys_we_o       ),
+    .sys_ack_i      (sys_ack_i      )
 );
 
 spsram32_model #(.WORDS(256), .AWIDTH(24)) u_bootrom (
@@ -101,6 +113,7 @@ default clocking cb @(posedge clk);
     input data_ack, data_rd_data;
     output instr_req, instr_addr;
     output data_req, data_addr, data_wr_data, data_wr_mask, data_wr_en;
+    output sys_ack_i, sys_dat_i;
 endclocking
 
 
@@ -113,6 +126,7 @@ endclocking
 
         instr_req = 0;
         data_req = 0;
+        sys_ack_i = 0;
 
         for(int i=0; i<256; i++)
             u_bootrom.MEM[i] = $urandom;
@@ -376,6 +390,75 @@ endclocking
                 $display("GOT D RD: %h", cb.data_rd_data);
             end
         end
+    end
+
+    `TEST_CASE("system") begin
+        logic write;
+        logic [23:0] addr;
+        logic [31:0] write_data, read_data;
+
+        repeat (1024) begin
+            $display("\n-----------------------");
+
+            // setup a read/write of the system
+            addr = 24'h800000 + $urandom_range(0,1023);
+
+            write = $urandom_range(0,1);
+            write_data = $urandom();
+
+            read_data = $urandom();
+
+            $display("addr: %h", addr);
+            if (~write) $display("read: %h", read_data);
+            $display("write: %h", write_data);
+
+            @(cb);
+            cb.data_req <= 1'b1;
+            cb.data_addr <= addr;
+            cb.data_wr_en <= write;
+            cb.data_wr_data <= write_data;
+            cb.data_wr_mask <= 4'hF;
+
+            @(cb);
+            $display("sys_adr_o: %h", sys_adr_o);
+            $display("sys_dat_o: %h", sys_dat_o);
+            $display("sys_we_o: %h", sys_we_o);
+            $display("sys_stb_o: %h", sys_stb_o);
+
+            repeat ($urandom_range(1,7)) begin
+                $display("-");
+                assert(~cb.data_ack);
+                assert(sys_stb_o);
+                assert(sys_adr_o == addr);
+                assert(sys_dat_o == write_data);
+                assert(sys_we_o == write);
+                @(cb);
+            end
+
+            cb.sys_ack_i <= 1;
+            if (~write) cb.sys_dat_i <= read_data;
+            
+            @(cb);
+            $display("sys_dat_i: %h", sys_dat_i);
+            cb.sys_ack_i <= 0;
+            cb.sys_dat_i <= 'x;
+            cb.data_req <= 1'b0;
+            assert(cb.data_ack);
+
+            if (~write) begin
+                $display("Data Read: %h", cb.data_rd_data);
+                assert(cb.data_rd_data == read_data);
+            end
+
+            @(cb);
+            $display("sys_adr_o: %h", sys_adr_o);
+            $display("sys_dat_o: %h", sys_dat_o);
+            $display("sys_we_o: %h", sys_we_o);
+            $display("sys_stb_o: %h", sys_stb_o);
+            assert(~sys_stb_o);
+        end
+
+        ##64;
     end
 end
 
