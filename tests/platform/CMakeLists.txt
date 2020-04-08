@@ -18,3 +18,10 @@ add_hdl_unit_test(krz_intercon_unit_test.sv
         krz_intercon
         spsram32_model
 )
+
+add_hdl_unit_test(krz_blinky_unit_test.sv
+    DEPENDS
+        krz_top
+    TESTDATA
+      krz_blinky
+)
