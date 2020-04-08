@@ -13,5 +13,4 @@ add_riscv_test_data(prime.c
         start.S
     LINKER_SCRIPT
         link.ld
-    USING_STDLIB
 )

@@ -6,32 +6,40 @@ MEMORY {
     system   (rw) : ORIGIN = 0x00800000, LENGTH = 8M
 }
 
-ENTRY(_start)
+ENTRY(main)
 
 SECTIONS
 {
-    . = 0x00000000;
-    /* gp is set to start of memory for gp relative addressing of static vars*/
-    /* gp start is ram origin + 0x800 --- because offset for load/store is 12b */
-    /* 12b signed = -2048 to +2047 */
-    PROVIDE(_global_pointer = . + 0x800);
-
     .text (ORIGIN(bootrom)) :
     {
+        *(.init)
         *(.text)
+        *(.rodata)
+        PROVIDE(_etext = .);
     } > bootrom
 
-    .data (ORIGIN(ram)) :
+    .data (ORIGIN(ram)) : ALIGN(4)
     {
-        PROVIDE(_sdata = .);
-        *(.result)
-        *(.data)
-        PROVIDE(_edata = .);
-    } > ram
+        . = ALIGN(4);
+        /* gp is set to start of memory for gp relative addressing of static vars*/
+        /* gp start is ram origin + 0x800 --- because offset for load/store is 12b */
+        /* 12b signed = -2048 to +2047 */
+        PROVIDE(_global_pointer = . + 0x800);
 
-    .bss :
-    {
+        PROVIDE(_sdata = .);
+        *(.data)
+        . = ALIGN(4);
+        PROVIDE(_edata = .);
+    } > ram AT> bootrom
+
+    .bss (NOLOAD) : ALIGN(4)
+    {   
+         . = ALIGN(4);
+        PROVIDE(_sbss = .);
         *(.bss)
+        *(COMMON)
+         . = ALIGN(4);
+        PROVIDE(_ebss = .);
     } > ram
 
     /* Stack Pointer - End of Memory */
