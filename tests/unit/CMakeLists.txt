@@ -78,3 +78,8 @@ add_hdl_unit_test(ice40up_sram_unit_test.sv
     DEPENDS
         ice40up_sram128K
 )
+
+add_hdl_unit_test(fifo_unit_test.sv
+    DEPENDS
+        fifo
+)
