@@ -58,7 +58,6 @@ end
 
 always_comb begin
     next_state = state;
-    /* verilator lint_off CASEINCOMPLETE */
     case (state)
         FETCH:
             if (branch) next_state = FETCH;
@@ -72,7 +71,6 @@ always_comb begin
             else if (fetch_success) next_state = FETCH;
 
     endcase // state
-    /* verilator lint_on CASEINCOMPLETE */
 end
 
 always_ff @(posedge clk or negedge rstz) begin

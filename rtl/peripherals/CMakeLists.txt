@@ -3,3 +3,8 @@
 
 
 add_hdl_source(fifo.sv)
+
+add_hdl_source(uart_tx.sv
+    DEPENDS
+        fifo
+)

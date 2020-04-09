@@ -83,3 +83,8 @@ add_hdl_unit_test(fifo_unit_test.sv
     DEPENDS
         fifo
 )
+
+add_hdl_unit_test(uart_tx_unit_test.sv
+    DEPENDS
+        uart_tx
+)
