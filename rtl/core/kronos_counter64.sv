@@ -50,7 +50,7 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 // the output 64b count is valid when the upper word update has settled
-assign count_vld = ~incr_high;
+assign count_vld = IS_32BIT ? 1'b1 : ~incr_high;
 
 generate
     if (IS_32BIT == 1'b1)
