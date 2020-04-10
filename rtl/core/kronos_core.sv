@@ -7,8 +7,12 @@ Kronos
 */
 
 module kronos_core 
-    import kronos_types::*; 
-(
+    import kronos_types::*;
+#(
+    parameter logic [31:0]  BOOT_ADDR = 32'h0,
+    parameter logic         MCYCLE_IS_32BIT = 1'b0,
+    parameter logic         MINSTRET_IS_32BIT = 1'b0
+)(
     input  logic        clk,
     input  logic        rstz,
     // Instruction interface
@@ -20,7 +24,7 @@ module kronos_core
     output logic [31:0] data_addr,
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
-    output logic [3:0]  data_wr_mask,
+    output logic [3:0]  data_mask,
     output logic        data_wr_en,
     output logic        data_req,
     input  logic        data_ack,
@@ -29,12 +33,6 @@ module kronos_core
     input  logic        timer_interrupt,
     input  logic        external_interrupt
 );
-
-// ---- config ----
-parameter logic [31:0]  BOOT_ADDR = 32'h0;
-parameter logic         MCYCLE_IS_32BIT = 1'b0;
-parameter logic         MINSTRET_IS_32BIT = 1'b0;
-// ----------------
 
 logic [31:0] branch_target;
 logic branch;
@@ -112,8 +110,8 @@ kronos_EX u_ex (
 // ============================================================
 
 kronos_WB #(
-    .BOOT_ADDR(BOOT_ADDR),
-    .MCYCLE_IS_32BIT(MCYCLE_IS_32BIT),
+    .BOOT_ADDR        (BOOT_ADDR        ),
+    .MCYCLE_IS_32BIT  (MCYCLE_IS_32BIT  ),
     .MINSTRET_IS_32BIT(MINSTRET_IS_32BIT)
 ) u_wb (
     .clk               (clk               ),
@@ -129,7 +127,7 @@ kronos_WB #(
     .data_addr         (data_addr         ),
     .data_rd_data      (data_rd_data      ),
     .data_wr_data      (data_wr_data      ),
-    .data_wr_mask      (data_wr_mask      ),
+    .data_mask         (data_mask         ),
     .data_wr_en        (data_wr_en        ),
     .data_req          (data_req          ),
     .data_ack          (data_ack          ),

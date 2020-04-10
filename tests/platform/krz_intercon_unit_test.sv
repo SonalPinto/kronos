@@ -14,7 +14,7 @@ logic instr_ack;
 logic [23:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -26,18 +26,19 @@ logic [31:0] mem0_rd_data;
 logic [31:0] mem0_wr_data;
 logic mem0_en;
 logic mem0_wr_en;
-logic [3:0] mem0_wr_mask;
+logic [3:0] mem0_mask;
 logic [23:0] mem1_addr;
 logic [31:0] mem1_rd_data;
 logic [31:0] mem1_wr_data;
 logic mem1_en;
 logic mem1_wr_en;
-logic [3:0] mem1_wr_mask;
+logic [3:0] mem1_mask;
 logic [23:0] sys_adr_o;
 logic [31:0] sys_dat_i;
 logic [31:0] sys_dat_o;
 logic sys_stb_o;
 logic sys_we_o;
+logic [3:0] sys_sel_o;
 logic sys_ack_i;
 
 krz_intercon u_dut (
@@ -50,7 +51,7 @@ krz_intercon u_dut (
     .data_addr      (data_addr      ),
     .data_rd_data   (data_rd_data   ),
     .data_wr_data   (data_wr_data   ),
-    .data_wr_mask   (data_wr_mask   ),
+    .data_mask      (data_mask      ),
     .data_wr_en     (data_wr_en     ),
     .data_req       (data_req       ),
     .data_ack       (data_ack       ),
@@ -62,49 +63,50 @@ krz_intercon u_dut (
     .mem0_wr_data   (mem0_wr_data   ),
     .mem0_en        (mem0_en        ),
     .mem0_wr_en     (mem0_wr_en     ),
-    .mem0_wr_mask   (mem0_wr_mask   ),
+    .mem0_mask      (mem0_mask      ),
     .mem1_addr      (mem1_addr      ),
     .mem1_rd_data   (mem1_rd_data   ),
     .mem1_wr_data   (mem1_wr_data   ),
     .mem1_en        (mem1_en        ),
     .mem1_wr_en     (mem1_wr_en     ),
-    .mem1_wr_mask   (mem1_wr_mask   ),
+    .mem1_mask      (mem1_mask      ),
     .sys_adr_o      (sys_adr_o      ),
     .sys_dat_i      (sys_dat_i      ),
     .sys_dat_o      (sys_dat_o      ),
     .sys_stb_o      (sys_stb_o      ),
     .sys_we_o       (sys_we_o       ),
+    .sys_sel_o      (sys_sel_o      ),
     .sys_ack_i      (sys_ack_i      )
 );
 
-spsram32_model #(.WORDS(256), .AWIDTH(24)) u_bootrom (
-    .clk    (~clk           ),
-    .addr   (bootrom_addr   ),
-    .wdata  (32'b0          ),
-    .rdata  (bootrom_rd_data),
-    .en     (bootrom_en     ),
-    .wr_en  (1'b0           ),
-    .wr_mask(4'b0           )
+spsram32_model #(.WORDS(256), .AWIDTH(24), .MASK_WR_ONLY(1)) u_bootrom (
+    .clk  (~clk           ),
+    .addr (bootrom_addr   ),
+    .wdata(32'b0          ),
+    .rdata(bootrom_rd_data),
+    .en   (bootrom_en     ),
+    .wr_en(1'b0           ),
+    .mask (4'b0           )
 );
 
-spsram32_model #(.WORDS(1024), .AWIDTH(24)) u_mem0 (
-    .clk    (~clk        ),
-    .addr   (mem0_addr   ),
-    .wdata  (mem0_wr_data),
-    .rdata  (mem0_rd_data),
-    .en     (mem0_en     ),
-    .wr_en  (mem0_wr_en  ),
-    .wr_mask(mem0_wr_mask)
+spsram32_model #(.WORDS(1024), .AWIDTH(24), .MASK_WR_ONLY(1)) u_mem0 (
+    .clk  (~clk        ),
+    .addr (mem0_addr   ),
+    .wdata(mem0_wr_data),
+    .rdata(mem0_rd_data),
+    .en   (mem0_en     ),
+    .wr_en(mem0_wr_en  ),
+    .mask (mem0_mask   )
 );
 
-spsram32_model #(.WORDS(1024), .AWIDTH(24)) u_mem1 (
-    .clk    (~clk        ),
-    .addr   (mem1_addr   ),
-    .wdata  (mem1_wr_data),
-    .rdata  (mem1_rd_data),
-    .en     (mem1_en     ),
-    .wr_en  (mem1_wr_en  ),
-    .wr_mask(mem1_wr_mask)
+spsram32_model #(.WORDS(1024), .AWIDTH(24), .MASK_WR_ONLY(1)) u_mem1 (
+    .clk  (~clk        ),
+    .addr (mem1_addr   ),
+    .wdata(mem1_wr_data),
+    .rdata(mem1_rd_data),
+    .en   (mem1_en     ),
+    .wr_en(mem1_wr_en  ),
+    .mask (mem1_mask   )
 );
 
 default clocking cb @(posedge clk);
@@ -112,7 +114,7 @@ default clocking cb @(posedge clk);
     input instr_ack, instr_data;
     input data_ack, data_rd_data;
     output instr_req, instr_addr;
-    output data_req, data_addr, data_wr_data, data_wr_mask, data_wr_en;
+    output data_req, data_addr, data_wr_data, data_mask, data_wr_en;
     output sys_ack_i, sys_dat_i;
 endclocking
 
@@ -194,7 +196,7 @@ endclocking
         logic [23:0] addr, word;
         logic [31:0] check_data;
         logic [31:0] write_data, written_data;
-        logic [3:0] wr_mask;
+        logic [3:0] mask;
 
         repeat (1024) begin
             $display("\n-----------------------");
@@ -219,21 +221,21 @@ endclocking
             // Setup write, bootrom is read-only
             write = (choice == 0) ? 0 : $urandom_range(0,1);
             write_data = $urandom();
-            wr_mask = (write) ? $urandom() : '1;
+            mask = (write) ? $urandom() : '1;
 
             // mask write data
             if (choice == 0) written_data = u_bootrom.MEM[word];
             else if (choice == 1) written_data = u_mem0.MEM[word];
             else if (choice == 2) written_data = u_mem1.MEM[word];
             for (int i=0; i<4; i++)
-                if (wr_mask[i]) written_data[i*8+:8] = write_data[i*8+:8];
+                if (mask[i]) written_data[i*8+:8] = write_data[i*8+:8];
 
             @(cb);
             cb.data_req <= 1'b1;
             cb.data_addr <= addr;
             cb.data_wr_en <= write;
             cb.data_wr_data <= write_data;
-            cb.data_wr_mask <= wr_mask;
+            cb.data_mask <= mask;
 
             @(cb);
             cb.data_req <= 1'b0;
@@ -254,7 +256,7 @@ endclocking
 
             if (write) begin
                 $display("write_data: %h", write_data);
-                $display("write_mask: %b", wr_mask);
+                $display("write_mask: %b", mask);
                 $display("written data: %h", written_data);
                 assert(written_data == check_data);
             end
@@ -275,7 +277,7 @@ endclocking
         logic Dwrite;
         logic [23:0] Daddr, Dword;
         logic [31:0] Dwrite_data;
-        logic [3:0] Dwr_mask;
+        logic [3:0]  mask;
 
         logic arb;
         logic [31:0] Iread_data, Dread_data, Dwritten_data, Dwr_check_data;
@@ -326,7 +328,7 @@ endclocking
             // Setup data write, bootrom is read-only
             Dwrite = (Dchoice == 0) ? 0 : $urandom_range(0,1);
             Dwrite_data = $urandom();
-            Dwr_mask = (Dwrite) ? $urandom() : '1;
+            mask = (Dwrite) ? $urandom() : '1;
 
             // mask write data
             if (Dchoice == 0) Dread_data = u_bootrom.MEM[Dword];
@@ -334,7 +336,7 @@ endclocking
             else if (Dchoice == 2) Dread_data = u_mem1.MEM[Dword];
             Dwritten_data = Dread_data;
             for (int i=0; i<4; i++)
-                if (Dwr_mask[i]) Dwritten_data[i*8+:8] = Dwrite_data[i*8+:8];
+                if (mask[i]) Dwritten_data[i*8+:8] = Dwrite_data[i*8+:8];
 
             // ----------------------------------------------------
             // Drive both requests
@@ -347,7 +349,7 @@ endclocking
             cb.data_addr <= Daddr;
             cb.data_wr_en <= Dwrite;
             cb.data_wr_data <= Dwrite_data;
-            cb.data_wr_mask <= Dwr_mask;
+            cb.data_mask <= mask;
 
             // ----------------------------------------------------
             // Result
@@ -396,6 +398,7 @@ endclocking
         logic write;
         logic [23:0] addr;
         logic [31:0] write_data, read_data;
+        logic [3:0] mask;
 
         repeat (1024) begin
             $display("\n-----------------------");
@@ -405,7 +408,7 @@ endclocking
 
             write = $urandom_range(0,1);
             write_data = $urandom();
-
+            mask = $urandom();
             read_data = $urandom();
 
             $display("addr: %h", addr);
@@ -417,13 +420,14 @@ endclocking
             cb.data_addr <= addr;
             cb.data_wr_en <= write;
             cb.data_wr_data <= write_data;
-            cb.data_wr_mask <= 4'hF;
+            cb.data_mask <= mask;
 
             @(cb);
             $display("sys_adr_o: %h", sys_adr_o);
             $display("sys_dat_o: %h", sys_dat_o);
             $display("sys_we_o: %h", sys_we_o);
             $display("sys_stb_o: %h", sys_stb_o);
+            $display("sys_sel_o: %h", sys_sel_o);
 
             repeat ($urandom_range(1,7)) begin
                 $display("-");
@@ -432,6 +436,7 @@ endclocking
                 assert(sys_adr_o == addr);
                 assert(sys_dat_o == write_data);
                 assert(sys_we_o == write);
+                assert(sys_sel_o == mask);
                 @(cb);
             end
 
@@ -455,6 +460,7 @@ endclocking
             $display("sys_dat_o: %h", sys_dat_o);
             $display("sys_we_o: %h", sys_we_o);
             $display("sys_stb_o: %h", sys_stb_o);
+            $display("sys_sel_o: %h", sys_sel_o);
             assert(~sys_stb_o);
         end
 

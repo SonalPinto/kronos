@@ -22,7 +22,7 @@ logic branch;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -41,7 +41,7 @@ kronos_WB u_wb (
     .data_addr         (data_addr    ),
     .data_rd_data      (data_rd_data ),
     .data_wr_data      (data_wr_data ),
-    .data_wr_mask      (data_wr_mask ),
+    .data_mask         (data_mask    ),
     .data_wr_en        (data_wr_en   ),
     .data_req          (data_req     ),
     .data_ack          (data_ack     ),

@@ -61,7 +61,7 @@ module krz_intercon (
     input  logic [23:0] data_addr,
     output logic [31:0] data_rd_data,
     input  logic [31:0] data_wr_data,
-    input  logic [3:0]  data_wr_mask,
+    input  logic [3:0]  data_mask,
     input  logic        data_wr_en,
     input  logic        data_req,
     output logic        data_ack,
@@ -75,20 +75,21 @@ module krz_intercon (
     output logic [31:0] mem0_wr_data,
     output logic        mem0_en,
     output logic        mem0_wr_en,
-    output logic [3:0]  mem0_wr_mask,
+    output logic [3:0]  mem0_mask,
     // Main Memory Bank1 interface
     output logic [23:0] mem1_addr,
     input  logic [31:0] mem1_rd_data,
     output logic [31:0] mem1_wr_data,
     output logic        mem1_en,
     output logic        mem1_wr_en,
-    output logic [3:0]  mem1_wr_mask,
+    output logic [3:0]  mem1_mask,
     // System interface
     output logic [23:0] sys_adr_o,
     input  logic [31:0] sys_dat_i,
     output logic [31:0] sys_dat_o,
     output logic        sys_stb_o,
     output logic        sys_we_o,
+    output logic [3:0]  sys_sel_o,
     input  logic        sys_ack_i
 );
 
@@ -171,7 +172,9 @@ always_comb begin
     mem0_en =  mem0_instr_req | mem0_data_req;
     mem0_addr = (mem0_data_req) ? data_addr : instr_addr;
 
-    mem0_wr_mask = data_wr_mask;
+    // mask is only used for write
+    mem0_mask = data_mask;
+
     mem0_wr_data = data_wr_data;
     mem0_wr_en = data_wr_en;
 end
@@ -184,7 +187,9 @@ always_comb begin
     mem1_en =  mem1_instr_req | mem1_data_req;
     mem1_addr = (mem1_data_req) ? data_addr : instr_addr;
 
-    mem1_wr_mask = data_wr_mask;
+    // mask is only used for write
+    mem1_mask = data_mask;
+
     mem1_wr_data = data_wr_data;
     mem1_wr_en = data_wr_en;
 end
@@ -198,6 +203,7 @@ always_comb begin
     sys_adr_o = data_addr;
     sys_we_o = data_wr_en;
     sys_dat_o = data_wr_data;
+    sys_sel_o = data_mask;
 end 
 
 // ============================================================

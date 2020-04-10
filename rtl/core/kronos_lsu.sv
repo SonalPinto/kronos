@@ -36,7 +36,7 @@ module kronos_lsu
     output logic [31:0] data_addr,
     input  logic [31:0] data_rd_data,
     output logic [31:0] data_wr_data,
-    output logic [3:0]  data_wr_mask,
+    output logic [3:0]  data_mask,
     output logic        data_wr_en,
     output logic        data_req,
     input  logic        data_ack
@@ -62,8 +62,8 @@ logic [31:0] load_word_data;
 
 logic store_done;
 logic [3:0][7:0] sdata, wdata;
-logic [1:0][3:0] wmask;
-logic [3:0] twmask;
+logic [1:0][3:0] mask;
+logic [3:0] tmask;
 
 enum logic [2:0] {
     IDLE,
@@ -146,6 +146,24 @@ always_ff @(posedge clk) begin
 
         // LSByte offset
         offset <= addr_byte_index;
+
+        // Stow mask
+        tmask <= mask[1];
+    end
+end
+
+always_comb begin
+    // Setup byte-level mask
+    // The lower nibble is used as a mask in the first access
+    // and the higher nibble in the second access (for boundary cross)
+    if (data_size == BYTE) begin
+        mask = 8'h1 << addr_byte_index;
+    end
+    else if (data_size == HALF) begin
+        mask = 8'h3 << addr_byte_index;
+    end
+    else begin
+        mask = 8'hF << addr_byte_index;
     end
 end
 
@@ -240,26 +258,6 @@ always_comb begin
         2'b10: wdata = {sdata[1:0], sdata[3:2]};
         2'b11: wdata = {sdata[0]  , sdata[3:1]};
     endcase
-
-    // Setup write byte-level mask
-    // The lower nibble is used as a mask in the first write
-    // and the higher nibble in the second write (for boundary cross)
-    if (data_size == BYTE) begin
-        wmask = 8'h1 << addr_byte_index;
-    end
-    else if (data_size == HALF) begin
-        wmask = 8'h3 << addr_byte_index;
-    end
-    else begin
-        wmask = 8'hF << addr_byte_index;
-    end
-end
-
-always_ff @(posedge clk) begin
-    if (state == IDLE && start) begin
-        // Stow mask
-        twmask <= wmask[1];
-    end
 end
 
 // Store operation done status
@@ -285,7 +283,9 @@ always_ff @(posedge clk or negedge rstz) begin
                 // data write
                 data_wr_en <= st;
                 data_wr_data <= wdata;
-                data_wr_mask <= st ? wmask[0] : 4'hF;
+
+                // mask
+                data_mask <= mask[0];
             end
 
             READ1,
@@ -296,8 +296,8 @@ always_ff @(posedge clk or negedge rstz) begin
                     // Next address for boundary cross access
                     data_addr <= data_addr + 32'h4;
 
-                    // continue write
-                    if (data_wr_en) data_wr_mask <= twmask;
+                    // continue mask
+                    data_mask <= tmask;
                 end
                 else begin
                     data_req <= 1'b0;

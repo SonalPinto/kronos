@@ -7,7 +7,9 @@ Kronos Instruction Fetch
 
 module kronos_IF
     import kronos_types::*;
-(
+#(
+    parameter logic [31:0] BOOT_ADDR = 32'h0
+)(
     input  logic    clk,
     input  logic    rstz,
     // Instruction interface
@@ -23,8 +25,6 @@ module kronos_IF
     input logic [31:0]  branch_target,
     input logic         branch
 );
-
-parameter logic [31:0] BOOT_ADDR = 32'h0;
 
 logic [31:0] pc, pc_last;
 logic fetch_rdy, fetch_vld;

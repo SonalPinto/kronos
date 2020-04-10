@@ -21,7 +21,7 @@ logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -35,14 +35,14 @@ logic [31:0] mem0_rd_data;
 logic [31:0] mem0_wr_data;
 logic mem0_en;
 logic mem0_wr_en;
-logic [3:0] mem0_wr_mask;
+logic [3:0] mem0_mask;
 
 logic [23:0] mem1_addr;
 logic [31:0] mem1_rd_data;
 logic [31:0] mem1_wr_data;
 logic mem1_en;
 logic mem1_wr_en;
-logic [3:0] mem1_wr_mask;
+logic [3:0] mem1_mask;
 
 logic [23:0] sys_adr_o;
 logic [31:0] sys_dat_i;
@@ -77,9 +77,9 @@ assign rstz = reset_sync[1];
 // ============================================================
 
 kronos_core #(
-    .BOOT_ADDR(32'h0),
-    .MCYCLE_IS_32BIT(1'b1),
-    .MINSTRET_IS_32BIT(1'b1)
+    .BOOT_ADDR        (32'h0),
+    .MCYCLE_IS_32BIT  (1'b1 ),
+    .MINSTRET_IS_32BIT(1'b1 )
 ) u_core (
     .clk               (clk         ),
     .rstz              (rstz        ),
@@ -90,7 +90,7 @@ kronos_core #(
     .data_addr         (data_addr   ),
     .data_rd_data      (data_rd_data),
     .data_wr_data      (data_wr_data),
-    .data_wr_mask      (data_wr_mask),
+    .data_mask         (data_mask   ),
     .data_wr_en        (data_wr_en  ),
     .data_req          (data_req    ),
     .data_ack          (data_ack    ),
@@ -113,7 +113,7 @@ krz_intercon u_intercon (
     .data_addr      (data_addr[23:0] ),
     .data_rd_data   (data_rd_data    ),
     .data_wr_data   (data_wr_data    ),
-    .data_wr_mask   (data_wr_mask    ),
+    .data_mask      (data_mask       ),
     .data_wr_en     (data_wr_en      ),
     .data_req       (data_req        ),
     .data_ack       (data_ack        ),
@@ -125,13 +125,13 @@ krz_intercon u_intercon (
     .mem0_wr_data   (mem0_wr_data    ),
     .mem0_en        (mem0_en         ),
     .mem0_wr_en     (mem0_wr_en      ),
-    .mem0_wr_mask   (mem0_wr_mask    ),
+    .mem0_mask      (mem0_mask       ),
     .mem1_addr      (mem1_addr       ),
     .mem1_rd_data   (mem1_rd_data    ),
     .mem1_wr_data   (mem1_wr_data    ),
     .mem1_en        (mem1_en         ),
     .mem1_wr_en     (mem1_wr_en      ),
-    .mem1_wr_mask   (mem1_wr_mask    ),
+    .mem1_mask      (mem1_mask       ),
     .sys_adr_o      (sys_adr_o       ),
     .sys_dat_i      (sys_dat_i       ),
     .sys_dat_o      (sys_dat_o       ),
@@ -147,27 +147,27 @@ ice40up_ebr4K #(.AWIDTH(24)) u_bootrom (
     .rdata  (bootrom_rd_data),
     .en     (bootrom_en     ),
     .wr_en  (1'b0           ),
-    .wr_mask(4'h0           )
+    .mask(4'h0           )
 );
 
 ice40up_sram64K #(.AWIDTH(24)) u_mem0 (
-    .clk    (~clk        ),
-    .addr   (mem0_addr   ),
-    .wdata  (mem0_wr_data),
-    .rdata  (mem0_rd_data),
-    .en     (mem0_en     ),
-    .wr_en  (mem0_wr_en  ),
-    .wr_mask(mem0_wr_mask)
+    .clk  (~clk        ),
+    .addr (mem0_addr   ),
+    .wdata(mem0_wr_data),
+    .rdata(mem0_rd_data),
+    .en   (mem0_en     ),
+    .wr_en(mem0_wr_en  ),
+    .mask (mem0_mask   )
 );
 
 ice40up_sram64K #(.AWIDTH(24)) u_mem1 (
-    .clk    (~clk        ),
-    .addr   (mem1_addr   ),
-    .wdata  (mem1_wr_data),
-    .rdata  (mem1_rd_data),
-    .en     (mem1_en     ),
-    .wr_en  (mem1_wr_en  ),
-    .wr_mask(mem1_wr_mask)
+    .clk  (~clk        ),
+    .addr (mem1_addr   ),
+    .wdata(mem1_wr_data),
+    .rdata(mem1_rd_data),
+    .en   (mem1_en     ),
+    .wr_en(mem1_wr_en  ),
+    .mask (mem1_mask   )
 );
 
 // ============================================================

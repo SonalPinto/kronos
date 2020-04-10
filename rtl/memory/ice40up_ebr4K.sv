@@ -6,7 +6,7 @@
 
 Features:    
     - 1K x 32
-    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and wr_mask
+    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and mask
       should be used to access specific bytes
     - Can be initialized while building using the macro PROGRAM
 
@@ -24,7 +24,7 @@ module ice40up_ebr4K #(
     output logic [31:0]                 rdata,
     input  logic                        en,
     input  logic                        wr_en,
-    input  logic [3:0]                  wr_mask
+    input  logic [3:0]                  mask
 );
 
 // instance 1Kx32 memory - which will be inferred as EBR with appropriate muxing
@@ -40,7 +40,7 @@ always_ff @(posedge clk) begin
     if (en) begin
         if (wr_en) begin
             for (int i=0; i<4; i++) begin
-                if (wr_mask[i]) MEM[word_addr][i*8+:8] <= wdata[i*8+:8];
+                if (mask[i]) MEM[word_addr][i*8+:8] <= wdata[i*8+:8];
             end
         end
         else rdata <= MEM[word_addr];

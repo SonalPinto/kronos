@@ -17,7 +17,7 @@ module snowflake_system_bus (
     input  logic [31:0] data_addr,
     output logic [31:0] data_rd_data,
     input  logic [31:0] data_wr_data,
-    input  logic [3:0]  data_wr_mask,
+    input  logic [3:0]  data_mask,
     input  logic        data_wr_en,
     input  logic        data_req,
     output logic        data_ack,
@@ -27,7 +27,7 @@ module snowflake_system_bus (
     output logic [31:0] mem_wr_data,
     output logic        mem_en,
     output logic        mem_wr_en,
-    output logic [3:0]  mem_wr_mask,
+    output logic [3:0]  mem_mask,
     // System interface
     output logic [31:0] sys_addr,
     input  logic [31:0] sys_rd_data,
@@ -66,7 +66,9 @@ always_comb begin
     mem_addr    = mem_data_req ? data_addr : instr_addr;
 
     mem_wr_data = data_wr_data;
-    mem_wr_mask = data_wr_mask;
+
+    // mask is only used for write
+    mem_mask    = data_mask;
 end
 
 // ============================================================

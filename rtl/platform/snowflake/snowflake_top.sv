@@ -37,7 +37,7 @@ logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -47,7 +47,7 @@ logic [31:0] mem_rd_data;
 logic [31:0] mem_wr_data;
 logic mem_en;
 logic mem_wr_en;
-logic [3:0] mem_wr_mask;
+logic [3:0] mem_mask;
 
 logic [31:0] sys_addr;
 logic [31:0] sys_rd_data;
@@ -84,8 +84,7 @@ assign rstz = reset_sync[1];
 // ============================================================
 
 kronos_core #(
-    .BOOT_ADDR(32'h0),
-    .MCYCLE_IS_32BIT(1'b1),
+    .MCYCLE_IS_32BIT  (1'b1),
     .MINSTRET_IS_32BIT(1'b1)
 ) u_core (
     .clk               (clk         ),
@@ -97,7 +96,7 @@ kronos_core #(
     .data_addr         (data_addr   ),
     .data_rd_data      (data_rd_data),
     .data_wr_data      (data_wr_data),
-    .data_wr_mask      (data_wr_mask),
+    .data_mask         (data_mask   ),
     .data_wr_en        (data_wr_en  ),
     .data_req          (data_req    ),
     .data_ack          (data_ack    ),
@@ -116,7 +115,7 @@ snowflake_system_bus u_sysbus (
     .data_addr   (data_addr   ),
     .data_rd_data(data_rd_data),
     .data_wr_data(data_wr_data),
-    .data_wr_mask(data_wr_mask),
+    .data_mask   (data_mask   ),
     .data_wr_en  (data_wr_en  ),
     .data_req    (data_req    ),
     .data_ack    (data_ack    ),
@@ -125,7 +124,7 @@ snowflake_system_bus u_sysbus (
     .mem_wr_data (mem_wr_data ),
     .mem_en      (mem_en      ),
     .mem_wr_en   (mem_wr_en   ),
-    .mem_wr_mask (mem_wr_mask ),
+    .mem_mask    (mem_mask    ),
     .sys_addr    (sys_addr    ),
     .sys_rd_data (sys_rd_data ),
     .sys_wr_data (sys_wr_data ),
@@ -134,13 +133,13 @@ snowflake_system_bus u_sysbus (
 );
 
 ice40up_ebr4K u_mem (
-    .clk    (~clk       ),
-    .addr   (mem_addr   ),
-    .wdata  (mem_wr_data),
-    .rdata  (mem_rd_data),
-    .en     (mem_en     ),
-    .wr_en  (mem_wr_en  ),
-    .wr_mask(mem_wr_mask)
+    .clk  (~clk       ),
+    .addr (mem_addr   ),
+    .wdata(mem_wr_data),
+    .rdata(mem_rd_data),
+    .en   (mem_en     ),
+    .wr_en(mem_wr_en  ),
+    .mask (mem_mask   )
 );
 
 

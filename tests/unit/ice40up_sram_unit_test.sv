@@ -14,16 +14,16 @@ logic [31:0] wdata;
 logic [31:0] rdata;
 logic en;
 logic wr_en;
-logic [3:0] wr_mask;
+logic [3:0] mask;
 
 ice40up_sram128K u_mem (
-    .clk    (clk    ),
-    .addr   (addr   ),
-    .wdata  (wdata  ),
-    .rdata  (rdata  ),
-    .en     (en     ),
-    .wr_en  (wr_en  ),
-    .wr_mask(wr_mask)
+    .clk  (clk  ),
+    .addr (addr ),
+    .wdata(wdata),
+    .rdata(rdata),
+    .en   (en   ),
+    .wr_en(wr_en),
+    .mask (mask )
 );
 
 `define MEM00 u_mem.MEMBANK[0].MEMINST[0].u_spsram.vfb_b_inst.SRAM_inst.spram256k_core_inst.uut.mem_core_array
@@ -78,7 +78,7 @@ logic [31:0] MEM [2**15];
             if ($urandom_range(0,4) == 0) ##($urandom_range(1,7));
 
             word = $urandom_range(0, LASTADDR);
-            wr_mask = $urandom();
+            mask = $urandom();
             wdata = $urandom();
             addr = word << 2;
 
@@ -102,7 +102,7 @@ logic [31:0] MEM [2**15];
             else begin
                 // update model
                 for (int i=0; i<4; i++)
-                    if (wr_mask[i]) MEM[word][i*8+:8] = wdata[i*8+:8];
+                    if (mask[i]) MEM[word][i*8+:8] = wdata[i*8+:8];
                 golden = MEM[word];
 
                 // WRITE
@@ -119,7 +119,7 @@ logic [31:0] MEM [2**15];
                     reference = {`MEM11[word[13:0]], `MEM10[word[13:0]]};
 
                 $display("WRITE MEM[%0d] = %h vs %h, mask=%b, data=%h", word, golden, reference,
-                    wr_mask, wdata);
+                    mask, wdata);
                 assert(golden == reference);
             end
         end

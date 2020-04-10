@@ -22,7 +22,7 @@ logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -37,7 +37,7 @@ kronos_core u_dut (
     .data_addr         (data_addr   ),
     .data_rd_data      (data_rd_data),
     .data_wr_data      (data_wr_data),
-    .data_wr_mask      (data_wr_mask),
+    .data_mask         (data_mask   ),
     .data_wr_en        (data_wr_en  ),
     .data_req          (data_req    ),
     .data_ack          (data_ack    ),
@@ -50,16 +50,16 @@ logic [31:0] mem_addr;
 logic [31:0] mem_wdata;
 logic [31:0] mem_rdata;
 logic mem_en, mem_wren;
-logic [3:0] mem_wmask;
+logic [3:0] mem_mask;
 
 spsram32_model #(.WORDS(2**(MEMSIZE-2))) u_mem (
-    .clk    (~clk     ),
-    .addr   (mem_addr ),
-    .wdata  (mem_wdata),
-    .rdata  (mem_rdata),
-    .en     (mem_en   ),
-    .wr_en  (mem_wren ),
-    .wr_mask(mem_wmask)
+    .clk  (~clk     ),
+    .addr (mem_addr ),
+    .wdata(mem_wdata),
+    .rdata(mem_rdata),
+    .en   (mem_en   ),
+    .wr_en(mem_wren ),
+    .mask (mem_mask )
 );
 
 // Data has Priority
@@ -74,7 +74,7 @@ always_comb begin
     data_rd_data = mem_rdata;
 
     mem_wdata = data_wr_data;
-    mem_wmask = data_wr_mask;
+    mem_mask = data_req ? data_mask : 4'hF;
 end
 
 always_ff @(negedge clk) begin

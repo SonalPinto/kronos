@@ -43,7 +43,7 @@ spsram32_model #(.WORDS(256)) u_imem (
     .rdata  (instr_data),
     .en     (instr_req ),
     .wr_en  (1'b0      ),
-    .wr_mask(4'b0      )
+    .mask   (4'hf      )
 );
 
 always_ff @(negedge clk) begin

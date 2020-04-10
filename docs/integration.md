@@ -15,7 +15,7 @@ logic instr_ack;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
-logic [3:0] data_wr_mask;
+logic [3:0] data_mask;
 logic data_wr_en;
 logic data_req;
 logic data_ack;
@@ -37,7 +37,7 @@ kronos_core #(
     .data_addr         (data_addr         ),
     .data_rd_data      (data_rd_data      ),
     .data_wr_data      (data_wr_data      ),
-    .data_wr_mask      (data_wr_mask      ),
+    .data_mask         (data_mask         ),
     .data_wr_en        (data_wr_en        ),
     .data_req          (data_req          ),
     .data_ack          (data_ack          ),
@@ -88,11 +88,11 @@ The LSU (Load Store Unit) in the Write Back stage is also a `Wishbone B4 Classic
 | data_rd_data| in       | 32    | DAT_I
 | data_wr_data| out      | 32    | DAT_O
 | data_wr_en | out       | 1     | WE_O
-| data_wr_mask| out      | 4     | SEL_O
+| data_mask  | out       | 4     | SEL_O
 | data_req   | out       | 1     | STB_O, CYC_O
 | data_ack   | in        | 1     | ACK_I
 
-The `data_wr_mask` is an active-high 4-bit byte-level mask. The high bits indicate the position of the data bytes that should be written over on the word. For a read, the `data_wr_mask` will be all high, indicating that the entire word is always read.
+The `data_mask` is an active-high 4-bit byte-level mask. The high bits indicate the position of the data bytes that should be read/written over on the word.
 
 The `data_addr` is word aligned, i.e. `data_addr[1:0] == 0b00`
 

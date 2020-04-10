@@ -6,7 +6,7 @@
 
 Features:    
     - 16K x 32
-    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and wr_mask
+    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and mask
       should be used to access specific bytes
 
 There are four SP256K (16K x 16) single port SRAM hard macros in iCE40UP5K.
@@ -25,7 +25,7 @@ module ice40up_sram64K #(
     output logic [31:0]                 rdata,
     input  logic                        en,
     input  logic                        wr_en,
-    input  logic [3:0]                  wr_mask
+    input  logic [3:0]                  mask
 );
 
 // There are 16K words (14b)
@@ -39,7 +39,7 @@ generate
     for (j=0; j<2; j++) begin : MEMINST
         logic [3:0] maskwe;
 
-        assign maskwe = {{2{wr_mask[j*2+1]}}, {2{wr_mask[j*2]}}};
+        assign maskwe = {{2{mask[j*2+1]}}, {2{mask[j*2]}}};
 
         SP256K u_spsram (
             // Read/write address
