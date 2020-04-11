@@ -47,8 +47,9 @@ logic [3:0] mem1_mask;
 logic [23:0] sys_adr_o;
 logic [31:0] sys_dat_i;
 logic [31:0] sys_dat_o;
-logic sys_stb_o;
 logic sys_we_o;
+logic [3:0] sys_sel_o;
+logic sys_stb_o;
 logic sys_ack_i;
 
 logic gpio_ledr;
@@ -100,10 +101,10 @@ kronos_core #(
 );
 
 // ============================================================
-// Core Interconnect and Memory
+// Primary Crossbar and Memory
 // ============================================================
 
-krz_intercon u_intercon (
+krz_xbar u_xbar (
     .clk            (clk             ),
     .rstz           (rstz            ),
     .instr_addr     (instr_addr[23:0]),
@@ -135,8 +136,9 @@ krz_intercon u_intercon (
     .sys_adr_o      (sys_adr_o       ),
     .sys_dat_i      (sys_dat_i       ),
     .sys_dat_o      (sys_dat_o       ),
-    .sys_stb_o      (sys_stb_o       ),
     .sys_we_o       (sys_we_o        ),
+    .sys_sel_o      (sys_sel_o       ),
+    .sys_stb_o      (sys_stb_o       ),
     .sys_ack_i      (sys_ack_i       )
 );
 
@@ -147,7 +149,7 @@ ice40up_ebr4K #(.AWIDTH(24)) u_bootrom (
     .rdata  (bootrom_rd_data),
     .en     (bootrom_en     ),
     .wr_en  (1'b0           ),
-    .mask(4'h0           )
+    .mask   (4'hF           )
 );
 
 ice40up_sram64K #(.AWIDTH(24)) u_mem0 (

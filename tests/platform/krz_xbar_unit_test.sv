@@ -3,7 +3,7 @@
 
 `include "vunit_defines.svh"
 
-module tb_krz_intercon_ut;
+module tb_krz_xbar_ut;
 
 logic clk;
 logic rstz;
@@ -41,7 +41,7 @@ logic sys_we_o;
 logic [3:0] sys_sel_o;
 logic sys_ack_i;
 
-krz_intercon u_dut (
+krz_xbar u_dut (
     .clk            (clk            ),
     .rstz           (rstz           ),
     .instr_addr     (instr_addr     ),
@@ -73,9 +73,9 @@ krz_intercon u_dut (
     .sys_adr_o      (sys_adr_o      ),
     .sys_dat_i      (sys_dat_i      ),
     .sys_dat_o      (sys_dat_o      ),
-    .sys_stb_o      (sys_stb_o      ),
     .sys_we_o       (sys_we_o       ),
     .sys_sel_o      (sys_sel_o      ),
+    .sys_stb_o      (sys_stb_o      ),
     .sys_ack_i      (sys_ack_i      )
 );
 

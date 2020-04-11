@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-
 Parameterizable FIFO
 With a slave write interface and master read interface
 
@@ -17,7 +16,6 @@ dout_rdy    ---  ACK_I
 
 Also has full, empty and size status indicators.
 The actual size is N+1, because the output is registered.
-
 */
 
 module fifo #(
@@ -46,6 +44,8 @@ logic [PW-1:0] wraddr, rdaddr;
 logic [PW:0] wrptr, rdptr;
 logic wr_en, rd_en;
 
+logic fifo_empty;
+
 // ------------------------------------------------------------
 // Write
 
@@ -71,7 +71,7 @@ assign din_rdy = wr_en;
 
 // read from the non-empty fifo if the output buffer is empty
 // or the output slave is ready to absorb the currently valid output buffer
-assign rd_en = (~dout_vld | dout_rdy) & ~empty;
+assign rd_en = (~dout_vld | dout_rdy) & ~fifo_empty;
 
 assign rdaddr = rdptr[PW-1:0];
 
@@ -100,7 +100,10 @@ end
 // Status
 // Full status doesn't use an adder chain!
 assign full = (wrptr[PW] != rdptr[PW]) && (wrptr[PW-1:0] == rdptr[PW-1:0]);
-assign empty = rdptr == wrptr;
+assign fifo_empty = rdptr == wrptr;
+
+// Actual empty status should account for the output register as well
+assign empty = fifo_empty & ~dout_vld;
 
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) size <= '0;

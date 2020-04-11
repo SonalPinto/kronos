@@ -13,15 +13,23 @@ add_hdl_unit_test(snowflake_unit_test.sv
        prime
 )
 
-add_hdl_unit_test(krz_intercon_unit_test.sv
+add_hdl_unit_test(krz_xbar_unit_test.sv
     DEPENDS
-        krz_intercon
+        krz_xbar
         spsram32_model
 )
+
+add_hdl_unit_test(krz_sysbus_unit_test.sv
+    DEPENDS
+        krz_sysbus
+        krz_gpreg
+        uart_tx
+)
+
 
 add_hdl_unit_test(krz_blinky_unit_test.sv
     DEPENDS
         krz_top
     TESTDATA
-      krz_blinky
+        krz_blinky
 )

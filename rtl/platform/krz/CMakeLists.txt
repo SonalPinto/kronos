@@ -1,12 +1,29 @@
 # Copyright (c) 2020 Sonal Pinto
 # SPDX-License-Identifier: Apache-2.0
 
-add_hdl_source(krz_intercon.sv)
+add_hdl_source(krz_map.sv)
+
+add_hdl_source(krz_xbar.sv
+    DEPENDS
+        krz_map
+)
+
+add_hdl_source(krz_sysbus.sv
+    DEPENDS
+        krz_map
+)
+
+add_hdl_source(krz_gpreg.sv
+    DEPENDS
+        krz_map
+)
 
 add_hdl_source(krz_top.sv
     DEPENDS
         kronos_core
-        krz_intercon
+        krz_xbar
+        krz_sysbus
+        krz_gpreg
         ice40up_ebr4K
         ice40up_sram64K
 )

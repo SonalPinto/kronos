@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-System Bus for the KRZ SoC
+Primary Crossbar for the KRZ SoC
 
 - Presents dual wishbone slave buses to the Kronos Instruction and Data interface.
 - Arbitrates access to the all resources, at the individual resource level.
@@ -49,7 +49,7 @@ contention between the two interfaces. The system can run at its peak performanc
 
 */
 
-module krz_intercon (
+module krz_xbar (
     input  logic        clk,
     input  logic        rstz,
     // Core.instr interface
@@ -87,9 +87,9 @@ module krz_intercon (
     output logic [23:0] sys_adr_o,
     input  logic [31:0] sys_dat_i,
     output logic [31:0] sys_dat_o,
-    output logic        sys_stb_o,
     output logic        sys_we_o,
     output logic [3:0]  sys_sel_o,
+    output logic        sys_stb_o,
     input  logic        sys_ack_i
 );
 

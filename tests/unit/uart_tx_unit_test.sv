@@ -9,7 +9,7 @@ module tb_uart;
 logic clk;
 logic rstz;
 logic tx;
-logic [15:0] divider;
+logic [15:0] prescaler;
 logic clear;
 logic full;
 logic empty;
@@ -20,18 +20,18 @@ logic stb_i;
 logic ack_o;
 
 uart_tx #(.BUFFER(32)) u_dut (
-    .clk    (clk    ),
-    .rstz   (rstz   ),
-    .tx     (tx     ),
-    .divider(divider),
-    .clear  (clear  ),
-    .full   (full   ),
-    .empty  (empty  ),
-    .size   (size   ),
-    .dat_i  (dat_i  ),
-    .we_i   (we_i   ),
-    .stb_i  (stb_i  ),
-    .ack_o  (ack_o  )
+    .clk      (clk      ),
+    .rstz     (rstz     ),
+    .tx       (tx       ),
+    .prescaler(prescaler),
+    .clear    (clear    ),
+    .full     (full     ),
+    .empty    (empty    ),
+    .size     (size     ),
+    .dat_i    (dat_i    ),
+    .we_i     (we_i     ),
+    .stb_i    (stb_i    ),
+    .ack_o    (ack_o    )
 );
 
 default clocking cb @(posedge clk);
@@ -57,7 +57,7 @@ logic [7:0] TX [$], RX [$];
 
         stb_i = 0;
         we_i = 0;
-        divider = 31;
+        prescaler = 7;
 
         fork 
             forever #1ns clk = ~clk;
@@ -99,17 +99,24 @@ end
 task automatic driver(int N=32);
     logic [7:0] data;
 
-    repeat (N) begin
-        @(cb);
+    @(cb);
+    data = $urandom();
+    TX.push_back(data);
+
+    cb.dat_i <= data;
+    cb.stb_i <= 1;
+    cb.we_i <= 1;
+    $display("tx: %h", data);
+
+    repeat (N-1) begin
+        @(cb iff cb.ack_o);
         data = $urandom();
         TX.push_back(data);
 
         cb.dat_i <= data;
-        cb.stb_i <= 1;
-        cb.we_i <= 1;
         $display("tx: %h", data);
     end
-    @(cb);
+    @(cb iff cb.ack_o);
     cb.stb_i <= 0;
     cb.we_i <= 0;
 endtask
@@ -128,11 +135,11 @@ task automatic monitor(int N=32);
                 // $display("%t s=%0d | %h", $realtime, state, line);
                 state = 1;
                 data = 'x;
-                ##4;
+                ##1;
             end
         end
         else if (state > 0 && state < 9) begin
-            ##(divider);
+            ##(prescaler);
             // $display("%t s=%0d > %b", $realtime, state, tx);
             data = {data[6:0], tx};
             state++;

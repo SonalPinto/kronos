@@ -2,12 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-    8-bit UART (Serial) TX
 
-    - Wishbone slave, 8b data
-    - runtime configurable baud rate (default 115200)
-        clk/(divider+1)
-    - transmission control and status
+8-bit UART (Serial) TX
+
+- Wishbone slave, 8b data
+- runtime configurable baud rate (default 115200)
+    clk/(prescaler+1)
+- transmission control and status
+
+Wishbone slave interface
+    - Registered Feedback Bus Cycle, Advanced
+
 */
 
 module uart_tx #(
@@ -18,7 +23,7 @@ module uart_tx #(
     // UART TX
     output logic        tx,
     // Control
-    input  logic [15:0] divider,
+    input  logic [15:0] prescaler,
     input  logic        clear,
     output logic        full,
     output logic        empty,
@@ -30,6 +35,7 @@ module uart_tx #(
     output logic        ack_o
 );
 
+logic ack;
 logic tfull, tempty;
 logic [$clog2(BUFFER):0] tsize;
 
@@ -71,17 +77,26 @@ fifo #(
 );
 
 assign fifo_wr_data = dat_i;
-assign fifo_wr_vld = stb_i & we_i;
+assign fifo_wr_vld = stb_i & we_i & ack;
 
 // register these signals before sending them out
-always_ff @(posedge clk) begin
-    full <= tfull;
-    empty <= tempty;
+always_ff @(posedge clk or negedge rstz) begin
+    if (~rstz) begin
+        ack <= 1'b0;
+    end
+    else begin
+        full <= tfull;
+        empty <= tempty;
 
-    // always ack
-    ack_o <= fifo_wr_vld;
+        // always ack
+        ack <= stb_i & we_i;
+    end
 end
 
+// Advanced synchronous terminated burst
+assign ack_o = stb_i & ack;
+
+// size is already registered in the fifo
 assign size = { {{16-$clog2(BUFFER)-1}{1'b0}}, tsize};
 
 // ============================================================
@@ -104,7 +119,7 @@ assign fifo_rd_rdy = init;
 assign init = (state == IDLE) && fifo_rd_vld;
 
 // Bit timer
-assign tick = timer == divider;
+assign tick = timer == prescaler;
 always_ff @(posedge clk) begin
     if (init) timer <= '0;
     else if (state == TRANSMIT) timer <= tick ? '0 : timer + 1'b1;
