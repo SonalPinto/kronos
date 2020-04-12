@@ -52,7 +52,7 @@ always_ff @(posedge clk or negedge rstz) begin
         bootvec <= '0;              // bootrom start address
         gpio_dir <= '0;             // default inputs
         gpio_write <= '0;           // default = 0x00
-        uart_prescaler <= 16'd208;  // 115200 Hz
+        uart_prescaler <= 16'd207;  // 115200 Hz
         uart_tx_clear <= 1'b0;
     end
     else if (gpreg_stb_i & ~ack) begin

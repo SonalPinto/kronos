@@ -13,6 +13,15 @@
 Wishbone slave interface
     - Registered Feedback Bus Cycle, Advanced
 
+
+Serial Protocol
+
++-----+         +----+----+----+----+----+----+----+----+--------+
+      | START=0 | D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | STOP=1
+      +---------+----+----+----+----+----+----+----+----+
+
+- Additional idle cycles (at HIGH) at the end
+
 */
 
 module uart_tx #(
@@ -47,8 +56,8 @@ logic init, done;
 logic [15:0] timer;
 logic tick;
 
-logic [9:0] buffer;
-logic [10:0] tracker;
+logic [10:0] buffer;
+logic [11:0] tracker;
 
 enum logic {
     IDLE,
@@ -130,18 +139,18 @@ always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         tx <= 1'b1;
     end
-    if (init) begin
-        {tx, buffer} <= {1'b0, fifo_rd_data, 1'b1, 1'b1};
-        tracker <= 11'b1;
+    else if (init) begin
+        {buffer, tx} <= {3'b111, fifo_rd_data, 1'b0};
+        tracker <= 12'b1;
     end
     else if (state == TRANSMIT && tick) begin
-        {tx, buffer} <= {buffer, 1'b1};
-        tracker <= {tracker[9:0], 1'b0};
+        {buffer, tx} <= {1'b1, buffer};
+        tracker <= tracker << 1'b1;
     end
 end
 
 // End transmission
-assign done = tracker[10] && tick;
+assign done = tracker[11] && tick;
 
 // ------------------------------------------------------------
 `ifdef verilator

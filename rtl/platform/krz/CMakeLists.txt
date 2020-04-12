@@ -18,12 +18,16 @@ add_hdl_source(krz_gpreg.sv
         krz_map
 )
 
+add_hdl_source(krz_debounce.sv)
+
 add_hdl_source(krz_top.sv
     DEPENDS
         kronos_core
         krz_xbar
         krz_sysbus
         krz_gpreg
+        krz_debounce
+        uart_tx
         ice40up_ebr4K
         ice40up_sram64K
 )

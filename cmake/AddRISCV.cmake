@@ -22,10 +22,9 @@ if (NOT TESTDATA_ENV_SETUP)
     set(TESTDATA_ENV_SETUP 1)
 endif()
 
-function(add_riscv_test_data source)
+function(add_riscv_executable source)
     # Create RISCV compilation target and translate the object 
     # into a SystemVerilog memory file
-    # Note: This rule expects a single source file and an optional linker script
 
     set(one_value_arguments
         LINKER_SCRIPT
@@ -75,12 +74,13 @@ function(add_riscv_test_data source)
         COMMAND
             ${RISCV_GCC}
         ARGS
+            -Os
             -march=rv32i
             -mabi=ilp32
             -static
             -nostartfiles
-            -ffreestanding
-            -fvisibility=hidden
+            --specs=nano.specs
+            --specs=nosys.specs
             -T${ARG_LINKER_SCRIPT}
             ${source} ${ARG_SOURCES}
             -o ${elf}

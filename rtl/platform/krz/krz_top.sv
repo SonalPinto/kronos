@@ -6,9 +6,10 @@ Kronos: Zero Degree
 */
 
 module krz_top (
-    input  logic RSTN,
-    output logic LEDR,
-    output logic LEDG
+    input  logic    RSTN,
+    inout  wire     GPIO0,
+    inout  wire     GPIO1,
+    output logic    TX
 );
 
 logic clk, rstz;
@@ -44,21 +45,44 @@ logic mem1_en;
 logic mem1_wr_en;
 logic [3:0] mem1_mask;
 
-logic [23:0] sys_adr_o;
-logic [31:0] sys_dat_i;
-logic [31:0] sys_dat_o;
-logic sys_we_o;
-logic [3:0] sys_sel_o;
-logic sys_stb_o;
-logic sys_ack_i;
+logic [23:0] sys_adr;
+logic [31:0] sys_rdat;
+logic [31:0] sys_wdat;
+logic sys_we;
+logic [3:0] sys_sel;
+logic sys_stb;
+logic sys_ack;
 
-logic gpio_ledr;
-logic gpio_ledg;
+logic [7:0] gpreg_adr;
+logic [31:0] gpreg_rdat;
+logic [31:0] gpreg_wdat;
+logic gpreg_we;
+logic gpreg_stb;
+logic gpreg_ack;
+
+logic [7:0] uart_rdat;
+logic [7:0] uart_wdat;
+logic uart_we;
+logic uart_stb;
+logic uart_tx_ack;
+logic uart_rx_ack;
+logic uart_ack;
+
+logic [15:0] gpio_dir;
+logic [15:0] gpio_write;
+logic [15:0] gpio_read;
+
+logic [15:0] uart_prescaler;
+logic uart_tx_clear;
+logic [15:0] uart_tx_size;
+logic uart_tx_full;
+logic uart_tx_empty;
 
 
 // ============================================================
 // Clock and Reset
 // ============================================================
+
 // 24MHz internal oscillator
 HSOSC #(.CLKHF_DIV ("0b01")) u_osc (
   .CLKHFPU(1'b1),
@@ -133,13 +157,13 @@ krz_xbar u_xbar (
     .mem1_en        (mem1_en         ),
     .mem1_wr_en     (mem1_wr_en      ),
     .mem1_mask      (mem1_mask       ),
-    .sys_adr_o      (sys_adr_o       ),
-    .sys_dat_i      (sys_dat_i       ),
-    .sys_dat_o      (sys_dat_o       ),
-    .sys_we_o       (sys_we_o        ),
-    .sys_sel_o      (sys_sel_o       ),
-    .sys_stb_o      (sys_stb_o       ),
-    .sys_ack_i      (sys_ack_i       )
+    .sys_adr_o      (sys_adr       ),
+    .sys_dat_i      (sys_rdat       ),
+    .sys_dat_o      (sys_wdat       ),
+    .sys_we_o       (sys_we        ),
+    .sys_sel_o      (sys_sel       ),
+    .sys_stb_o      (sys_stb       ),
+    .sys_ack_i      (sys_ack       )
 );
 
 ice40up_ebr4K #(.AWIDTH(24)) u_bootrom (
@@ -175,33 +199,83 @@ ice40up_sram64K #(.AWIDTH(24)) u_mem1 (
 // ============================================================
 // System
 // ============================================================
-always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        sys_ack_i <= 1'b0;
-    end
-    else begin
-        if (sys_stb_o) begin
-            if (sys_we_o) begin
-                case(sys_adr_o[7:2])
-                    6'h00: gpio_ledr <= sys_dat_o[0];
-                    6'h01: gpio_ledg <= sys_dat_o[0];
-                endcase // sys_adr_o
-            end
-            else begin
-                case(sys_adr_o[7:2])
-                    6'h00: sys_dat_i <= {31'b0, gpio_ledr};
-                    6'h01: sys_dat_i <= {31'b0, gpio_ledg};
-                endcase // sys_adr_o
-            end
 
-            sys_ack_i <= 1'b1;
-        end
-        else sys_ack_i <= 1'b0;
-    end
-end
+// System Bus
+krz_sysbus u_sysbus (
+    .clk        (clk       ),
+    .rstz       (rstz      ),
+    .sys_adr_i  (sys_adr   ),
+    .sys_dat_i  (sys_wdat  ),
+    .sys_dat_o  (sys_rdat  ),
+    .sys_we_i   (sys_we    ),
+    .sys_sel_i  (sys_sel   ),
+    .sys_stb_i  (sys_stb   ),
+    .sys_ack_o  (sys_ack   ),
+    .gpreg_adr_o(gpreg_adr ),
+    .gpreg_dat_i(gpreg_rdat),
+    .gpreg_dat_o(gpreg_wdat),
+    .gpreg_we_o (gpreg_we  ),
+    .gpreg_stb_o(gpreg_stb ),
+    .gpreg_ack_i(gpreg_ack ),
+    .uart_dat_i (uart_rdat ),
+    .uart_dat_o (uart_wdat ),
+    .uart_we_o  (uart_we   ),
+    .uart_stb_o (uart_stb  ),
+    .uart_ack_i (uart_ack  )
+);
 
-// LEDs, inverted
-assign LEDR = ~gpio_ledr;
-assign LEDG = ~gpio_ledg;
+// General Purpose Registers
+krz_gpreg u_gpr (
+    .clk           (clk           ),
+    .rstz          (rstz          ),
+    .gpreg_adr_i   (gpreg_adr     ),
+    .gpreg_dat_i   (gpreg_wdat    ),
+    .gpreg_dat_o   (gpreg_rdat    ),
+    .gpreg_we_i    (gpreg_we      ),
+    .gpreg_stb_i   (gpreg_stb     ),
+    .gpreg_ack_o   (gpreg_ack     ),
+    .gpio_dir      (gpio_dir      ),
+    .gpio_write    (gpio_write    ),
+    .gpio_read     (gpio_read     ),
+    .uart_prescaler(uart_prescaler),
+    .uart_tx_clear (uart_tx_clear ),
+    .uart_tx_size  (uart_tx_size  ),
+    .uart_tx_full  (uart_tx_full  ),
+    .uart_tx_empty (uart_tx_empty )
+);
+
+// UART TX
+uart_tx #(.BUFFER(64)) u_uart_tx (
+    .clk      (clk           ),
+    .rstz     (rstz          ),
+    .tx       (TX            ),
+    .prescaler(uart_prescaler),
+    .clear    (uart_tx_clear ),
+    .full     (uart_tx_full  ),
+    .empty    (uart_tx_empty ),
+    .size     (uart_tx_size  ),
+    .dat_i    (uart_wdat     ),
+    .we_i     (uart_we       ),
+    .stb_i    (uart_stb      ),
+    .ack_o    (uart_tx_ack   )
+);
+
+assign uart_rx_ack = 1'b0;
+assign uart_rdat = '0;
+assign uart_ack = uart_tx_ack | uart_rx_ack;
+
+// Bidirectional GPIO
+krz_debounce u_debounce (
+    .clk     (clk       ),
+    .read    (gpio_read ),
+    .gpio_in ({
+        14'h0,
+        GPIO1,
+        GPIO0
+    })
+);
+
+assign GPIO0 = gpio_dir[0] ? gpio_write[0] : 1'bz;
+assign GPIO1 = gpio_dir[1] ? gpio_write[1] : 1'bz;
 
 endmodule

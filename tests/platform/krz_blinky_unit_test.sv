@@ -6,13 +6,15 @@
 module tb_krz;
 
 logic RSTN;
-logic LEDR;
-logic LEDG;
+wire  LEDR;
+wire  LEDG;
+logic TX;
 
 krz_top u_dut (
     .RSTN(RSTN),
-    .LEDR(LEDR),
-    .LEDG(LEDG)
+    .GPIO0(LEDR),
+    .GPIO1(LEDG),
+    .TX(TX)
 );
 
 // graybox probes

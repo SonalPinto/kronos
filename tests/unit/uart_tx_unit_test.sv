@@ -141,7 +141,7 @@ task automatic monitor(int N=32);
         else if (state > 0 && state < 9) begin
             ##(prescaler);
             // $display("%t s=%0d > %b", $realtime, state, tx);
-            data = {data[6:0], tx};
+            data = {tx, data[7:1]};
             state++;
         end
         else if (state == 9) begin

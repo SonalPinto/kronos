@@ -41,6 +41,7 @@ logic [15:0] uart_tx_size;
 logic uart_tx_full;
 logic uart_tx_empty;
 
+logic uart_ack;
 logic uart_tx;
 
 krz_sysbus u_sysbus (
@@ -335,7 +336,7 @@ task automatic uart_monitor();
         else if (state > 0 && state < 9) begin
             ##(u_gpr.uart_prescaler);
             // $display("%t s=%0d > %b", $realtime, state, uart_tx);
-            data = {data[6:0], uart_tx};
+            data = {uart_tx, data[7:1]};
             state++;
         end
         else if (state == 9) begin

@@ -10,6 +10,10 @@ blinky for KRZ
 // ============================================================
 // Drivers
 
+#define MMPTR32(x) (*((volatile uint32_t*)(x)))
+#define MMPTR16(x) (*((volatile uint16_t*)(x)))
+#define MMPTR8(x)  (*((volatile uint8_t*)(x)))
+
 // 24MHz system clock - internal oscillator
 #define SYSTEM_CLK_MHZ 24
 
@@ -36,19 +40,30 @@ __attribute__((naked))  __attribute__((section(".init"))) void main(void) {
         la sp, _stack_pointer   \n\
     ");
 
-    // LEDs
-    int* ledr = (int*) 0x800000;
-    int* ledg = (int*) 0x800004;
+    // init gpio0/1 as outputs, rest as inputs
+    MMPTR32(0x800108) = 0x00000003;
+    // Set GPIO0 and GPIO1 as high - turns the LEDs off
+    MMPTR32(0x80010C) = 0x00000003;
 
-    *ledr = 1;
-    *ledg = 0;
+    uint8_t LEDR = 1;
+    uint8_t LEDG = 0;
+
+    char txt[] = "Kronos live\n";
 
     while(1) {
         delay_us(500000); // 500ms
         // delay_us(50); // 50us
 
-        // toggle LEDs      
-        *ledg ^= 1;
-        *ledr ^= 1;
+        // Assign LEDs
+        MMPTR32(0x80010C) = 0x00000000 | (LEDG << 1) | LEDR;
+
+        // toggle LEDs
+        LEDR ^= 1;
+        LEDG ^= 1;
+
+        // Transmit - 12B txt
+        MMPTR32(0x800200) = *(uint32_t*)(&txt[0]);
+        MMPTR32(0x800200) = *(uint32_t*)(&txt[4]);
+        MMPTR32(0x800200) = *(uint32_t*)(&txt[8]);
     }
 }
