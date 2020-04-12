@@ -26,9 +26,7 @@ module krz_gpreg
     // UART
     output logic [15:0] uart_prescaler,
     output logic        uart_tx_clear,
-    input  logic [15:0] uart_tx_size,
-    input  logic        uart_tx_full,
-    input  logic        uart_tx_empty
+    input  logic [15:0] uart_tx_size
 );
 
 logic [5:0] addr;
@@ -82,8 +80,7 @@ always_ff @(posedge clk or negedge rstz) begin
                 else gpreg_dat_o <= {16'h0, uart_prescaler};
 
             KRZ_UART_STATUS: // Read-Only
-                if (~we) gpreg_dat_o <= {
-                    14'h0, uart_tx_full, uart_tx_empty, uart_tx_size};
+                if (~we) gpreg_dat_o <= {16'h0, uart_tx_size};
 
             KRZ_UART_CTRL:
                 if (we) uart_tx_clear <= gpreg_dat_i[0];

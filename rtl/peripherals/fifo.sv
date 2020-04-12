@@ -79,10 +79,12 @@ always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         rdptr <= '0;
         dout_vld <= 1'b0;
+        dout <= '0;
     end
     else if (clear) begin
         rdptr <= '0;
         dout_vld <= 1'b0;
+        dout <= '0;
     end
     else begin
         if (rd_en) begin
@@ -91,8 +93,10 @@ always_ff @(posedge clk or negedge rstz) begin
 
             rdptr <= rdptr + 1'b1;
         end
-        else if (dout_vld && dout_rdy)
+        else if (dout_vld && dout_rdy) begin
             dout_vld <= 1'b0;
+            dout <= '0;
+        end
     end
 end
 

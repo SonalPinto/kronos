@@ -38,8 +38,6 @@ logic [15:0] gpio_read;
 logic [15:0] uart_prescaler;
 logic uart_tx_clear;
 logic [15:0] uart_tx_size;
-logic uart_tx_full;
-logic uart_tx_empty;
 
 logic uart_ack;
 logic uart_tx;
@@ -83,19 +81,15 @@ krz_gpreg u_gpr (
     .gpio_read     (gpio_read     ),
     .uart_prescaler(uart_prescaler),
     .uart_tx_clear (uart_tx_clear ),
-    .uart_tx_size  (uart_tx_size  ),
-    .uart_tx_full  (uart_tx_full  ),
-    .uart_tx_empty (uart_tx_empty )
+    .uart_tx_size  (uart_tx_size  )
 );
 
-uart_tx u_uart_tx (
+wb_uart_tx u_uart_tx (
     .clk      (clk           ),
     .rstz     (rstz          ),
     .tx       (uart_tx       ),
     .prescaler(uart_prescaler),
     .clear    (uart_tx_clear ),
-    .full     (uart_tx_full  ),
-    .empty    (uart_tx_empty ),
     .size     (uart_tx_size  ),
     .dat_i    (uart_wdat     ),
     .we_i     (uart_we       ),
@@ -179,7 +173,7 @@ logic [7:0] TX [$], RX [$];
                 KRZ_GPIO_WRITE:     read_data = gpio_write;
                 KRZ_GPIO_READ:      read_data = gpio_read;
                 KRZ_UART_PRESCALER: read_data = uart_prescaler;
-                KRZ_UART_STATUS:    read_data = {uart_tx_full, uart_tx_empty, uart_tx_size};
+                KRZ_UART_STATUS:    read_data = uart_tx_size;
             endcase // addr
             $display("reg[%0d] = %h", gpreg, read_data);
 
@@ -241,7 +235,7 @@ logic [7:0] TX [$], RX [$];
             @(cb iff cb.sys_ack);
             cb.sys_stb <= 1'b0;
 
-            wait(uart_tx_empty);
+            wait(u_uart_tx.txq_empty);
             ##128;
 
             n = $countones(mask);

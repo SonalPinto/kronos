@@ -75,8 +75,6 @@ logic [15:0] gpio_read;
 logic [15:0] uart_prescaler;
 logic uart_tx_clear;
 logic [15:0] uart_tx_size;
-logic uart_tx_full;
-logic uart_tx_empty;
 
 
 // ============================================================
@@ -239,21 +237,15 @@ krz_gpreg u_gpr (
     .gpio_read     (gpio_read     ),
     .uart_prescaler(uart_prescaler),
     .uart_tx_clear (uart_tx_clear ),
-    .uart_tx_size  (uart_tx_size  ),
-    .uart_tx_full  (uart_tx_full  ),
-    .uart_tx_empty (uart_tx_empty )
+    .uart_tx_size  (uart_tx_size  )
 );
 
 // UART TX
-uart_tx #(.BUFFER(64)) u_uart_tx (
+wb_uart_tx #(.BUFFER(64)) u_uart_tx (
     .clk      (clk           ),
     .rstz     (rstz          ),
     .tx       (TX            ),
     .prescaler(uart_prescaler),
-    .clear    (uart_tx_clear ),
-    .full     (uart_tx_full  ),
-    .empty    (uart_tx_empty ),
-    .size     (uart_tx_size  ),
     .dat_i    (uart_wdat     ),
     .we_i     (uart_we       ),
     .stb_i    (uart_stb      ),

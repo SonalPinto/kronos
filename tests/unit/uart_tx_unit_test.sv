@@ -11,22 +11,18 @@ logic rstz;
 logic tx;
 logic [15:0] prescaler;
 logic clear;
-logic full;
-logic empty;
 logic [15:0] size;
 logic [7:0] dat_i;
 logic we_i;
 logic stb_i;
 logic ack_o;
 
-uart_tx #(.BUFFER(32)) u_dut (
+wb_uart_tx #(.BUFFER(32)) u_dut (
     .clk      (clk      ),
     .rstz     (rstz     ),
     .tx       (tx       ),
     .prescaler(prescaler),
     .clear    (clear    ),
-    .full     (full     ),
-    .empty    (empty    ),
     .size     (size     ),
     .dat_i    (dat_i    ),
     .we_i     (we_i     ),
@@ -58,6 +54,7 @@ logic [7:0] TX [$], RX [$];
         stb_i = 0;
         we_i = 0;
         prescaler = 7;
+        clear = 0;
 
         fork 
             forever #1ns clk = ~clk;

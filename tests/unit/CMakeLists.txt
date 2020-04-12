@@ -86,5 +86,10 @@ add_hdl_unit_test(fifo_unit_test.sv
 
 add_hdl_unit_test(uart_tx_unit_test.sv
     DEPENDS
-        uart_tx
+        wb_uart_tx
+)
+
+add_hdl_unit_test(spim_unit_test.sv
+    DEPENDS
+        wb_spi_master
 )

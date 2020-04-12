@@ -27,7 +27,8 @@ add_hdl_source(krz_top.sv
         krz_sysbus
         krz_gpreg
         krz_debounce
-        uart_tx
+        wb_uart_tx
+        wb_spi_master
         ice40up_ebr4K
         ice40up_sram64K
 )

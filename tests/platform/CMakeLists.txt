@@ -23,7 +23,7 @@ add_hdl_unit_test(krz_sysbus_unit_test.sv
     DEPENDS
         krz_sysbus
         krz_gpreg
-        uart_tx
+        wb_uart_tx
 )
 
 
