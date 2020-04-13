@@ -310,17 +310,27 @@ assign GPIO1 = gpio_dir[1] ? gpio_write[1] : 1'bz;
 assign GPIO2 = gpio_dir[2] ? gpio_write[2] : 1'bz;
 assign GPIO3 = gpio_dir[3] ? gpio_write[3] : 1'bz;
 
-krz_debounce u_debounce (
-    .clk     (clk       ),
-    .rstz    (rstz      ),
-    .read    (gpio_read ),
+krz_debounce #(.N(12)) u_debounce (
+    .clk     (clk            ),
+    .rstz    (rstz           ),
+    .read    (gpio_read[11:0]),
     .gpio_in ({
-        12'h0,
+        8'h0,
         GPIO3,
         GPIO2,
         GPIO1,
         GPIO0
     })
 );
+
+assign gpio_read[15:12] = '0;
+
+// ------------------------------------------------------------
+`ifdef verilator
+logic _unused = &{1'b0
+    , gpio_write[15:12]
+    , gpio_dir[15:12]
+};
+`endif
 
 endmodule

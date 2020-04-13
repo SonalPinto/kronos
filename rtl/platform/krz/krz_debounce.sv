@@ -5,11 +5,13 @@
 KRZ Simple Debouncer
 */
 
-module krz_debounce (
+module krz_debounce #(
+    parameter N = 16
+)(
     input  logic        clk,
     input  logic        rstz,
-    output logic [15:0] read,
-    input  logic [15:0] gpio_in
+    output logic [N-1:0] read,
+    input  logic [N-1:0] gpio_in
 );
 
 logic [15:0] timer;
@@ -30,7 +32,7 @@ end
 generate
     genvar i;
 
-    for (i=0; i<16; i++) begin : DEBOUNCE
+    for (i=0; i<N; i++) begin : DEBOUNCE
         logic [1:0] sync;
         logic raw_val;
         logic [1:0] poll;
