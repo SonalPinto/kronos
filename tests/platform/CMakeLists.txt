@@ -33,3 +33,11 @@ add_hdl_unit_test(krz_blinky_unit_test.sv
     TESTDATA
         krz_blinky
 )
+
+add_hdl_unit_test(krz_boot_unit_test.sv
+    DEPENDS
+        krz_top
+        spiflash
+    TESTDATA
+        krz_bootloader
+)

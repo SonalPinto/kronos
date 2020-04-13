@@ -61,7 +61,7 @@ function(add_riscv_executable source)
     set(elf "${name}.elf")
     set(objdump "${name}.objdump")
     set(binary "${name}.bin")
-    set(target "testdata-${name}")
+    set(target "riscv-${name}")
 
     # Setup command and target to generate the test data
     add_custom_command(

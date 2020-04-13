@@ -6,7 +6,7 @@ MEMORY {
     system   (rw) : ORIGIN = 0x00800000, LENGTH = 8M
 }
 
-ENTRY(main)
+ENTRY(_start)
 
 SECTIONS
 {
@@ -21,9 +21,7 @@ SECTIONS
     .data (ORIGIN(ram)) : ALIGN(4)
     {
         . = ALIGN(4);
-        /* gp is set to start of memory for gp relative addressing of static vars*/
-        /* gp start is ram origin + 0x800 --- because offset for load/store is 12b */
-        /* 12b signed = -2048 to +2047 */
+
         PROVIDE(_global_pointer = . + 0x800);
 
         PROVIDE(_sdata = .);

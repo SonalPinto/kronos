@@ -25,7 +25,7 @@ eg: if page=1, then peripheral page start address:
 
 parameter PAGE_GPREG    = 0;
 parameter PAGE_UART     = 1;
-parameter PAGE_SPI      = 2;
+parameter PAGE_SPIM     = 2;
 
 // ============================================================
 // General Purpose Registers
@@ -45,13 +45,16 @@ parameter logic [5:0] KRZ_GPIO_WRITE        = 6'h03;
 // GPIO Input Read: Read input value, if pin is configured as input, default: 0
 parameter logic [5:0] KRZ_GPIO_READ         = 6'h04;
 
-// UART Clock prescaler, (system clk) / (prescaler+1)
-parameter logic [5:0] KRZ_UART_PRESCALER    = 6'h05;
+// UART Control: Clock prescaler, TX Queue clear
+parameter logic [5:0] KRZ_UART_CTRL         = 6'h05;
 
-// UART TX status: Queue size, full and empty
+// UART Status: TX Queue size
 parameter logic [5:0] KRZ_UART_STATUS       = 6'h06;
 
-// UART TX Control: Queue clear
-parameter logic [5:0] KRZ_UART_CTRL         = 6'h07;
+// SPIM Control: CPOL, CPHA, Clock prescaler, RX/TX Queue clear
+parameter logic [5:0] KRZ_SPIM_CTRL         = 6'h07;
+
+// SPIM Status: RX/TX Queue size
+parameter logic [5:0] KRZ_SPIM_STATUS       = 6'h08;
 
 endpackage

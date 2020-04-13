@@ -90,10 +90,10 @@ function(add_hdl_unit_test hdl_test_file)
     )
 
     foreach(dep ${ARG_TESTDATA})
-        if (NOT TARGET testdata-${dep})
-            message(FATAL_ERROR "Test Data target does not exist: testdata-${dep}")
+        if (NOT TARGET riscv-${dep})
+            message(FATAL_ERROR "Test Data target does not exist: riscv-${dep}")
         endif()
-        add_dependencies("test-${ARG_NAME}" "testdata-${dep}")
+        add_dependencies("test-${ARG_NAME}" "riscv-${dep}")
     endforeach(dep)
 
     # Bind to global test suite

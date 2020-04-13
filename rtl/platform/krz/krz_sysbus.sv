@@ -35,19 +35,22 @@ module krz_sysbus
     input  logic [3:0]  sys_sel_i,
     input  logic        sys_stb_i,
     output logic        sys_ack_o,
-    // GPREG
-    output logic [7:0]  gpreg_adr_o,
-    input  logic [31:0] gpreg_dat_i,
-    output logic [31:0] gpreg_dat_o,
-    output logic        gpreg_we_o,
+    // Peripheral Common Bus
+    output logic [7:0]  perif_adr_o,
+    output logic [31:0] perif_dat_o,
+    output logic        perif_we_o,
+    // Peripheral STB
     output logic        gpreg_stb_o,
-    input  logic        gpreg_ack_i,
-    // UART
-    input  logic [7:0]  uart_dat_i,
-    output logic [7:0]  uart_dat_o,
-    output logic        uart_we_o,
     output logic        uart_stb_o,
-    input  logic        uart_ack_i
+    output logic        spim_stb_o,
+    // Peripheral ACK
+    input  logic        gpreg_ack_i,
+    input  logic        uart_ack_i,
+    input  logic        spim_ack_i,
+     // Peripheral read data
+    input  logic [31:0] gpreg_dat_i,
+    input  logic [7:0]  uart_dat_i,
+    input  logic [7:0]  spim_dat_i
 );
 
 logic mask_valid, addr_valid;
@@ -56,6 +59,7 @@ logic sys_req_valid;
 logic sys_rd_req, sys_wr_req;
 logic gpreg_rd_req, gpreg_wr_req;
 logic uart_rd_req, uart_wr_req;
+logic spim_rd_req, spim_wr_req;
 
 logic [7:0] addr;
 logic [31:0] data, read_data;
@@ -66,7 +70,7 @@ enum logic [1:0] {
     NONE,
     GPREG,
     UART,
-    SPI
+    SPIM
 } gnt;
 
 logic is_write;
@@ -100,12 +104,17 @@ assign gpreg_wr_req  = sys_wr_req & sys_adr_i[PAGE_GPREG+8];
 assign uart_rd_req = sys_rd_req & sys_adr_i[PAGE_UART+8];
 assign uart_wr_req = sys_wr_req & sys_adr_i[PAGE_UART+8];
 
+// 0x800400: SPIM
+assign spim_rd_req = sys_rd_req & sys_adr_i[PAGE_SPIM+8];
+assign spim_wr_req = sys_wr_req & sys_adr_i[PAGE_SPIM+8];
+
 // Register grant and peripheral bus STB
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         gnt <= NONE;
         gpreg_stb_o <= 1'b0;
         uart_stb_o <= 1'b0;
+        spim_stb_o <= 1'b0;
     end
     else begin
         if (state == IDLE && sys_stb_i && sys_req_valid) begin 
@@ -117,11 +126,16 @@ always_ff @(posedge clk or negedge rstz) begin
                 gnt <= UART;
                 uart_stb_o <= 1'b1;
             end
+            else if (spim_rd_req || spim_wr_req) begin
+                gnt <= SPIM;
+                spim_stb_o <= 1'b1;
+            end
         end
         else if (next_state == ACK) begin
             gnt <= NONE;
             gpreg_stb_o <= 1'b0;
             uart_stb_o <= 1'b0;
+            spim_stb_o <= 1'b0;
         end
     end
 end
@@ -142,8 +156,8 @@ always_comb begin
             if (~sys_req_valid) next_state = ERROR;
             else if (gpreg_rd_req) next_state = READ32;
             else if (gpreg_wr_req) next_state = WRITE32;
-            else if (uart_rd_req) next_state = READ8;
-            else if (uart_wr_req) next_state = WRITE8;
+            else if (uart_rd_req || spim_rd_req) next_state = READ8;
+            else if (uart_wr_req || spim_wr_req) next_state = WRITE8;
             else next_state = ERROR;
 
         end
@@ -205,12 +219,9 @@ end
 // ============================================================
 // Peripheral Wiring
 
-assign gpreg_adr_o = addr;
-assign gpreg_dat_o = data;
-assign gpreg_we_o  = is_write;
-
-assign uart_dat_o = data[7:0];
-assign uart_we_o  = is_write;
+assign perif_adr_o = addr;
+assign perif_dat_o = data;
+assign perif_we_o  = is_write;
 
 // Mux the read data and ACK from the peripherals
 always_comb begin
@@ -222,6 +233,10 @@ always_comb begin
         UART    : begin
             ack = uart_ack_i;
             read_data = {24'h0, uart_dat_i};
+        end
+        SPIM    : begin
+            ack = spim_ack_i;
+            read_data = {24'h0, spim_dat_i};
         end
         default : begin
             ack = 1'b0;

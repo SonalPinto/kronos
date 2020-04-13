@@ -35,7 +35,7 @@ endclocking
     end
 
     `TEST_CASE("blinky") begin
-        // setup program: blinky.c
+        // setup program: krz_blinky.c
         // Bootloader -------------------------
         // Load text
         $readmemh("../../../data/krz_blinky.mem", `MEM);

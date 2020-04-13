@@ -26,7 +26,15 @@ module krz_gpreg
     // UART
     output logic [15:0] uart_prescaler,
     output logic        uart_tx_clear,
-    input  logic [15:0] uart_tx_size
+    input  logic [15:0] uart_tx_size,
+    // SPIM
+    output logic [15:0] spim_prescaler,
+    output logic        spim_cpol,
+    output logic        spim_cpha,
+    output logic        spim_tx_clear,
+    output logic        spim_rx_clear,
+    input  logic [15:0] spim_tx_size,
+    input  logic [15:0] spim_rx_size
 );
 
 logic [5:0] addr;
@@ -47,11 +55,19 @@ assign we = gpreg_we_i;
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         scratch <= '0;
-        bootvec <= '0;              // bootrom start address
+        bootvec <= 24'h100000;    // 1M location in Flash
+
         gpio_dir <= '0;             // default inputs
         gpio_write <= '0;           // default = 0x00
+
         uart_prescaler <= 16'd207;  // 115200 Hz
         uart_tx_clear <= 1'b0;
+
+        spim_prescaler <= 16'd11;   // 1MHz
+        spim_cpol <= 1'b0;          // Mode-0
+        spim_cpha <= 1'b0;
+        spim_tx_clear <= 1'b0;
+        spim_rx_clear <= 1'b0;
     end
     else if (gpreg_stb_i & ~ack) begin
         /* verilator lint_off CASEINCOMPLETE */
@@ -75,22 +91,41 @@ always_ff @(posedge clk or negedge rstz) begin
             KRZ_GPIO_READ: // Read-Only
                 if (~we) gpreg_dat_o <= {16'h0, gpio_read};
 
-            KRZ_UART_PRESCALER:
-                if (we) uart_prescaler <= gpreg_dat_i[15:0];
-                else gpreg_dat_o <= {16'h0, uart_prescaler};
+            KRZ_UART_CTRL:
+                if (we) begin
+                    uart_prescaler <= gpreg_dat_i[15:0];
+                    uart_tx_clear <= gpreg_dat_i[16];
+                end
+                else begin
+                    gpreg_dat_o <= {16'h0, uart_prescaler};
+                end
 
             KRZ_UART_STATUS: // Read-Only
                 if (~we) gpreg_dat_o <= {16'h0, uart_tx_size};
 
-            KRZ_UART_CTRL:
-                if (we) uart_tx_clear <= gpreg_dat_i[0];
-                // else gpreg_dat_o <= {31'h0, uart_tx_clear};
+            KRZ_SPIM_CTRL:
+                if (we) begin
+                    spim_prescaler <= gpreg_dat_i[15:0];
+                    spim_cpol <= gpreg_dat_i[16];
+                    spim_cpha <= gpreg_dat_i[17];
+                    spim_tx_clear <= gpreg_dat_i[18];
+                    spim_rx_clear <= gpreg_dat_i[19];
+                end
+                else begin
+                    gpreg_dat_o <= {14'h0, spim_cpha, spim_cpol, spim_prescaler};
+                end
+            
+            KRZ_SPIM_STATUS: // Read-Only
+                if (~we) gpreg_dat_o <= {spim_rx_size, spim_tx_size};
+
         endcase
         /* verilator lint_on CASEINCOMPLETE */
     end
     else if (ack) begin
         // Clear one-shots
         uart_tx_clear <= 1'b0;
+        spim_tx_clear <= 1'b0;
+        spim_rx_clear <= 1'b0;
     end
 end
 

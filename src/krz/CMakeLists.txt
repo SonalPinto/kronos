@@ -3,5 +3,10 @@
 
 add_riscv_executable(krz_blinky.c
     LINKER_SCRIPT
-        link.ld
+        bootloader.ld
+)
+
+add_riscv_executable(krz_bootloader.c
+    LINKER_SCRIPT
+        bootloader.ld
 )

@@ -48,7 +48,7 @@ __attribute__((naked))  __attribute__((section(".init"))) void main(void) {
     uint8_t LEDR = 1;
     uint8_t LEDG = 0;
 
-    char txt[] = "Kronos live\n";
+    char txt[] = "Kronos is alive\n";
 
     while(1) {
         delay_us(500000); // 500ms
@@ -61,9 +61,10 @@ __attribute__((naked))  __attribute__((section(".init"))) void main(void) {
         LEDR ^= 1;
         LEDG ^= 1;
 
-        // Transmit - 12B txt
+        // Transmit - 16B txt
         MMPTR32(0x800200) = *(uint32_t*)(&txt[0]);
         MMPTR32(0x800200) = *(uint32_t*)(&txt[4]);
         MMPTR32(0x800200) = *(uint32_t*)(&txt[8]);
+        MMPTR32(0x800200) = *(uint32_t*)(&txt[12]);
     }
 }

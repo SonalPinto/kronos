@@ -18,17 +18,22 @@ logic [3:0] sys_sel;
 logic sys_stb;
 logic sys_ack;
 
-logic [7:0] gpreg_adr;
-logic [31:0] gpreg_rdat;
-logic [31:0] gpreg_wdat;
-logic gpreg_we;
-logic gpreg_stb;
-logic gpreg_ack;
+logic [7:0] perif_adr;
+logic [31:0] perif_dat;
+logic perif_we;
 
-logic [7:0] uart_rdat;
-logic [7:0] uart_wdat;
-logic uart_we;
+logic gpreg_stb;
 logic uart_stb;
+logic spim_stb;
+
+logic gpreg_ack;
+logic uart_ack;
+logic spim_ack;
+
+logic [31:0] gpreg_dat;
+logic [7:0] uart_dat;
+logic [7:0] spim_dat;
+
 logic uart_tx_ack;
 logic uart_rx_ack;
 
@@ -38,31 +43,38 @@ logic [15:0] gpio_read;
 logic [15:0] uart_prescaler;
 logic uart_tx_clear;
 logic [15:0] uart_tx_size;
+logic [15:0] spim_prescaler;
+logic spim_cpol;
+logic spim_cpha;
+logic spim_tx_clear;
+logic spim_rx_clear;
+logic [15:0] spim_tx_size;
+logic [15:0] spim_rx_size;
 
-logic uart_ack;
 logic uart_tx;
 
 krz_sysbus u_sysbus (
-    .clk        (clk       ),
-    .rstz       (rstz      ),
-    .sys_adr_i  (sys_adr   ),
-    .sys_dat_i  (sys_wdat  ),
-    .sys_dat_o  (sys_rdat  ),
-    .sys_we_i   (sys_we    ),
-    .sys_sel_i  (sys_sel   ),
-    .sys_stb_i  (sys_stb   ),
-    .sys_ack_o  (sys_ack   ),
-    .gpreg_adr_o(gpreg_adr ),
-    .gpreg_dat_i(gpreg_rdat),
-    .gpreg_dat_o(gpreg_wdat),
-    .gpreg_we_o (gpreg_we  ),
-    .gpreg_stb_o(gpreg_stb ),
-    .gpreg_ack_i(gpreg_ack ),
-    .uart_dat_i (uart_rdat ),
-    .uart_dat_o (uart_wdat ),
-    .uart_we_o  (uart_we   ),
-    .uart_stb_o (uart_stb  ),
-    .uart_ack_i (uart_ack  )
+    .clk        (clk      ),
+    .rstz       (rstz     ),
+    .sys_adr_i  (sys_adr  ),
+    .sys_dat_i  (sys_wdat ),
+    .sys_dat_o  (sys_rdat ),
+    .sys_we_i   (sys_we   ),
+    .sys_sel_i  (sys_sel  ),
+    .sys_stb_i  (sys_stb  ),
+    .sys_ack_o  (sys_ack  ),
+    .perif_adr_o(perif_adr),
+    .perif_dat_o(perif_dat),
+    .perif_we_o (perif_we ),
+    .gpreg_stb_o(gpreg_stb),
+    .uart_stb_o (uart_stb ),
+    .spim_stb_o (spim_stb ),
+    .gpreg_ack_i(gpreg_ack),
+    .uart_ack_i (uart_ack ),
+    .spim_ack_i (spim_ack ),
+    .gpreg_dat_i(gpreg_dat),
+    .uart_dat_i (uart_dat ),
+    .spim_dat_i (spim_dat )
 );
 
 assign uart_ack = uart_tx_ack | uart_rx_ack;
@@ -70,10 +82,10 @@ assign uart_ack = uart_tx_ack | uart_rx_ack;
 krz_gpreg u_gpr (
     .clk           (clk           ),
     .rstz          (rstz          ),
-    .gpreg_adr_i   (gpreg_adr     ),
-    .gpreg_dat_i   (gpreg_wdat    ),
-    .gpreg_dat_o   (gpreg_rdat    ),
-    .gpreg_we_i    (gpreg_we      ),
+    .gpreg_adr_i   (perif_adr     ),
+    .gpreg_dat_i   (perif_dat     ),
+    .gpreg_dat_o   (gpreg_dat     ),
+    .gpreg_we_i    (perif_we      ),
     .gpreg_stb_i   (gpreg_stb     ),
     .gpreg_ack_o   (gpreg_ack     ),
     .gpio_dir      (gpio_dir      ),
@@ -81,7 +93,14 @@ krz_gpreg u_gpr (
     .gpio_read     (gpio_read     ),
     .uart_prescaler(uart_prescaler),
     .uart_tx_clear (uart_tx_clear ),
-    .uart_tx_size  (uart_tx_size  )
+    .uart_tx_size  (uart_tx_size  ),
+    .spim_prescaler(spim_prescaler),
+    .spim_cpol     (spim_cpol     ),
+    .spim_cpha     (spim_cpha     ),
+    .spim_tx_clear (spim_tx_clear ),
+    .spim_rx_clear (spim_rx_clear ),
+    .spim_tx_size  (spim_tx_size  ),
+    .spim_rx_size  (spim_rx_size  )
 );
 
 wb_uart_tx u_uart_tx (
@@ -91,8 +110,8 @@ wb_uart_tx u_uart_tx (
     .prescaler(uart_prescaler),
     .clear    (uart_tx_clear ),
     .size     (uart_tx_size  ),
-    .dat_i    (uart_wdat     ),
-    .we_i     (uart_we       ),
+    .dat_i    (perif_dat[7:0]),
+    .we_i     (perif_we      ),
     .stb_i    (uart_stb      ),
     .ack_o    (uart_tx_ack   )
 );
@@ -107,8 +126,8 @@ default clocking cb @(posedge clk);
     default input #10ps output #10ps;
     input sys_ack, sys_rdat;
     output sys_stb, sys_we, sys_sel, sys_wdat, sys_adr;
-    input uart_stb, uart_we;
-    output uart_rx_ack, uart_rdat;
+    input uart_stb, perif_we;
+    output uart_rx_ack, uart_dat;
 endclocking
 
 // ============================================================
@@ -121,8 +140,10 @@ logic [7:0] TX [$], RX [$];
 
         sys_stb = 0;
         gpio_read = 0;
-        uart_rdat = 0;
+        uart_dat = 0;
         uart_rx_ack = 0;
+        spim_dat = 0;
+        spim_ack = 0;
 
         fork 
             forever #1ns clk = ~clk;
@@ -144,7 +165,7 @@ logic [7:0] TX [$], RX [$];
 
         repeat (1024) begin
             // generate random valid scenario
-            gpreg =  $urandom_range(0, 6);
+            gpreg =  $urandom_range(0, 4);
             addr = gpreg << 2;
             write_data = $urandom();
             is_write = $urandom();
@@ -172,8 +193,6 @@ logic [7:0] TX [$], RX [$];
                 KRZ_GPIO_DIR:       read_data = gpio_dir;
                 KRZ_GPIO_WRITE:     read_data = gpio_write;
                 KRZ_GPIO_READ:      read_data = gpio_read;
-                KRZ_UART_PRESCALER: read_data = uart_prescaler;
-                KRZ_UART_STATUS:    read_data = uart_tx_size;
             endcase // addr
             $display("reg[%0d] = %h", gpreg, read_data);
 
@@ -184,8 +203,6 @@ logic [7:0] TX [$], RX [$];
                     KRZ_GPIO_DIR:    written_data = write_data[15:0];
                     KRZ_GPIO_WRITE:  written_data = write_data[15:0];
                     KRZ_GPIO_READ:   written_data = read_data;
-                    KRZ_UART_PRESCALER: written_data = write_data[15:0];
-                    KRZ_UART_STATUS: written_data = read_data;
                 endcase // addr
                 $display("expected write = %h", written_data);
                 assert(read_data == written_data);
@@ -279,8 +296,8 @@ logic [7:0] TX [$], RX [$];
             @(cb);
             for (int i=0; i<m; i++) begin
                 @(cb iff cb.uart_stb);
-                assert(~cb.uart_we);
-                cb.uart_rdat <= read_data[i];
+                assert(~cb.perif_we);
+                cb.uart_dat <= read_data[i];
                 cb.uart_rx_ack <= 1;
                 $display("rx = %h", read_data[i]);
             end

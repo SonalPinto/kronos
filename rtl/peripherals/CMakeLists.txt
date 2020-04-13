@@ -17,3 +17,9 @@ add_hdl_source(wb_spi_master.sv
         fifo
         spi_master
 )
+
+
+add_hdl_source(spiflash.sv
+    SYNTHESIS FALSE
+    LINT FALSE
+)
