@@ -13,7 +13,9 @@ The SCLK sets its idle value based on CPOL
 
 */
 
-module spi_master (
+module spi_master #(
+    parameter PRESCALER_WIDTH = 16
+)(
     input  logic        clk,
     input  logic        rstz,
     // SPI PHY
@@ -21,7 +23,7 @@ module spi_master (
     output logic        mosi,
     input  logic        miso,
     // Config
-    input  logic [15:0] prescaler,
+    input  logic [PRESCALER_WIDTH-1:0] prescaler,
     input  logic        cpol,
     input  logic        cpha,
     // Data interface
@@ -32,7 +34,7 @@ module spi_master (
     output logic        dout_vld
 );
 
-logic [15:0] timer;
+logic [PRESCALER_WIDTH-1:0] timer;
 logic tick;
 
 logic [4:0] state;

@@ -2,21 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-4KB Single Port SRAM for iCEBreaker FPGA
+Single Port SRAM for iCEBreaker FPGA
 
 Features:    
-    - 1K x 32
     - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and mask
       should be used to access specific bytes
     - Can be initialized while building using the macro PROGRAM
 
 There are 30 EBR or Embedded Block Ram (256x16) in iCE40UP5K.
-This module cascades 8 of them to construct the main memory for the system.
-The EBR are arranged as a 4x2 grid.
+For each KB, this module will use 2 EBR, i.e. 4KB will use 4x2 = 8 EBR
 */
 
-module ice40up_ebr4K #(
-    parameter AWIDTH = 32
+module ice40up_ebr #(
+    parameter AWIDTH = 32,
+    parameter KB = 4
 )(
     input  logic                        clk,
     input  logic [AWIDTH-1:0]           addr,
@@ -27,14 +26,17 @@ module ice40up_ebr4K #(
     input  logic [3:0]                  mask
 );
 
-// instance 1Kx32 memory - which will be inferred as EBR with appropriate muxing
-logic [31:0] MEM [1024];
+localparam NWORDS = 256 * KB;
+localparam NWORDS_WIDTH = $clog2(NWORDS);
 
-// There are 1K words (10b)
-logic [9:0] word_addr;
+// instance (256*KB)x32 memory - which will be inferred as EBR with appropriate muxing
+logic [31:0] MEM [NWORDS];
+
+// There are 256*KB words
+logic [NWORDS_WIDTH-1:0] word_addr;
 
 // Extract word address from the physical address
-assign word_addr = addr[2+:10];
+assign word_addr = addr[2+:NWORDS_WIDTH];
 
 always_ff @(posedge clk) begin
     if (en) begin
@@ -58,7 +60,7 @@ end
 // ------------------------------------------------------------
 `ifdef verilator
 logic _unused = &{1'b0
-    , addr[AWIDTH-1:12]
+    , addr[AWIDTH-1:NWORDS_WIDTH]
     , addr[1:0]
 };
 `endif

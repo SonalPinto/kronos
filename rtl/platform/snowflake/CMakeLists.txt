@@ -7,7 +7,7 @@ add_hdl_source(snowflake_7sd_driver.sv)
 add_hdl_source(snowflake_top.sv
     DEPENDS
         kronos_core
-        ice40up_ebr4K
+        ice40up_ebr
         snowflake_system_bus
         snowflake_7sd_driver
     LIBRARIES

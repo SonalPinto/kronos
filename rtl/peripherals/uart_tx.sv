@@ -67,7 +67,9 @@ end
 // Bit timer
 assign tick = timer == prescaler;
 always_ff @(posedge clk or negedge rstz) begin
-    if (init)
+    if (~rstz)
+		timer <= '0;
+	else if (init)
         timer <= '0;
     else if (active)
         timer <= tick ? '0 : timer + 1'b1;

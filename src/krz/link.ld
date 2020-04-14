@@ -10,15 +10,14 @@ ENTRY(_start)
 
 SECTIONS
 {
-    .text (ORIGIN(bootrom)) :
+    .text (ORIGIN(ram)) :
     {
-        *(.init)
         *(.text)
         *(.rodata)
         PROVIDE(_etext = .);
-    } > bootrom
+    } > ram
 
-    .data (ORIGIN(ram)) : ALIGN(4)
+    .data : ALIGN(4)
     {
         . = ALIGN(4);
 
@@ -28,7 +27,7 @@ SECTIONS
         *(.data)
         . = ALIGN(4);
         PROVIDE(_edata = .);
-    } > ram AT> bootrom
+    } > ram
 
     .bss (NOLOAD) : ALIGN(4)
     {   

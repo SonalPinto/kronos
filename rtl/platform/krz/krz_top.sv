@@ -7,14 +7,14 @@ Kronos: Zero Degree
 
 module krz_top (
     input  logic    RSTN,
-    inout  wire     GPIO0,
-    inout  wire     GPIO1,
-    inout  wire     GPIO2,
-    inout  wire     GPIO3,
     output logic    TX,
     output logic    SCLK,
     output logic    MOSI,
-    input  logic    MISO
+    input  logic    MISO,
+    inout  wire     GPIO0,
+    inout  wire     GPIO1,
+    inout  wire     GPIO2,
+    inout  wire     GPIO3
 );
 
 logic clk, rstz;
@@ -32,6 +32,7 @@ logic data_wr_en;
 logic data_req;
 logic data_ack;
 
+// ----------------------------
 logic [23:0] bootrom_addr;
 logic [31:0] bootrom_rd_data;
 logic bootrom_en;
@@ -58,40 +59,38 @@ logic [3:0] sys_sel;
 logic sys_stb;
 logic sys_ack;
 
-logic [7:0] perif_adr;
-logic [31:0] perif_dat;
+// ----------------------------
+logic [5:0] perif_adr;
+logic [2:0][31:0] perif_rdat;
+logic [31:0] perif_wdat;
 logic perif_we;
+logic [2:0] perif_stb;
+logic [2:0] perif_ack;
 
-logic gpreg_stb;
-logic uart_stb;
-logic spim_stb;
-
-logic gpreg_ack;
-logic uart_ack;
-logic spim_ack;
+logic gpreg_stb, gpreg_ack;
+logic uart_stb, uart_ack;
+logic spim_stb, spim_ack;
 
 logic [31:0] gpreg_dat;
 logic [7:0] uart_dat;
 logic [7:0] spim_dat;
 
-logic uart_tx_ack;
-logic uart_rx_ack;
-
+// ----------------------------
 logic [15:0] gpio_dir;
 logic [15:0] gpio_write;
 logic [15:0] gpio_read;
 
-logic [15:0] uart_prescaler;
+logic [11:0] uart_prescaler;
 logic uart_tx_clear;
-logic [15:0] uart_tx_size;
+logic [7:0] uart_tx_size;
 
-logic [15:0] spim_prescaler;
+logic [7:0] spim_prescaler;
 logic spim_cpol;
 logic spim_cpha;
 logic spim_tx_clear;
 logic spim_rx_clear;
-logic [15:0] spim_tx_size;
-logic [15:0] spim_rx_size;
+logic [7:0] spim_tx_size;
+logic [7:0] spim_rx_size;
 
 
 // ============================================================
@@ -181,7 +180,7 @@ krz_xbar u_xbar (
     .sys_ack_i      (sys_ack       )
 );
 
-ice40up_ebr4K #(.AWIDTH(24)) u_bootrom (
+ice40up_ebr #(.AWIDTH(24), .KB(1)) u_bootrom (
     .clk    (~clk           ),
     .addr   (bootrom_addr   ),
     .wdata  (32'h0          ),
@@ -217,39 +216,40 @@ ice40up_sram64K #(.AWIDTH(24)) u_mem1 (
 
 // System Bus
 krz_sysbus u_sysbus (
-    .clk        (clk      ),
-    .rstz       (rstz     ),
-    .sys_adr_i  (sys_adr  ),
-    .sys_dat_i  (sys_wdat ),
-    .sys_dat_o  (sys_rdat ),
-    .sys_we_i   (sys_we   ),
-    .sys_sel_i  (sys_sel  ),
-    .sys_stb_i  (sys_stb  ),
-    .sys_ack_o  (sys_ack  ),
-    .perif_adr_o(perif_adr),
-    .perif_dat_o(perif_dat),
-    .perif_we_o (perif_we ),
-    .gpreg_stb_o(gpreg_stb),
-    .uart_stb_o (uart_stb ),
-    .spim_stb_o (spim_stb ),
-    .gpreg_ack_i(gpreg_ack),
-    .uart_ack_i (uart_ack ),
-    .spim_ack_i (spim_ack ),
-    .gpreg_dat_i(gpreg_dat),
-    .uart_dat_i (uart_dat ),
-    .spim_dat_i (spim_dat )
+    .clk        (clk       ),
+    .rstz       (rstz      ),
+    .sys_adr_i  (sys_adr   ),
+    .sys_dat_i  (sys_wdat  ),
+    .sys_dat_o  (sys_rdat  ),
+    .sys_we_i   (sys_we    ),
+    .sys_stb_i  (sys_stb   ),
+    .sys_ack_o  (sys_ack   ),
+    .perif_adr_o(perif_adr ),
+    .perif_dat_i(perif_rdat),
+    .perif_dat_o(perif_wdat),
+    .perif_we_o (perif_we  ),
+    .perif_stb_o(perif_stb ),
+    .perif_ack_o(perif_ack )
 );
+
+assign {spim_stb, uart_stb, gpreg_stb} = perif_stb;
+assign perif_ack = {spim_ack, uart_ack, gpreg_ack};
+
+assign perif_rdat[0] = gpreg_dat;
+assign perif_rdat[1] = {24'h0, uart_dat};
+assign perif_rdat[2] = {24'h0, spim_dat};
+
 
 // General Purpose Registers
 krz_gpreg u_gpr (
     .clk           (clk           ),
     .rstz          (rstz          ),
-    .gpreg_adr_i   (perif_adr     ),
-    .gpreg_dat_i   (perif_dat     ),
-    .gpreg_dat_o   (gpreg_dat     ),
-    .gpreg_we_i    (perif_we      ),
-    .gpreg_stb_i   (gpreg_stb     ),
-    .gpreg_ack_o   (gpreg_ack     ),
+    .adr_i         (perif_adr     ),
+    .dat_i         (perif_wdat    ),
+    .dat_o         (gpreg_dat     ),
+    .we_i          (perif_we      ),
+    .stb_i         (gpreg_stb     ),
+    .ack_o         (gpreg_ack     ),
     .gpio_dir      (gpio_dir      ),
     .gpio_write    (gpio_write    ),
     .gpio_read     (gpio_read     ),
@@ -265,44 +265,51 @@ krz_gpreg u_gpr (
     .spim_rx_size  (spim_rx_size  )
 );
 
+
 // UART TX
-wb_uart_tx #(.BUFFER(64)) u_uart_tx (
-    .clk      (clk           ),
-    .rstz     (rstz          ),
-    .tx       (TX            ),
-    .prescaler(uart_prescaler),
-    .clear    (uart_tx_clear ),
-    .size     (uart_tx_size  ),
-    .dat_i    (perif_dat[7:0]),
-    .we_i     (perif_we      ),
-    .stb_i    (uart_stb      ),
-    .ack_o    (uart_tx_ack   )
+wb_uart_tx #(
+    .BUFFER         (128),
+    .PRESCALER_WIDTH(12 )
+) u_uart_tx (
+    .clk      (clk            ),
+    .rstz     (rstz           ),
+    .tx       (TX             ),
+    .prescaler(uart_prescaler ),
+    .clear    (uart_tx_clear  ),
+    .size     (uart_tx_size   ),
+    .dat_i    (perif_wdat[7:0]),
+    .we_i     (perif_we       ),
+    .stb_i    (uart_stb       ),
+    .ack_o    (uart_ack       )
 );
 
-assign uart_rx_ack = 1'b0;
 assign uart_dat = '0;
-assign uart_ack = uart_tx_ack | uart_rx_ack;
+
 
 // SPI Master
-wb_spi_master #(.BUFFER(256)) u_spim (
-    .clk      (clk           ),
-    .rstz     (rstz          ),
-    .sclk     (SCLK          ),
-    .mosi     (MOSI          ),
-    .miso     (MISO          ),
-    .prescaler(spim_prescaler),
-    .cpol     (spim_cpol     ),
-    .cpha     (spim_cpha     ),
-    .tx_clear (spim_tx_clear ),
-    .rx_clear (spim_rx_clear ),
-    .tx_size  (spim_tx_size  ),
-    .rx_size  (spim_rx_size  ),
-    .dat_i    (perif_dat[7:0]),
-    .dat_o    (spim_dat      ),
-    .we_i     (perif_we      ),
-    .stb_i    (spim_stb      ),
-    .ack_o    (spim_ack      )
+wb_spi_master #(
+    .BUFFER         (128),
+    .PRESCALER_WIDTH(8  )
+) u_spim (
+    .clk      (clk            ),
+    .rstz     (rstz           ),
+    .sclk     (SCLK           ),
+    .mosi     (MOSI           ),
+    .miso     (MISO           ),
+    .prescaler(spim_prescaler ),
+    .cpol     (spim_cpol      ),
+    .cpha     (spim_cpha      ),
+    .tx_clear (spim_tx_clear  ),
+    .rx_clear (spim_rx_clear  ),
+    .tx_size  (spim_tx_size   ),
+    .rx_size  (spim_rx_size   ),
+    .dat_i    (perif_wdat[7:0]),
+    .dat_o    (spim_dat       ),
+    .we_i     (perif_we       ),
+    .stb_i    (spim_stb       ),
+    .ack_o    (spim_ack       )
 );
+
 
 // Bidirectional GPIO
 assign GPIO0 = gpio_dir[0] ? gpio_write[0] : 1'bz;
@@ -310,12 +317,16 @@ assign GPIO1 = gpio_dir[1] ? gpio_write[1] : 1'bz;
 assign GPIO2 = gpio_dir[2] ? gpio_write[2] : 1'bz;
 assign GPIO3 = gpio_dir[3] ? gpio_write[3] : 1'bz;
 
-krz_debounce #(.N(12)) u_debounce (
-    .clk     (clk            ),
-    .rstz    (rstz           ),
-    .read    (gpio_read[11:0]),
-    .gpio_in ({
-        8'h0,
+// 24MHz/(2^16) ~ 366Hz or 2.73ms -- x2 poll consensus
+krz_debounce #(
+    .N       (16),
+    .DEBOUNCE(16)
+) u_debounce (
+    .clk (clk      ),
+    .rstz(rstz     ),
+    .read(gpio_read),
+    .gpio_in({        
+        12'h0,
         GPIO3,
         GPIO2,
         GPIO1,
@@ -323,13 +334,14 @@ krz_debounce #(.N(12)) u_debounce (
     })
 );
 
-assign gpio_read[15:12] = '0;
+// assign gpio_read[15:12] = '0;
 
 // ------------------------------------------------------------
 `ifdef verilator
 logic _unused = &{1'b0
-    , gpio_write[15:12]
-    , gpio_dir[15:12]
+    // , gpio_write[15:12]
+    // , gpio_dir[15:12]
+    , sys_sel
 };
 `endif
 

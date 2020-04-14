@@ -23,7 +23,6 @@ add_hdl_unit_test(krz_sysbus_unit_test.sv
     DEPENDS
         krz_sysbus
         krz_gpreg
-        wb_uart_tx
 )
 
 
@@ -31,6 +30,7 @@ add_hdl_unit_test(krz_blinky_unit_test.sv
     DEPENDS
         krz_top
     TESTDATA
+        krz_test_boot
         krz_blinky
 )
 

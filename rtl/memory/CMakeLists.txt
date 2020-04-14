@@ -7,7 +7,7 @@ add_hdl_source(spsram32_model.sv
     LINT FALSE
 )
 
-add_hdl_source(ice40up_ebr4K.sv)
+add_hdl_source(ice40up_ebr.sv)
 
 add_hdl_source(ice40up_sram64K.sv
     LINT FALSE

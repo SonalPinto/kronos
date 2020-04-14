@@ -6,7 +6,8 @@ KRZ Simple Debouncer
 */
 
 module krz_debounce #(
-    parameter N = 16
+    parameter N = 16,
+    parameter DEBOUNCE = 16
 )(
     input  logic        clk,
     input  logic        rstz,
@@ -14,25 +15,21 @@ module krz_debounce #(
     input  logic [N-1:0] gpio_in
 );
 
-logic [15:0] timer;
+logic [DEBOUNCE:0] timer;
 logic tick;
 
-// 24MHz/(2^16) ~ 366Hz or 2.73ms
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        timer <= '0;
-        tick <= '0;
-    end
-    else begin
-        timer <= timer + 1'b1;
-        tick <= timer == '0;
-    end
+    if (~rstz) timer <= '0;
+    else if (tick) timer <= '0;
+    else timer <= timer + 1'b1;
 end
+
+assign tick = timer[DEBOUNCE];
 
 generate
     genvar i;
 
-    for (i=0; i<N; i++) begin : DEBOUNCE
+    for (i=0; i<N; i++) begin
         logic [1:0] sync;
         logic raw_val;
         logic [1:0] poll;

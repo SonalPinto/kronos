@@ -20,7 +20,8 @@ Wishbone slave interface
 */
 
 module wb_spi_master #(
-    parameter BUFFER=32
+    parameter BUFFER=32,
+    parameter PRESCALER_WIDTH = 16
 )(
     input  logic        clk,
     input  logic        rstz,
@@ -29,13 +30,13 @@ module wb_spi_master #(
     output logic        mosi,
     input  logic        miso,
     // Control and Status
-    input  logic [15:0] prescaler,
-    input  logic        cpol,
-    input  logic        cpha,
-    input  logic        tx_clear,
-    input  logic        rx_clear,
-    output logic [15:0] tx_size,
-    output logic [15:0] rx_size,
+    input  logic [PRESCALER_WIDTH-1:0]  prescaler,
+    input  logic                        cpol,
+    input  logic                        cpha,
+    input  logic                        tx_clear,
+    input  logic                        rx_clear,
+    output logic [$clog2(BUFFER):0]     tx_size,
+    output logic [$clog2(BUFFER):0]     rx_size,
     // data interface
     input  logic [7:0]  dat_i,
     output logic [7:0]  dat_o,
@@ -131,8 +132,8 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 // size is already registered in the fifo
-assign tx_size = { {{16-$clog2(BUFFER)-1}{1'b0}}, txq_size};
-assign rx_size = { {{16-$clog2(BUFFER)-1}{1'b0}}, rxq_size};
+assign tx_size = txq_size;
+assign rx_size = rxq_size;
 
 // Advanced synchronous terminated burst
 assign ack_o = stb_i & (txq_ack | rxq_ack);
@@ -140,7 +141,9 @@ assign ack_o = stb_i & (txq_ack | rxq_ack);
 // ============================================================
 // SPI Master Phy
 
-spi_master u_spim (
+spi_master #(
+    .PRESCALER_WIDTH(PRESCALER_WIDTH)
+)u_spim (
     .clk      (clk         ),
     .rstz     (rstz        ),
     .sclk     (sclk        ),

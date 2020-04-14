@@ -12,9 +12,9 @@ logic TX;
 
 krz_top u_dut (
     .RSTN(RSTN),
+    .TX(TX),
     .GPIO0(LEDR),
-    .GPIO1(LEDG),
-    .TX(TX)
+    .GPIO1(LEDG)
 );
 
 // graybox probes
@@ -26,8 +26,11 @@ default clocking cb @(posedge clk);
     default input #10ps output #10ps;
 endclocking
 
+`define MEM00 u_dut.u_mem0.MEMINST[0].u_spsram.vfb_b_inst.SRAM_inst.spram256k_core_inst.uut.mem_core_array
+`define MEM01 u_dut.u_mem0.MEMINST[1].u_spsram.vfb_b_inst.SRAM_inst.spram256k_core_inst.uut.mem_core_array
 
 // ============================================================
+logic [31:0] PROG [1024];
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -35,12 +38,23 @@ endclocking
     end
 
     `TEST_CASE("blinky") begin
-        // setup program: krz_blinky.c
-        // Bootloader -------------------------
-        // Load text
-        $readmemh("../../../data/krz_blinky.mem", `MEM);
+        logic [31:0] instr;
+
+        ##8;
+
+        // setup simple bootloader
+        $readmemh("../../../data/krz_test_boot.mem", u_dut.u_bootrom.MEM);
 
         reset();
+
+        // setup program: krz_blinky.c
+        PROG = '{default: '0};
+        $readmemh("../../../data/krz_blinky.mem", PROG);
+
+        foreach (PROG[i]) begin
+            $display("%h",PROG[i]);
+            {`MEM01[i], `MEM00[i]} = PROG[i];
+        end
 
         // Run
         $display("\n\nEXEC\n\n");

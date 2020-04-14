@@ -46,6 +46,7 @@ default clocking cb @(posedge clk);
 endclocking
 
 // ============================================================
+logic [31:0] PROG [1024];
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -53,18 +54,19 @@ endclocking
 
         RSTN = 1;
 
+        // setup program: krz_blinky.c
+        PROG = '{default: '0};
+        $readmemh("../../../data/krz_blinky.mem.ready", PROG);
+
         addr = 2**20;
-        u_flash.memory[addr] = 0;
-        u_flash.memory[addr+1] = 2;
-        u_flash.memory[addr+2] = 0;
-        u_flash.memory[addr+3] = 0;
-        for(int i=0; i<128; i++) begin
-            addr = addr + 4;
-            u_flash.memory[addr]   = i;
-            u_flash.memory[addr+1] = ~i;
-            u_flash.memory[addr+2] = i;
-            u_flash.memory[addr+3] = ~i;
-        end
+        foreach (PROG[i]) begin
+            $display("PROG[%0d] = %h", i, PROG[i]);
+            u_flash.memory[addr]   = PROG[i][0+:8];
+            u_flash.memory[addr+1] = PROG[i][8+:8];
+            u_flash.memory[addr+2] = PROG[i][16+:8];
+            u_flash.memory[addr+3] = PROG[i][24+:8];
+            addr+=4;
+        end     
     end
 
     `TEST_CASE("boot") begin
