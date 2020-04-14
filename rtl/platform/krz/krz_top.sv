@@ -19,6 +19,8 @@ module krz_top (
 
 logic clk, rstz;
 logic [1:0] reset_sync;
+logic rstz_sync;
+logic [7:0] reset_counter;
 
 logic [31:0] instr_addr;
 logic [31:0] instr_data;
@@ -104,12 +106,18 @@ HSOSC #(.CLKHF_DIV ("0b01")) u_osc (
   .CLKHF  (clk) 
 );
 
-// synchronize reset
+// synchronize reset, and a tiny 5us glitch filter
 always_ff @(posedge clk or negedge RSTN) begin
     if (~RSTN) reset_sync <= '0;
     else reset_sync <= {reset_sync[0], RSTN};
 end
-assign rstz = reset_sync[1];
+assign rstz_sync = reset_sync[1];
+
+always_ff @(posedge clk or negedge rstz_sync) begin
+    if (~rstz_sync) reset_counter <= '0;
+    else if (~reset_counter[7]) reset_counter <= reset_counter + 1'b1;
+end
+assign rstz = reset_counter[7];
 
 // ============================================================
 // Kronos
