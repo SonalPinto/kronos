@@ -29,6 +29,6 @@ add_hdl_source(krz_top.sv
         krz_debounce
         wb_uart_tx
         wb_spi_master
-        ice40up_ebr
+        ice40up_rom
         ice40up_sram64K
 )

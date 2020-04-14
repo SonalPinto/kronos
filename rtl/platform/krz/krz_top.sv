@@ -180,14 +180,11 @@ krz_xbar u_xbar (
     .sys_ack_i      (sys_ack       )
 );
 
-ice40up_ebr #(.AWIDTH(24), .KB(1)) u_bootrom (
+ice40up_rom #(.AWIDTH(24), .KB(1)) u_bootrom (
     .clk    (~clk           ),
     .addr   (bootrom_addr   ),
-    .wdata  (32'h0          ),
     .rdata  (bootrom_rd_data),
-    .en     (bootrom_en     ),
-    .wr_en  (1'b0           ),
-    .mask   (4'hF           )
+    .en     (bootrom_en     )
 );
 
 ice40up_sram64K #(.AWIDTH(24)) u_mem0 (
@@ -334,13 +331,10 @@ krz_debounce #(
     })
 );
 
-// assign gpio_read[15:12] = '0;
 
 // ------------------------------------------------------------
 `ifdef verilator
 logic _unused = &{1'b0
-    // , gpio_write[15:12]
-    // , gpio_dir[15:12]
     , sys_sel
 };
 `endif

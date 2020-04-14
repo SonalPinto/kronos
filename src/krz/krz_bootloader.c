@@ -12,6 +12,13 @@ If the BOOTVEC is set, then the application is loaded from there
 #include <stdbool.h>
 #include <string.h>
 
+// Max program size is 128KB
+#define MAX_PROG_SIZE       128*1024
+
+// Main memory start
+#define RAM_BASE_ADDR       0x00010000
+
+
 // ENTRY
 __attribute__((naked)) void _start(void) {
     asm volatile ("\
@@ -34,7 +41,7 @@ __attribute__((naked)) void _exec(void) {
     asm volatile ("\
         la gp, _global_pointer  \n\
         la sp, _stack_pointer   \n\
-        j 0x00010000            \n\
+        j %0                    \n\
         nop                     \n\
         nop                     \n\
         nop                     \n\
@@ -43,15 +50,11 @@ __attribute__((naked)) void _exec(void) {
         nop                     \n\
         nop                     \n\
         nop                     \n\
-    ");
+    "
+    :: "i"(RAM_BASE_ADDR)
+    );
 }
 
-
-// Max program size is 128KB
-#define MAX_PROG_SIZE       128*1024
-
-// Main memory start
-#define RAM_BASE_ADDR       0x00010000
 
 // ============================================================
 // KRZ Memory Map
@@ -75,6 +78,7 @@ __attribute__((naked)) void _exec(void) {
 #define KRZ_SPIM_STATUS     MMPTR32(KRZ_GPREG | (8<<2))
 
 #define GPIO_FLASH_CS       2
+
 
 // ============================================================
 // Drivers
@@ -125,7 +129,7 @@ void flashboot(uint32_t boot_addr) {
     uint8_t tx[128], rx[128];
     uint32_t prog_size;
     uint32_t bytes_left, block_size;
-    uint8_t *p, *t;
+    uint8_t *p;
 
     memset(&tx, 0x00, 128);
     memset(&rx, 0x00, 128);
@@ -159,7 +163,7 @@ void flashboot(uint32_t boot_addr) {
     // initialize
     bytes_left = prog_size;
     memset(&tx, 0x00, 128);
-    t = (uint8_t*)(RAM_BASE_ADDR);
+    p = (uint8_t*)(RAM_BASE_ADDR);
 
     while (bytes_left > 0) {
 
@@ -170,13 +174,9 @@ void flashboot(uint32_t boot_addr) {
         spim_transfer(tx, rx, block_size, false, false);
 
         // Write them to the SRAM
-        p = rx;
-        for(uint8_t i=0; i<block_size; i++) {
-            *t = *p;
-            p++;
-            t++;
-        }
+        memcpy(p, rx, block_size);
 
+        p += block_size;
         bytes_left -= block_size;
     }
 
@@ -184,6 +184,7 @@ void flashboot(uint32_t boot_addr) {
     KRZ_GPIO_WRITE = KRZ_GPIO_WRITE | (1<<GPIO_FLASH_CS);
     // Power down the flash
     tx[0] = 0xB9;
+    spim_transfer(tx, rx, 1, true, true);
 }
 
 
