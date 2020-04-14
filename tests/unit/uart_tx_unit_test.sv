@@ -9,15 +9,18 @@ module tb_uart;
 logic clk;
 logic rstz;
 logic tx;
-logic [15:0] prescaler;
+logic [11:0] prescaler;
 logic clear;
-logic [15:0] size;
+logic [7:0] size;
 logic [7:0] dat_i;
 logic we_i;
 logic stb_i;
 logic ack_o;
 
-wb_uart_tx #(.BUFFER(32)) u_dut (
+wb_uart_tx #(
+    .BUFFER(256),
+    .PRESCALER_WIDTH(12)
+) u_dut (
     .clk      (clk      ),
     .rstz     (rstz     ),
     .tx       (tx       ),

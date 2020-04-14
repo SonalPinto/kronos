@@ -13,78 +13,76 @@ Serial Protocol
       | START=0 | D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | STOP=1
       +---------+----+----+----+----+----+----+----+----+
 
-- Two Additional idle cycles (at HIGH) at the end, for a total of
-12 cycles per byte
++ 1 extra stop bit
 
 */
 
-module uart_tx (
+module uart_tx #(
+    parameter PRESCALER_WIDTH = 16
+)(
     input  logic        clk,
     input  logic        rstz,
     // UART TX PHY
     output logic        tx,
     // Config
-    input  logic [15:0] prescaler,
+    input  logic [PRESCALER_WIDTH-1:0] prescaler,
     // Data interface
     input  logic [7:0]  din,
     input  logic        din_vld,
     output logic        din_rdy
 );
 
-logic init, done;
-logic [15:0] timer;
+logic [PRESCALER_WIDTH-1:0] timer;
 logic tick;
 
-logic [10:0] buffer;
-logic [11:0] tracker;
+logic [3:0] state;
+logic init, done, active;
 
-enum logic {
-    IDLE,
-    TRANSMIT
-} state, next_state;
+logic [9:0] buffer;
 
 // ============================================================
-// UART TX sequencer
+// UART TX Sequencer
+
+// 12-state counter that starts when there's data to transmit
+// and counts up on UART ticks
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) state <= IDLE;
-    else state <= next_state;
+    if (~rstz)
+        state <= '0;
+    else if (din_vld && state == '0)
+        state <= state + 1'b1;
+    else if (active && tick)
+        state <= (done) ? '0 : state + 1'b1;
 end
 
-always_comb begin
-    next_state = state;
-    case (state)
-        IDLE: if (din_vld) next_state = TRANSMIT;
-        TRANSMIT: if(done) next_state = IDLE;
-    endcase // state
-end
+// sequence control signals
+assign active = state != '0;
+assign init = din_vld && state == '0;
+assign done = state == 4'd11 && tick;
 
-// start transmission, and inform host to present the next byte
-assign init = (state == IDLE) && din_vld;
-assign din_rdy = init;
+// inform host to prepare the next byte
+always_ff @(posedge clk) begin
+    din_rdy <= init;
+end
 
 // Bit timer
 assign tick = timer == prescaler;
-always_ff @(posedge clk) begin
-    if (init) timer <= '0;
-    else if (state == TRANSMIT) timer <= tick ? '0 : timer + 1'b1;
+always_ff @(posedge clk or negedge rstz) begin
+    if (init)
+        timer <= '0;
+    else if (active)
+        timer <= tick ? '0 : timer + 1'b1;
 end
 
 // Transmit buffer
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        tx <= 1'b1;
-    end
-    else if (init) begin
-        {buffer, tx} <= {3'b111, din, 1'b0};
-        tracker <= 12'b1;
-    end
-    else if (state == TRANSMIT && tick) begin
-        {buffer, tx} <= {1'b1, buffer};
-        tracker <= tracker << 1'b1;
-    end
+    if (~rstz)
+        buffer <= '1;
+    else if (init)
+        buffer <= {1'b1, din, 1'b0};
+    else if (active && tick)
+        buffer <= {1'b1, buffer[9:1]};
 end
 
-// End transmission
-assign done = tracker[11] && tick;
+assign tx = buffer[0];
 
 endmodule

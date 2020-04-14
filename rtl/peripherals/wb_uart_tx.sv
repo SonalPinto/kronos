@@ -16,16 +16,17 @@ Wishbone slave interface
 */
 
 module wb_uart_tx #(
-    parameter BUFFER=32
+    parameter BUFFER=32,
+    parameter PRESCALER_WIDTH = 16
 )(
     input  logic        clk,
     input  logic        rstz,
     // UART TX
     output logic        tx,
     // Control and Status
-    input  logic [15:0] prescaler,
-    input  logic        clear,
-    output logic [15:0] size,
+    input  logic [PRESCALER_WIDTH-1:0]  prescaler,
+    input  logic                        clear,
+    output logic [$clog2(BUFFER):0]     size,
     // data interface
     input  logic [7:0]  dat_i,
     input  logic        we_i,
@@ -77,12 +78,14 @@ end
 assign ack_o = stb_i & ack;
 
 // size is already registered in the fifo
-assign size = { {{16-$clog2(BUFFER)-1}{1'b0}}, txq_size};
+assign size = txq_size;
 
 // ============================================================
 // UART TX Phy
 
-uart_tx u_tx (
+uart_tx #(
+    .PRESCALER_WIDTH(PRESCALER_WIDTH)
+) u_tx (
     .clk      (clk         ),
     .rstz     (rstz        ),
     .tx       (tx          ),
