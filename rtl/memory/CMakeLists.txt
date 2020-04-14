@@ -9,6 +9,8 @@ add_hdl_source(spsram32_model.sv
 
 add_hdl_source(ice40up_ebr.sv)
 
+add_hdl_source(ice40up_rom.sv)
+
 add_hdl_source(ice40up_sram64K.sv
     LINT FALSE
     LIBRARIES
