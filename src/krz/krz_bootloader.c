@@ -125,7 +125,6 @@ void flashboot(uint32_t boot_addr) {
     uint8_t tx[128], rx[128];
     uint32_t prog_size;
     uint32_t bytes_left, block_size;
-    uint32_t words, data;
     uint8_t *p, *t;
 
     memset(&tx, 0x00, 128);
@@ -173,7 +172,7 @@ void flashboot(uint32_t boot_addr) {
         // Write them to the SRAM
         p = rx;
         for(uint8_t i=0; i<block_size; i++) {
-            *t = *(uint32_t*)(p);
+            *t = *p;
             p++;
             t++;
         }

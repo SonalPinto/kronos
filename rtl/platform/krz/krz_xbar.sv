@@ -176,7 +176,7 @@ always_comb begin
     mem0_mask = data_mask;
 
     mem0_wr_data = data_wr_data;
-    mem0_wr_en = data_wr_en;
+    mem0_wr_en = mem0_data_req & data_wr_en;
 end
 
 // Main Memory Bank1, same routing as Bank0
@@ -191,7 +191,7 @@ always_comb begin
     mem1_mask = data_mask;
 
     mem1_wr_data = data_wr_data;
-    mem1_wr_en = data_wr_en;
+    mem1_wr_en = mem1_data_req & data_wr_en;
 end
 
 // System access - data interface only

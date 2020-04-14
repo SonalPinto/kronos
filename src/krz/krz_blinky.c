@@ -61,13 +61,10 @@ void main (void) {
     uint8_t LEDG = 0;
 
     uint8_t txt[32];
-    strcpy(txt, "Kronos is alive!\n");
+    strcpy(txt, "Kronos is programmed!!!\n");
     uint8_t n = strlen(txt);
 
     while(1) {
-        delay_us(500000); // 500ms
-        // delay_us(50); // 50us
-
         // Assign LEDs
         MMPTR32(0x80000C) = 0x00000000 | (LEDG << 1) | LEDR;
 
@@ -79,5 +76,9 @@ void main (void) {
         for (uint8_t i=0; i<n; i++) {
             MMPTR8(0x800100) = txt[i];
         }
+
+        delay_us(500000); // 500ms
+        // delay_us(50); // 50us
     }
+
 }
