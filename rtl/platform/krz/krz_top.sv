@@ -3,6 +3,29 @@
 
 /*
 Kronos: Zero Degree
+
+Kronos-powered SoC designed for the iCE40UP5K
+    - 128KB of RAM as 2 banks of 64KB.
+    - 1KB Bootrom for loading program from flash to RAM.
+    - UART TX with 128B buffer.
+        - Configurable baud rate
+    - SPI Master with 256B RX/TX buffers.
+        - Configurable SPI Mode and rate.
+        - Max 12MHz.
+    - 12 Bidirectional configurable GPIO.
+        - Debounced inputs.
+    - General Purpose registers
+
+The bootrom, and two 64KB banks of main memory are individually arbitrated.
+The Kronos Instruction Bus and Data Bus can access different parts of
+the memory simultaneously without halting each other. They can access the
+entire memory, and only need to be arbitrated if they are accessing the same
+section.
+
+But, usually, most of the code should be run from bank0, while frequent data 
+like the stack will be in bank1. In a design without cache, this setup
+will lead to optimal performance.
+
 */
 
 module krz_top (
@@ -14,7 +37,15 @@ module krz_top (
     inout  wire     GPIO0,
     inout  wire     GPIO1,
     inout  wire     GPIO2,
-    inout  wire     GPIO3
+    inout  wire     GPIO3,
+    inout  wire     GPIO4,
+    inout  wire     GPIO5,
+    inout  wire     GPIO6,
+    inout  wire     GPIO7,
+    inout  wire     GPIO8,
+    inout  wire     GPIO9,
+    inout  wire     GPIO10,
+    inout  wire     GPIO11
 );
 
 logic clk, rstz;
@@ -78,9 +109,9 @@ logic [7:0] uart_dat;
 logic [7:0] spim_dat;
 
 // ----------------------------
-logic [15:0] gpio_dir;
-logic [15:0] gpio_write;
-logic [15:0] gpio_read;
+logic [11:0] gpio_dir;
+logic [11:0] gpio_write;
+logic [11:0] gpio_read;
 
 logic [11:0] uart_prescaler;
 logic uart_tx_clear;
@@ -316,22 +347,39 @@ wb_spi_master #(
 );
 
 
-// Bidirectional GPIO
-assign GPIO0 = gpio_dir[0] ? gpio_write[0] : 1'bz;
-assign GPIO1 = gpio_dir[1] ? gpio_write[1] : 1'bz;
-assign GPIO2 = gpio_dir[2] ? gpio_write[2] : 1'bz;
-assign GPIO3 = gpio_dir[3] ? gpio_write[3] : 1'bz;
+// Bidirectional GPIO x 12
+assign GPIO0  =  gpio_dir[0] ? gpio_write[0] : 1'bz;
+assign GPIO1  =  gpio_dir[1] ? gpio_write[1] : 1'bz;
+assign GPIO2  =  gpio_dir[2] ? gpio_write[2] : 1'bz;
+assign GPIO3  =  gpio_dir[3] ? gpio_write[3] : 1'bz;
+
+assign GPIO4  =  gpio_dir[4] ? gpio_write[4] : 1'bz;
+assign GPIO5  =  gpio_dir[5] ? gpio_write[5] : 1'bz;
+assign GPIO6  =  gpio_dir[6] ? gpio_write[6] : 1'bz;
+assign GPIO7  =  gpio_dir[7] ? gpio_write[7] : 1'bz;
+
+assign GPIO8  =  gpio_dir[8] ? gpio_write[8] : 1'bz;
+assign GPIO9  =  gpio_dir[9] ? gpio_write[9] : 1'bz;
+assign GPIO10 = gpio_dir[10] ? gpio_write[10] : 1'bz;
+assign GPIO11 = gpio_dir[11] ? gpio_write[11] : 1'bz;
 
 // 24MHz/(2^17) ~  5.46ms x3 poll consensus
 input_debouncer #(
-    .N       (16),
+    .N       (12),
     .DEBOUNCE(17)
 ) u_debounce (
     .clk (clk      ),
     .rstz(rstz     ),
     .read(gpio_read),
-    .gpio_in({        
-        12'h0,
+    .gpio_in({
+        GPIO11,
+        GPIO10,
+        GPIO9,
+        GPIO8,
+        GPIO7,
+        GPIO6,
+        GPIO5,
+        GPIO4,
         GPIO3,
         GPIO2,
         GPIO1,

@@ -16,7 +16,7 @@ def convert_bin(ibinfile):
     progsize = len(progbytes)
 
     print("processing {}".format(ibinfile))
-    print("size: {}B".format(progsize))
+    print("program size: {} bytes".format(progsize))
 
     if (progsize > MAX_PROG_SIZE):
         print("[ERROR] program is too large. Max program size = {}".format(MAX_PROG_SIZE))

@@ -20,9 +20,9 @@ module krz_gpreg
     input  logic        stb_i,
     output logic        ack_o,
     // GPIO
-    output logic [15:0] gpio_dir,
-    output logic [15:0] gpio_write,
-    input  logic [15:0] gpio_read,
+    output logic [11:0] gpio_dir,
+    output logic [11:0] gpio_write,
+    input  logic [11:0] gpio_read,
     // UART
     output logic [11:0] uart_prescaler,
     output logic        uart_tx_clear,
@@ -73,15 +73,15 @@ always_ff @(posedge clk or negedge rstz) begin
 
             // ------------------------------------------------
             KRZ_GPIO_DIR:
-                if (we_i) gpio_dir <= dat_i[15:0];
-                else dat_o <= {16'h0, gpio_dir[15:0]};
+                if (we_i) gpio_dir <= dat_i[11:0];
+                else dat_o <= {20'h0, gpio_dir[11:0]};
 
             KRZ_GPIO_WRITE:
-                if (we_i) gpio_write <= dat_i[15:0];
-                else dat_o <= {16'h0, gpio_write[15:0]};
+                if (we_i) gpio_write <= dat_i[11:0];
+                else dat_o <= {20'h0, gpio_write[11:0]};
 
             KRZ_GPIO_READ:
-                if (~we_i) dat_o <= {16'h0, gpio_read[15:0]};
+                if (~we_i) dat_o <= {20'h0, gpio_read[11:0]};
 
             // ------------------------------------------------
             KRZ_UART_CTRL:

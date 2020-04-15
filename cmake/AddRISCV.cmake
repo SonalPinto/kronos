@@ -84,6 +84,7 @@ function(add_riscv_executable source)
             -nostartfiles
             --specs=nano.specs
             --specs=nosys.specs
+            -I{CMAKE_CURRENT_LIST_DIR}
             -T${ARG_LINKER_SCRIPT}
             ${source} ${ARG_SOURCES}
             -o ${elf}

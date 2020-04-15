@@ -12,5 +12,7 @@ add_riscv_executable(krz_test_boot.S
 )
 
 add_riscv_executable(krz_blinky.c
+    SOURCES
+        mini-printf.c
     KRZ_APP TRUE    
 )

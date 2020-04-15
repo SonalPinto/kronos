@@ -79,7 +79,7 @@ logic [31:0] PROG [1024];
 
         // Run
         $display("\n\nEXEC\n\n");
-        ##50000; // timeout watchdog
+        ##200000; // timeout watchdog
     end
 end
 
