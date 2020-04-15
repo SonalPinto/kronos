@@ -32,20 +32,25 @@ generate
     for (i=0; i<N; i++) begin
         logic [1:0] sync;
         logic raw_val;
-        logic [1:0] poll;
+        logic [1:0] line;
+        logic [2:0] poll;
 
         // sync inputs
         always_ff @(posedge clk) begin
             sync <= {sync[0], gpio_in[i]};
         end
-        assign raw_val = sync[1];
 
-        // Poll read value on every tick
-        // And if stable (two consecutive reads are the same), latch it
+        assign raw_val = sync[1];
+        assign poll = {line, raw_val};
+
+        // Record line value on every tick
+        // And if stable (three consecutive reads are the same), latch it
         always_ff @(posedge clk) begin
             if (tick) begin
-                poll <= {poll[0], raw_val};
-                read[i] <= ^{poll};
+                line <= {line[0], raw_val};
+
+                if (poll == '0) read[i] <= 1'b0;
+                else if (poll == '1) read[i] <= 1'b1;
             end
         end
     end

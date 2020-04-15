@@ -93,3 +93,8 @@ add_hdl_unit_test(spim_unit_test.sv
     DEPENDS
         wb_spi_master
 )
+
+add_hdl_unit_test(debouncer_unit_test.sv
+    DEPENDS
+        input_debouncer
+)

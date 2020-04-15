@@ -322,10 +322,10 @@ assign GPIO1 = gpio_dir[1] ? gpio_write[1] : 1'bz;
 assign GPIO2 = gpio_dir[2] ? gpio_write[2] : 1'bz;
 assign GPIO3 = gpio_dir[3] ? gpio_write[3] : 1'bz;
 
-// 24MHz/(2^16) ~ 366Hz or 2.73ms -- x2 poll consensus
+// 24MHz/(2^17) ~  5.46ms x3 poll consensus
 input_debouncer #(
     .N       (16),
-    .DEBOUNCE(16)
+    .DEBOUNCE(17)
 ) u_debounce (
     .clk (clk      ),
     .rstz(rstz     ),
