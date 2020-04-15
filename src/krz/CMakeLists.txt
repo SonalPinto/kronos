@@ -12,7 +12,5 @@ add_riscv_executable(krz_test_boot.S
 )
 
 add_riscv_executable(krz_blinky.c
-    LINKER_SCRIPT
-        # bootloader.ld
-        link.ld
+    KRZ_APP TRUE    
 )

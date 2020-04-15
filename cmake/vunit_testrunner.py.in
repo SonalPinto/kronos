@@ -8,7 +8,7 @@ from vunit.verilog import VUnit
 test_name = "@ARG_NAME@"
 
 cli = VUnitCLI()
-cli.parser.add_argument('--sv_seed', default=0, help="-sv_seed <seed|random>  Specify seed value (or 'random') for simulator RNG")
+cli.parser.add_argument('--sv_seed', default=0, help="--sv_seed <seed|random>  Specify seed value (or 'random') for simulator RNG")
 
 args = cli.parse_args()
 args.output_path = "@TEST_OUTPUT_DIR@"

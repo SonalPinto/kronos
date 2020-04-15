@@ -6,8 +6,8 @@
 
 Features:    
     - 16K x 32
-    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and mask
-      should be used to access specific bytes
+    - Byte-accessible, 32-bit wide
+    - word-aligned, i.e. addr[1:0] is ignored
 
 There are four SP256K (16K x 16) single port SRAM hard macros in iCE40UP5K.
 This module cascades 2 of them to construct a 32-bit wide memory.

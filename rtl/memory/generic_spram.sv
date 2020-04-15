@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Single Port SRAM for iCEBreaker FPGA
+Generic Single Port SRAM
 
 Features:    
-    - Byte-accessible, 32-bit wide, i.e. addr[1:0] is ignored and mask
-      should be used to access specific bytes
+    - Byte-accessible, 32-bit wide
+    - word-aligned, i.e. addr[1:0] is ignored
+    - Mask should be used to access specific bytes
     - Can be initialized while building using the macro PROGRAM
 
+Note: For FPGA, this will be inferred as EBR
 There are 30 EBR or Embedded Block Ram (256x16) in iCE40UP5K.
 For each KB, this module will use 2 EBR, i.e. 4KB will use 4x2 = 8 EBR
 */
 
-module ice40up_ebr #(
+module generic_spsram #(
     parameter AWIDTH = 32,
     parameter KB = 4
 )(

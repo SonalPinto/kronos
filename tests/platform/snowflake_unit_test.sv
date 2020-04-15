@@ -64,7 +64,7 @@ endclocking
         $readmemh("../../../data/doubler2.mem", `MEM);
 
         // Data addresses
-        addr_n = 32'h404 >> 2;
+        addr_n = 32'h400 >> 2;
         addr_result = addr_n + 1;
 
         // Setup operation argument - "n"
@@ -166,7 +166,7 @@ endtask
 task automatic program_done_monitor();
     logic [31:0] addr_done;
 
-    addr_done = 32'h400>>2;
+    addr_done = 32'h408>>2;
 
     // instruction monitor
     forever @(cb) begin

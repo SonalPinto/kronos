@@ -9,8 +9,8 @@ add_hdl_unit_test(snowflake_unit_test.sv
         rv32_assembler
     TESTDATA
        doubler2
-       blinky
-       prime
+       sf_blinky
+       sf_prime
 )
 
 add_hdl_unit_test(krz_xbar_unit_test.sv
@@ -40,4 +40,8 @@ add_hdl_unit_test(krz_boot_unit_test.sv
         spiflash
     TESTDATA
         krz_bootloader
+        krz_blinky
 )
+
+add_dependencies(test-krz_boot_unit_test
+    krz-riscv-krz_blinky)

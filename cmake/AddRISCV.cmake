@@ -28,6 +28,7 @@ function(add_riscv_executable source)
 
     set(one_value_arguments
         LINKER_SCRIPT
+        KRZ_APP
     )
 
     set(multi_value_arguments
@@ -53,6 +54,7 @@ function(add_riscv_executable source)
     # Init args
     init_arg(ARG_SOURCES "")
     init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
+    init_arg(ARG_KRZ_APP FALSE)
 
     set_realpath(ARG_SOURCES)
     set_realpath(ARG_LINKER_SCRIPT)
@@ -63,14 +65,15 @@ function(add_riscv_executable source)
     set(binary "${name}.bin")
     set(target "riscv-${name}")
 
-    # Setup command and target to generate the test data
+    # Setup command and target to generate the basic riscv program
+    # and corresponding test format
     add_custom_command(
         OUTPUT
-            ${memfile}
+            ${binary}
         BYPRODUCTS
             ${elf}
             ${objdump}
-            ${binary}
+            ${memfile}
         COMMAND
             ${RISCV_GCC}
         ARGS
@@ -101,11 +104,40 @@ function(add_riscv_executable source)
             ${TESTDATA_OUTPUT_DIR}
     )
 
-    
     add_custom_target(${target}
         DEPENDS
-            "${name}.mem"
+            ${binary}
     )
 
     add_dependencies(testdata-all ${target})
+
+    if (${ARG_KRZ_APP})
+        # If this is an application, then prepare binary to be flashed
+        set(appfile "${name}.krz.bin")
+        set(appmemfile "${name}.krz.mem")
+
+        add_custom_command(
+            OUTPUT
+                ${appfile}
+            BYPRODUCTS
+                ${appmemfile}
+            COMMAND
+                ${Python3_EXECUTABLE}
+            ARGS
+                ${UTILS}/krzprog.py
+                --bin ${TESTDATA_OUTPUT_DIR}/${binary}     
+        )
+
+        add_custom_target("krz-${target}"
+            DEPENDS
+                ${appfile}        
+        )
+
+        add_dependencies("krz-${target}"
+            ${target} 
+        )
+
+        add_dependencies(testdata-all "krz-${target}")
+    endif()
+    
 endfunction()

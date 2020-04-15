@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-KRZ Simple Debouncer
+Simple Input Debouncer for groups of GPIO
 */
 
-module krz_debounce #(
+module input_debouncer #(
     parameter N = 16,
     parameter DEBOUNCE = 16
 )(

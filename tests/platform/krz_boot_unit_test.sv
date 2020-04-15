@@ -56,7 +56,7 @@ logic [31:0] PROG [1024];
 
         // setup program: krz_blinky.c
         PROG = '{default: '0};
-        $readmemh("../../../data/krz_blinky.mem.ready", PROG);
+        $readmemh("../../../data/krz_blinky.krz.mem", PROG);
 
         addr = 2**20;
         foreach (PROG[i]) begin

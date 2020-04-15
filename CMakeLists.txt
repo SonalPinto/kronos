@@ -9,14 +9,16 @@ project(kronos)
 enable_testing()
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+set(UTILS "${CMAKE_CURRENT_LIST_DIR}/utils")
 
 # Add tools
-set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
-find_package(verilator)
 find_package(Python3)
-find_package(VUnit)
 find_package(RISCV)
 find_package(SRecord)
+
+set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
+find_package(verilator)
+find_package(VUnit)
 
 # Add Packages
 include(macros)

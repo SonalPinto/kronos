@@ -2,10 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Read Only memory for the iCEBreaker FPGA using EBR
+Generic Read Only Memory
+
+Features:    
+    - Byte-accessible, 32-bit wide
+    - word-aligned, i.e. addr[1:0] is ignored
+
+Note: For FPGA, this will be inferred as EBR
+There are 30 EBR or Embedded Block Ram (256x16) in iCE40UP5K.
+For each KB, this module will use 2 EBR, i.e. 4KB will use 4x2 = 8 EBR
 */
 
-module ice40up_rom #(
+module generic_rom #(
     parameter AWIDTH = 32,
     parameter KB = 4
 )(

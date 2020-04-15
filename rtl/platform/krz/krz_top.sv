@@ -188,7 +188,7 @@ krz_xbar u_xbar (
     .sys_ack_i      (sys_ack       )
 );
 
-ice40up_rom #(.AWIDTH(24), .KB(1)) u_bootrom (
+generic_rom #(.AWIDTH(24), .KB(1)) u_bootrom (
     .clk    (~clk           ),
     .addr   (bootrom_addr   ),
     .rdata  (bootrom_rd_data),
@@ -323,7 +323,7 @@ assign GPIO2 = gpio_dir[2] ? gpio_write[2] : 1'bz;
 assign GPIO3 = gpio_dir[3] ? gpio_write[3] : 1'bz;
 
 // 24MHz/(2^16) ~ 366Hz or 2.73ms -- x2 poll consensus
-krz_debounce #(
+input_debouncer #(
     .N       (16),
     .DEBOUNCE(16)
 ) u_debounce (

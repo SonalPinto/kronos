@@ -83,7 +83,7 @@ __attribute__((naked)) void _exec(void) {
 // ============================================================
 // Drivers
 
-void spim_transfer(char* tx, char* rx, uint8_t len, bool start, bool stop) {
+void spim_transfer(uint8_t* tx, uint8_t* rx, uint8_t len, bool start, bool stop) {
     uint32_t qsize;
 
     uint32_t gpio = KRZ_GPIO_WRITE;
@@ -96,9 +96,9 @@ void spim_transfer(char* tx, char* rx, uint8_t len, bool start, bool stop) {
 
     // --------------------------------------------------------
     // Write bytes to SPIM.TXQ
-    char *p = tx;
+    uint8_t *p = tx;
     for (uint8_t i=0; i<len; i++) {
-        MMPTR8(KRZ_SPIM) = *(uint8_t*)(p);
+        MMPTR8(KRZ_SPIM) = *p;
         p++;
     }
 
@@ -117,7 +117,7 @@ void spim_transfer(char* tx, char* rx, uint8_t len, bool start, bool stop) {
     // Read from SPIM.RXQ
     p = rx;
     for (uint8_t i=0; i<len; i++) {
-        *(uint8_t*)(p) = MMPTR8(KRZ_SPIM);
+        *p = MMPTR8(KRZ_SPIM);
         p++;
     }
 

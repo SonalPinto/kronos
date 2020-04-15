@@ -4,7 +4,7 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 
-*Finding prime numbers ([prime.c](https://github.com/SonalPinto/kronos/blob/master/src/snowflake/prime.c)) with Kronos implemeneted on iCEBreaker*
+*Finding prime numbers ([sf_prime.c](https://github.com/SonalPinto/kronos/blob/master/src/snowflake/sf_prime.c)) with Kronos implemeneted on iCEBreaker*
 
 
 # Features
@@ -37,7 +37,8 @@ Instantiation template and IO description at [docs/integration](https://sonalpin
 # Status
 
 - The `kronos_core` is feature complete and RISC-V compliant. Pending testing of interrupt and `wfi` functionality. You can start using the core right now!
-- Kronos-powered ArduinoCore -  platform in progress
+- Kronos: Zero Degree, `KRZ`, a Kronos-powered SoC is almost done.
+- KRZ ArduinoCore - todo
 - **Goal**: Run Arduboy on the iCEBreaker. Custom loader to boot any game from a library on the onboard flash. Interface: 1 oled, 6 buttons and a piezo speaker.
 
 # License

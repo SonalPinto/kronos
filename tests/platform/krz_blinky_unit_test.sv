@@ -60,7 +60,6 @@ logic [31:0] PROG [1024];
         $display("\n\nEXEC\n\n");
         fork
             ##10000; // timeout watchdog
-            instruction_monitor();
             forever @(LEDG) begin
                 if (LEDG) $display("LEDG OFF!");
                 else if (~LEDG) $display("LEDG ON!");
@@ -83,21 +82,6 @@ task automatic reset();
     ##4 RSTN = 0;
     ##4 RSTN = 1;
     ##4;
-endtask
-
-task automatic instruction_monitor();
-    logic [31:0] instr;
-    int index, addr;
-
-    // instruction monitor
-    forever @(cb) begin
-        if (`core.instr_req && `core.instr_ack) begin
-            addr = `core.instr_addr;
-            instr = `MEM[addr>>2];
-            $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
-            index++;
-        end
-    end
 endtask
 
 endmodule
