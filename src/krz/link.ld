@@ -11,7 +11,8 @@ ENTRY(_start)
 SECTIONS
 {
     .text (ORIGIN(ram)) :
-    {
+    {   
+        *(.init)
         *(.text)
         *(.rodata)
         PROVIDE(_etext = .);

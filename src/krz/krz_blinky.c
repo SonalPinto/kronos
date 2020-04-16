@@ -10,7 +10,7 @@ blinky for KRZ
 #include "mini-printf.h"
 
 // ENTRY
-__attribute__((naked)) void _start(void) {
+__attribute__((naked)) __attribute__((section(".init")))void _start(void) {
     asm volatile ("\
         la gp, _global_pointer  \n\
         la sp, _stack_pointer   \n\
@@ -64,7 +64,10 @@ __attribute__((naked)) void _start(void) {
 // Drivers
 
 // 24MHz system clock - internal oscillator
-#define F_CPU 24000000
+#define F_CPU               24000000
+
+// UART TX Queue
+#define UART_TXQ_SIZE       128
 
 // UART TX Buffer
 #define UART_BUFFER_SIZE    64
@@ -86,9 +89,21 @@ static void delay_us(uint32_t count_us) {
     while(read_mcycle() - start < delay);
 }
 
-void printk(const char *fmt, ...) {
+static inline void gpio_write(uint8_t pin, uint8_t value) {
+    if (value == 0) {
+        KRZ_GPIO_WRITE &= ~(1 << pin);
+    } else {
+        KRZ_GPIO_WRITE |= (1 << pin);
+    }
+}
+
+static inline uint8_t gpio_read(uint8_t pin) {
+    return ((KRZ_GPIO_READ >> pin) & 0x1);
+}
+
+static void printk(const char *fmt, ...) {
     int len;
-    uint32_t qsize, free_space;
+    uint32_t qsize;
 
     // Format using mini-printf
     va_list va;
@@ -96,24 +111,24 @@ void printk(const char *fmt, ...) {
     len = mini_vsnprintf(uart_buffer, UART_BUFFER_SIZE, fmt, va);
     va_end(va);
 
-    // Wait until there's space in the UART TX Queue
-    while (1) {
-        qsize = KRZ_UART_STATUS;
-        free_space = 128 - (qsize & 0x00ff);
-
-        if (free_space > len) break;
-        else delay_us(50);
-    }
+    // guard against overflows or null strings
+    if (len <= 0) return;
 
     // transmit over UART
     char *p = uart_buffer;
     for (uint8_t i=0; i<len; i++) {
+        // Wait until there's space in the UART TX Queue
+        while (1) {
+            qsize = KRZ_UART_STATUS & 0x00ff;
+            if (qsize < UART_TXQ_SIZE) break;
+        }
+
         MMPTR8(KRZ_UART) = *p;
         p++;
-    }
+    }    
 }
 
-void print_banner(void){
+static void print_banner(void){
     printk("\n\n");
     printk(" ____  __.                                  \n");
     printk("|    |/ _|______  ____   ____   ____  ______\n");
@@ -122,19 +137,6 @@ void print_banner(void){
     printk("|____|__ \\|__|   \\____/|___|  /\\____/____  >\n");
     printk("        \\/                  \\/           \\/ \n\n");
 }
-
-void gpio_write(uint8_t pin, uint8_t value) {
-    if (value == 0) {
-        KRZ_GPIO_WRITE &= ~(1 << pin);
-    } else {
-        KRZ_GPIO_WRITE |= (1 << pin);
-    }
-}
-
-uint8_t gpio_read(uint8_t pin) {
-    return ((KRZ_GPIO_READ >> pin) & 0x1);
-}
-
 
 // ============================================================
 void main (void) {
