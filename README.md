@@ -4,7 +4,7 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 
-*Finding prime numbers ([sf_prime.c](https://github.com/SonalPinto/kronos/blob/master/src/snowflake/sf_prime.c)) with Kronos implemented on iCEBreaker (Demo [Snowflake SoC](https://github.com/SonalPinto/kronos/blob/master/rtl/platform/snowflake))*
+*Finding prime numbers ([sf_prime.c](src/snowflake/sf_prime.c)) with Kronos implemented on iCEBreaker (Demo [Snowflake SoC](rtl/platform/snowflake))*
 
 
 # Features
@@ -31,7 +31,7 @@ https://sonalpinto.github.io/kronos/
 
 # Integration 
 
-All of the HDL for the Kronos core is located in the [rtl/core](https://github.com/SonalPinto/kronos/tree/master/rtl/core) directory, with the top design file being [`kronos_core.sv`](https://github.com/SonalPinto/kronos/blob/master/rtl/core/kronos_core.sv).
+All of the HDL for the Kronos core is located in the [rtl/core](https://github.com/SonalPinto/kronos/tree/master/rtl/core) directory, with the top design file being [`kronos_core.sv`](rtl/core/kronos_core.sv).
 
 Instantiation template and IO description at [docs/integration](https://sonalpinto.github.io/kronos/#/integration.md)
 
