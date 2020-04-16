@@ -24,17 +24,23 @@ function(lint_hdl)
     endif()
 
     # config & env
-    set(target "lint_hdl-${ARG_NAME}")
+    set(target "lint-${ARG_NAME}")
     set(lint_output "${ARG_NAME}.lint")
 
     # sources
     get_hdl_sources(${ARG_NAME} sources)
     get_hdl_libs(${ARG_NAME} external_libs)
+    get_hdl_includes(${ARG_NAME} include_dirs)
 
     set(exlibs)
     foreach (lib ${external_libs})
         # cmake will replace with ; with a space. This is basically adding two items to the list
         list(APPEND exlibs "-y;${lib}")
+    endforeach()
+
+    set(includes)
+    foreach (inc ${include_dirs})
+        list(APPEND includes "-I${inc}")
     endforeach()
 
     add_custom_command(
@@ -44,6 +50,7 @@ function(lint_hdl)
             ${VERILATOR_BIN}
         ARGS
             --lint-only -Wall
+            ${includes}
             ${exlibs}
             -sv ${sources}
             2>&1 | tee ${lint_output}

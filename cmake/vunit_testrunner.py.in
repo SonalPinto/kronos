@@ -24,8 +24,11 @@ vsim_flags = []
 # Compile flags
 
 source_files = "@TEST_SOURCES@".split(';')
+
+include_dirs = "@INCLUDE_DIRS@".split(';')
+
 for f in source_files:
-    lib.add_source_files(f)
+    lib.add_source_files(f, include_dirs=include_dirs)
 
 external_libs = "@EXTERNAL_LIBS@".split(';')
 for xlib in external_libs:

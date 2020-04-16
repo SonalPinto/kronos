@@ -20,6 +20,8 @@ set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
 find_package(verilator)
 find_package(VUnit)
 
+find_package(Yosys)
+
 # Add Packages
 include(macros)
 include(AddHDL)
