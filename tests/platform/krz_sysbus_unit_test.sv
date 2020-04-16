@@ -42,9 +42,9 @@ krz_sysbus u_sysbus (
 );
 
 
-logic [15:0] gpio_dir;
-logic [15:0] gpio_write;
-logic [15:0] gpio_read;
+logic [11:0] gpio_dir;
+logic [11:0] gpio_write;
+logic [11:0] gpio_read;
 logic [11:0] uart_prescaler;
 logic uart_tx_clear;
 logic [7:0] uart_tx_size;
@@ -154,8 +154,8 @@ logic [7:0] TX [$], RX [$];
                 case(gpreg)
                     KRZ_SCRATCH:     written_data = write_data;
                     KRZ_BOOTVEC:     written_data = write_data[23:0];
-                    KRZ_GPIO_DIR:    written_data = write_data[15:0];
-                    KRZ_GPIO_WRITE:  written_data = write_data[15:0];
+                    KRZ_GPIO_DIR:    written_data = write_data[11:0];
+                    KRZ_GPIO_WRITE:  written_data = write_data[11:0];
                     KRZ_GPIO_READ:   written_data = read_data;
                 endcase // addr
                 $display("expected write = %h", written_data);
