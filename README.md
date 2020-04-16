@@ -20,6 +20,8 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 - Native support for misaligned data access.
 - Direct mode trap handler jumps.
 - Dual **Wishbone** master interface for instruction and data.
+
+![Kronos Architecture](docs/_images/kronos_arch.svg)
  
  
 # Documentation
@@ -44,7 +46,7 @@ Instantiation template and IO description at [docs/integration](https://sonalpin
 
 # License
 
-Licensed under Apache License, Version 2.0 (see [LICENSE](https://github.com/SonalPinto/kronos/blob/master/LICENSE) for full text).
+Licensed under Apache License, Version 2.0 (see [LICENSE](LICENSE) for full text).
 
 
 # Miscellaneous
