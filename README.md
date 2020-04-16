@@ -37,7 +37,7 @@ Instantiation template and IO description at [docs/integration](https://sonalpin
 # Status
 
 - The `kronos_core` is feature complete and RISC-V compliant. Pending testing of interrupt and `wfi` functionality.
-- Refactoring to make the entire project yosys/nextpnr-ice40 friendly.
+- Make the project yosys/nextpnr-ice40 friendly.
 - Kronos: Zero Degree, `KRZ`, a Kronos-powered SoC is almost done.
 - Todo: rigorous verification of the core (riscv-torture, riscv-formal, etc).
 - **Goal**: Run Arduboy on the iCEBreaker. Custom loader to boot any game from a library on the onboard flash. Interface: 1 oled, 6 buttons and a piezo speaker.
