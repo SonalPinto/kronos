@@ -52,6 +52,7 @@ add_hdl_source(kronos_WB.sv
 )
 
 add_hdl_source(kronos_core.sv
+    VERILATE TRUE
     DEPENDS
         kronos_types
         kronos_IF

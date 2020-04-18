@@ -13,7 +13,7 @@ The Kronos core is entirely written in SystemVerilog. The development environmen
 - Other: 
     * [srec_cat](http://srecord.sourceforge.net/man/man1/srec_cat.html) : for converting compiled hex dumps into SV readable memory files
     * [Lattice Radiant](http://www.latticesemi.com/Products/DesignSoftwareAndIP/FPGAandLDS/Radiant) : For implementing the design on the iCE40UP5K and for iterative feedback on design choices.
-    * [iceprog](https://github.com/cliffordwolf/icestorm/tree/master/iceprog) : for programming the iCEBreaker board, and I dislike the Radiant programmer.
+    * [iceprog](https://github.com/cliffordwolf/icestorm/tree/master/iceprog) : for programming the iCEBreaker board, and I am not too fond of the Radiant programmer.
 
 This is my go-to dev setup for digital design work. Linting with verilator, unit testing with vunit and seamless HDL dependency maintenance and build with cmake.
 

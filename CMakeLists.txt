@@ -15,11 +15,8 @@ set(UTILS "${CMAKE_CURRENT_LIST_DIR}/utils")
 find_package(Python3)
 find_package(RISCV)
 find_package(SRecord)
-
-set(verilator_DIR "$ENV{VERILATOR_ROOT}/../share/verilator")
-find_package(verilator)
+find_package(Verilator)
 find_package(VUnit)
-
 find_package(Yosys)
 
 # Add Packages

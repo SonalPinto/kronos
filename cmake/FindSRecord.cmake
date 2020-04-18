@@ -5,20 +5,20 @@
 # ref: http://srecord.sourceforge.net/
 
 function(find_srecord)
-    find_package(PackageHandleStandardArgs REQUIRED)
+  find_package(PackageHandleStandardArgs REQUIRED)
 
-    find_program(SREC_CAT srec_cat
-        PATH_SUFFIXES bin
-        DOC "Path to SRecord Tool: srec_cat"
-    )
+  find_program(SREC_CAT srec_cat
+    PATH_SUFFIXES bin
+    DOC "Path to SRecord Tool: srec_cat"
+  )
 
-    find_package_handle_standard_args(SRecord
-        REQUIRED_VARS
-            SREC_CAT
-    )
+  find_package_handle_standard_args(SRecord
+    REQUIRED_VARS
+    SREC_CAT
+  )
 
-    set(SRECORD_FOUND ${SRECORD_FOUND} PARENT_SCOPE)
-    set(SREC_CAT "${SREC_CAT}" PARENT_SCOPE)
+  set(SRECORD_FOUND ${SRECORD_FOUND} PARENT_SCOPE)
+  set(SREC_CAT "${SREC_CAT}" PARENT_SCOPE)
 endfunction()
 
 find_srecord()

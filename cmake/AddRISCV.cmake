@@ -6,139 +6,139 @@
 # into SystemVerilog readable memory files
 
 if(NOT RISCV_FOUND OR NOT SRECORD_FOUND)
-    return()
+  return()
 endif()
 
 if (NOT TESTDATA_ENV_SETUP)
-    set(TESTDATA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/data"
-        CACHE INTERNAL "Test data output directory" FORCE)
-    file(MAKE_DIRECTORY "${TESTDATA_OUTPUT_DIR}")
+  set(TESTDATA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/data"
+    CACHE INTERNAL "Test data output directory" FORCE)
+  file(MAKE_DIRECTORY "${TESTDATA_OUTPUT_DIR}")
 
-    # A target to collect all testdata generators
-    if (NOT TARGET testdata-all)
-        add_custom_target(testdata-all)
-    endif()
+  # A target to collect all testdata generators
+  if (NOT TARGET testdata-all)
+    add_custom_target(testdata-all)
+  endif()
 
-    set(TESTDATA_ENV_SETUP 1)
+  set(TESTDATA_ENV_SETUP 1)
 endif()
 
 function(add_riscv_executable source)
-    # Create RISCV compilation target and translate the object 
-    # into a SystemVerilog memory file
+  # Create RISCV compilation target and translate the object 
+  # into a SystemVerilog memory file
 
-    set(one_value_arguments
-        LINKER_SCRIPT
-        KRZ_APP
-    )
+  set(one_value_arguments
+    LINKER_SCRIPT
+    KRZ_APP
+  )
 
-    set(multi_value_arguments
-        SOURCES
-    )
+  set(multi_value_arguments
+    SOURCES
+  )
 
-    # Resolve keywords into ARG_#
-    cmake_parse_arguments(ARG
-        "" 
-        "${one_value_arguments}"
-        "${multi_value_arguments}" 
-        ${ARGN}
-    )
+  # Resolve keywords into ARG_#
+  cmake_parse_arguments(ARG
+    "" 
+    "${one_value_arguments}"
+    "${multi_value_arguments}" 
+    ${ARGN}
+  )
 
-    # Check if the file exists
-    get_filename_component(source "${source}" REALPATH)
-    if (NOT EXISTS "${source}")
-        message(FATAL_ERROR "Source file doesn't exist: ${source}")
-    endif()
+  # Check if the file exists
+  get_filename_component(source "${source}" REALPATH)
+  if (NOT EXISTS "${source}")
+    message(FATAL_ERROR "Source file doesn't exist: ${source}")
+  endif()
 
-    get_filename_component(name "${source}" NAME_WE)
+  get_filename_component(name "${source}" NAME_WE)
 
-    # Init args
-    init_arg(ARG_SOURCES "")
-    init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
-    init_arg(ARG_KRZ_APP FALSE)
+  # Init args
+  init_arg(ARG_SOURCES "")
+  init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
+  init_arg(ARG_KRZ_APP FALSE)
 
-    set_realpath(ARG_SOURCES)
-    set_realpath(ARG_LINKER_SCRIPT)
+  set_realpath(ARG_SOURCES)
+  set_realpath(ARG_LINKER_SCRIPT)
 
-    set(memfile "${name}.mem")
-    set(elf "${name}.elf")
-    set(objdump "${name}.objdump")
-    set(binary "${name}.bin")
-    set(target "riscv-${name}")
+  set(memfile "${name}.mem")
+  set(elf "${name}.elf")
+  set(objdump "${name}.objdump")
+  set(binary "${name}.bin")
+  set(target "riscv-${name}")
 
-    # Setup command and target to generate the basic riscv program
-    # and corresponding test format
+  # Setup command and target to generate the basic riscv program
+  # and corresponding test format
+  add_custom_command(
+    OUTPUT
+      ${binary}
+    BYPRODUCTS
+      ${elf}
+      ${objdump}
+      ${memfile}
+    COMMAND
+      ${RISCV_GCC}
+    ARGS
+      -Os
+      -march=rv32i
+      -mabi=ilp32
+      -static
+      -nostartfiles
+      --specs=nano.specs
+      --specs=nosys.specs
+      -I{CMAKE_CURRENT_LIST_DIR}
+      -T${ARG_LINKER_SCRIPT}
+      ${source} ${ARG_SOURCES}
+      -o ${elf}
+    COMMAND
+      ${RISCV_OBJDUMP}
+    ARGS
+      -D ${elf} > ${objdump}
+    COMMAND
+      ${RISCV_OBJCOPY}
+    ARGS
+      -O binary ${elf} ${binary}
+    COMMAND
+      ${SREC_CAT}
+    ARGS
+      ${binary} -binary -byte-swap 4 
+      -o ${memfile} -vmem
+    WORKING_DIRECTORY
+      ${TESTDATA_OUTPUT_DIR}
+  )
+
+  add_custom_target(${target}
+    DEPENDS
+      ${binary}
+  )
+
+  add_dependencies(testdata-all ${target})
+
+  if (${ARG_KRZ_APP})
+    # If this is an application, then prepare binary to be flashed
+    set(appfile "${name}.krz.bin")
+    set(appmemfile "${name}.krz.mem")
+
     add_custom_command(
-        OUTPUT
-            ${binary}
-        BYPRODUCTS
-            ${elf}
-            ${objdump}
-            ${memfile}
-        COMMAND
-            ${RISCV_GCC}
-        ARGS
-            -Os
-            -march=rv32i
-            -mabi=ilp32
-            -static
-            -nostartfiles
-            --specs=nano.specs
-            --specs=nosys.specs
-            -I{CMAKE_CURRENT_LIST_DIR}
-            -T${ARG_LINKER_SCRIPT}
-            ${source} ${ARG_SOURCES}
-            -o ${elf}
-        COMMAND
-            ${RISCV_OBJDUMP}
-        ARGS
-            -D ${elf} > ${objdump}
-        COMMAND
-            ${RISCV_OBJCOPY}
-        ARGS
-            -O binary ${elf} ${binary}
-        COMMAND
-            ${SREC_CAT}
-        ARGS
-            ${binary} -binary -byte-swap 4 
-            -o ${memfile} -vmem
-        WORKING_DIRECTORY
-            ${TESTDATA_OUTPUT_DIR}
+      OUTPUT
+        ${appfile}
+      BYPRODUCTS
+        ${appmemfile}
+      COMMAND
+        ${Python3_EXECUTABLE}
+      ARGS
+        ${UTILS}/krzprog.py
+        --bin ${TESTDATA_OUTPUT_DIR}/${binary}     
     )
 
-    add_custom_target(${target}
-        DEPENDS
-            ${binary}
+    add_custom_target("krz-${target}"
+      DEPENDS
+        ${appfile}        
     )
 
-    add_dependencies(testdata-all ${target})
+    add_dependencies("krz-${target}"
+      ${target} 
+    )
 
-    if (${ARG_KRZ_APP})
-        # If this is an application, then prepare binary to be flashed
-        set(appfile "${name}.krz.bin")
-        set(appmemfile "${name}.krz.mem")
-
-        add_custom_command(
-            OUTPUT
-                ${appfile}
-            BYPRODUCTS
-                ${appmemfile}
-            COMMAND
-                ${Python3_EXECUTABLE}
-            ARGS
-                ${UTILS}/krzprog.py
-                --bin ${TESTDATA_OUTPUT_DIR}/${binary}     
-        )
-
-        add_custom_target("krz-${target}"
-            DEPENDS
-                ${appfile}        
-        )
-
-        add_dependencies("krz-${target}"
-            ${target} 
-        )
-
-        add_dependencies(testdata-all "krz-${target}")
-    endif()
-    
+    add_dependencies(testdata-all "krz-${target}")
+  endif()
+  
 endfunction()
