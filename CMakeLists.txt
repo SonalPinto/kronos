@@ -11,6 +11,21 @@ enable_testing()
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(UTILS "${CMAKE_CURRENT_LIST_DIR}/utils")
 
+# Setup output dirs
+set(BIN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/bin")
+set(LIB_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/lib")
+set(TESTDATA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/data")
+set(LINT_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/lint")
+set(VERILATOR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/verilator")
+set(UNITTEST_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/tests")
+
+file(MAKE_DIRECTORY ${BIN_OUTPUT_DIR})
+file(MAKE_DIRECTORY ${LIB_OUTPUT_DIR})
+file(MAKE_DIRECTORY ${TESTDATA_OUTPUT_DIR})
+file(MAKE_DIRECTORY ${LINT_OUTPUT_DIR})
+file(MAKE_DIRECTORY ${VERILATOR_OUTPUT_DIR})
+file(MAKE_DIRECTORY ${UNITTEST_OUTPUT_DIR})
+
 # Add tools
 find_package(Python3)
 find_package(RISCV)

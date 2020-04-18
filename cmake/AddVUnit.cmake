@@ -7,14 +7,6 @@ if(NOT VUNIT_FOUND)
   return()
 endif()
 
-if (NOT UNITTEST_ENV_SETUP)
-  set(UNITTEST_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/tests"
-    CACHE INTERNAL "Unit test output directory" FORCE)
-  file(MAKE_DIRECTORY "${UNITTEST_OUTPUT_DIR}")
-
-  set(UNITTEST_ENV_SETUP 1)
-endif()
-
 function(add_hdl_unit_test hdl_test_file)
   # Create an HDL unit test target
 

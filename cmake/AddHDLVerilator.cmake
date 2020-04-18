@@ -2,21 +2,30 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Verilator Rules for HDL sources
-#   lint_hdl- : Lints the HDL source using verilator
+#   lint_hdl     : Lints the HDL source using verilator
+#   verilate_hdl : Verilates the HDL and compiles it as a static lib
 
 if(NOT VERILATOR_FOUND)
   return()
 endif()
 
 if (NOT VERILATOR_ENV_SETUP)
-  set(LINT_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/lint"
-    CACHE INTERNAL "Lint output directory" FORCE)
-  file(MAKE_DIRECTORY "${LINT_OUTPUT_DIR}")
+  # Make common verilator shared lib
+  add_library(verilated SHARED
+    ${VERILATOR_INCLUDES}/verilated.cpp
+  )
 
-  set(VERILATOR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/verilator"
-    CACHE INTERNAL "Verilator output directory" FORCE)
-  file(MAKE_DIRECTORY "${VERILATOR_OUTPUT_DIR}")
+  set_target_properties(verilated PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY ${LIB_OUTPUT_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${LIB_OUTPUT_DIR}
+    RUNTIME_OUTPUT_DIRECTORY ${LIB_OUTPUT_DIR}
+  )
 
+  target_include_directories(verilated SYSTEM PUBLIC
+    ${VERILATOR_INCLUDES}
+    ${VERILATOR_INCLUDES}/vltstd
+  )
+  
   set(VERILATOR_ENV_SETUP 1)
 endif()
 
@@ -75,6 +84,7 @@ function(verilate_hdl)
 
   # config & env
   set(target "verilate-${ARG_NAME}")
+  set(target_lib "lib_${ARG_NAME}")
   set(verilated_module "${ARG_NAME}__ALL.a")
 
   set(includes)
@@ -85,6 +95,7 @@ function(verilate_hdl)
   set(working_dir "${VERILATOR_OUTPUT_DIR}/${ARG_NAME}")
   file(MAKE_DIRECTORY ${working_dir})
 
+  # Verilate HDL and compile it
   add_custom_command(
     OUTPUT
       ${verilated_module}
@@ -112,4 +123,13 @@ function(verilate_hdl)
       "${verilated_module}"
   )
 
+  # Add a static library definition to the compiled+verilated HDL
+  add_library(${target_lib} STATIC IMPORTED)
+  add_dependencies(${target_lib} ${target})
+
+  set_target_properties(${target_lib} PROPERTIES
+    IMPORTED_LOCATION "${verilated_module}"
+    INTERFACE_LINK_LIBRARIES verilated
+    INTERFACE_INCLUDE_DIRECTORIES "${working_dir}"
+    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${working_dir}")
 endfunction()

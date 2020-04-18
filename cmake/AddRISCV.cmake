@@ -10,11 +10,7 @@ if(NOT RISCV_FOUND OR NOT SRECORD_FOUND)
 endif()
 
 if (NOT TESTDATA_ENV_SETUP)
-  set(TESTDATA_OUTPUT_DIR "${CMAKE_BINARY_DIR}/output/data"
-    CACHE INTERNAL "Test data output directory" FORCE)
-  file(MAKE_DIRECTORY "${TESTDATA_OUTPUT_DIR}")
-
-  # A target to collect all testdata generators
+    # A target to collect all testdata generators
   if (NOT TARGET testdata-all)
     add_custom_target(testdata-all)
   endif()
