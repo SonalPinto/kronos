@@ -36,6 +36,14 @@ find_package(Python3)
 find_package(RISCV)
 find_package(Verilator)
 
+# Development environment
+if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
+  enable_testing()
+  find_package(SRecord)
+  find_package(VUnit)
+  find_package(Yosys)
+endif()
+
 # Add Packages
 include(macros)
 include(AddHDL)
@@ -47,11 +55,6 @@ add_subdirectory(riscv-compliance)
 
 # Development environment
 if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
-  enable_testing()
-  find_package(SRecord)
-  find_package(VUnit)
-  find_package(Yosys)
-
   include(AddVUnit)
 
   add_subdirectory(tests)

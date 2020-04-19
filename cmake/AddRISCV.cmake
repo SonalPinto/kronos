@@ -61,6 +61,8 @@ function(add_riscv_executable source)
   set(binary "${name}.bin")
   set(target "riscv-${name}")
 
+  set(outputs)
+
   # Setup command and target to generate the basic riscv program
   # and corresponding test format
   add_custom_command(
@@ -95,11 +97,12 @@ function(add_riscv_executable source)
       ${TESTDATA_OUTPUT_DIR}
   )
 
+  list(APPEND outputs ${binary})
+
   if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
     add_custom_command(
       OUTPUT
-        ${binary}
-      APPEND
+        ${memfile}
       COMMAND
         ${SREC_CAT}
       ARGS
@@ -107,12 +110,16 @@ function(add_riscv_executable source)
         -o ${memfile} -vmem
       WORKING_DIRECTORY
         ${TESTDATA_OUTPUT_DIR}
+      DEPENDS
+        ${binary}
     )
+    
+    list(APPEND outputs ${memfile})
   endif()
 
   add_custom_target(${target}
     DEPENDS
-      ${binary}
+      ${outputs}
   )
 
   add_dependencies(testdata-all ${target})
@@ -122,6 +129,8 @@ function(add_riscv_executable source)
     set(appfile "${name}.krz.bin")
     set(appmemfile "${name}.krz.mem")
 
+    set(outputs)
+
     add_custom_command(
       OUTPUT
         ${appfile}
@@ -129,28 +138,37 @@ function(add_riscv_executable source)
         ${Python3_EXECUTABLE}
       ARGS
         ${UTILS}/krzprog.py
-        --bin ${TESTDATA_OUTPUT_DIR}/${binary}     
+        --bin ${binary}
+      WORKING_DIRECTORY
+        ${TESTDATA_OUTPUT_DIR} 
     )
+
+    list(APPEND outputs ${appfile})
 
     if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
       add_custom_command(
         OUTPUT
-          ${appfile}
-        APPEND
+          ${appmemfile}
         COMMAND
           ${SREC_CAT}
         ARGS
-          ${TESTDATA_OUTPUT_DIR}/${appfile} -binary -byte-swap 4 
+          ${appfile} -binary -byte-swap 4 
           -o ${appmemfile} -vmem
+        WORKING_DIRECTORY
+          ${TESTDATA_OUTPUT_DIR}
+        DEPENDS
+          ${appfile}
       )
+
+      list(APPEND outputs ${appmemfile})
     endif()
 
-    add_custom_target("krz-${target}"
+    add_custom_target(krz-${target}
       DEPENDS
-        ${appfile}        
+        ${outputs}        
     )
 
-    add_dependencies("krz-${target}"
+    add_dependencies(krz-${target}
       ${target} 
     )
 
