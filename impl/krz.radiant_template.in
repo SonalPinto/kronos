@@ -1,0 +1,27 @@
+# Copyright (c) 2020 Sonal Pinto
+# SPDX-License-Identifier: Apache-2.0
+
+#
+# Build @PROJECT@ using Radiant
+#
+
+set project @PROJECT@
+
+prj_create -name $project \
+  -impl krz_impl \
+  -impl_dir "output/radiant/$project/krz_impl" \
+  -dev iCE40UP5K-SG48I \
+  -performance "High-Performance_1.2V" \
+  -synthesis "synplify"
+
+# Source
+@RADIANT_SOURCES@
+
+# Constraints
+prj_add_source "@PROJECT_PDC@"
+
+# Init Bootloader in BRAM
+prj_set_impl_opt -impl krz_impl -append VERILOG_DIRECTIVES PROGRAM=output/data/krz_bootloader.mem
+
+# top
+prj_set_impl_opt -impl krz_impl top krz_top

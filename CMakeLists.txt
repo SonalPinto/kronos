@@ -47,6 +47,7 @@ if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
 
   add_subdirectory(rtl)
   add_subdirectory(src)
+  add_subdirectory(impl)
   add_subdirectory(riscv-compliance)
   add_subdirectory(tests)
   
@@ -65,6 +66,7 @@ else()
 
   add_subdirectory(rtl)
   add_subdirectory(src)
+  add_subdirectory(impl)
   add_subdirectory(riscv-compliance)
 
 endif()

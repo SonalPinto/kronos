@@ -60,11 +60,6 @@ class Sim {
     }
 
     void tick(void) {
-      top->clk = 0;
-      top->eval();
-      trace->dump(ticks);
-      ticks++;
-
       top->clk = 1;
       top->eval();
       trace->dump(ticks);

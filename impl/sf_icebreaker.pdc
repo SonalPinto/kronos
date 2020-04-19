@@ -1,0 +1,27 @@
+# HSOSC configured for 24MHz
+create_clock -name clk -period 41.6667 [get_pins {u_osc.osc_inst/CLKHF}] 
+
+set_false_path -from [get_ports {RSTN}]
+
+# -------------------------------------------------------------
+ldc_set_location -site {10} [get_ports RSTN]
+ldc_set_location -site {11} [get_ports LEDR]
+ldc_set_location -site {37} [get_ports LEDG]
+
+# AA : single PMOD 1,  P2_1
+# AB : single PMOD 2,  P2_2
+# AC : single PMOD 3,  P2_3
+# AD : single PMOD 4,  P2_4
+# AE : single PMOD 7,  P2_7
+# AF : single PMOD 8,  P2_8
+# AG : single PMOD 9,  P2_9
+# CAT: single PMOD 10, P2_10
+
+ldc_set_location -site {27} [get_ports AA ]
+ldc_set_location -site {25} [get_ports AB ]
+ldc_set_location -site {21} [get_ports AC ]
+ldc_set_location -site {19} [get_ports AD ]
+ldc_set_location -site {26} [get_ports AE ]
+ldc_set_location -site {23} [get_ports AF ]
+ldc_set_location -site {20} [get_ports AG ]
+ldc_set_location -site {18} [get_ports CAT]

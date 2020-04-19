@@ -5,7 +5,8 @@
 Kronos: Zero Degree
 
 Kronos-powered SoC designed for the iCE40UP5K
-    - 128KB of RAM as 2 banks of 64KB.
+
+    - 128KB of RAM as 2 contiguous banks of 64KB.
     - 1KB Bootrom for loading program from flash to RAM.
     - UART TX with 128B buffer.
         - Configurable baud rate

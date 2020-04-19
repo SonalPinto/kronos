@@ -61,8 +61,6 @@ function(add_riscv_executable source)
   set(binary "${name}.bin")
   set(target "riscv-${name}")
 
-  set(outputs)
-
   # Setup command and target to generate the basic riscv program
   # and corresponding test format
   add_custom_command(
@@ -93,33 +91,18 @@ function(add_riscv_executable source)
       ${RISCV_OBJCOPY}
     ARGS
       -O binary ${elf} ${binary}
+    COMMAND
+      srec_cat
+    ARGS
+      ${binary} -binary -byte-swap 4 
+      -o ${memfile} -vmem
     WORKING_DIRECTORY
       ${TESTDATA_OUTPUT_DIR}
   )
 
-  list(APPEND outputs ${binary})
-
-  if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
-    add_custom_command(
-      OUTPUT
-        ${memfile}
-      COMMAND
-        srec_cat
-      ARGS
-        ${binary} -binary -byte-swap 4 
-        -o ${memfile} -vmem
-      WORKING_DIRECTORY
-        ${TESTDATA_OUTPUT_DIR}
-      DEPENDS
-        ${binary}
-    )
-    
-    list(APPEND outputs ${memfile})
-  endif()
-
   add_custom_target(${target}
     DEPENDS
-      ${outputs}
+      ${binary}
   )
 
   add_dependencies(testdata-all ${target})
@@ -139,29 +122,16 @@ function(add_riscv_executable source)
       ARGS
         ${UTILS}/krzprog.py
         --bin ${TESTDATA_OUTPUT_DIR}/${binary}
+      COMMAND
+        srec_cat
+      ARGS
+        ${appfile} -binary -byte-swap 4 
+        -o ${appmemfile} -vmem
     )
-
-    list(APPEND outputs ${appfile})
-
-    if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
-      add_custom_command(
-        OUTPUT
-          ${appmemfile}
-        COMMAND
-          srec_cat
-        ARGS
-          ${appfile} -binary -byte-swap 4 
-          -o ${appmemfile} -vmem
-        DEPENDS
-          ${appfile}
-      )
-
-      list(APPEND outputs ${appmemfile})
-    endif()
 
     add_custom_target(krz-${target}
       DEPENDS
-        ${outputs}        
+        ${appfile}        
     )
 
     add_dependencies(krz-${target}

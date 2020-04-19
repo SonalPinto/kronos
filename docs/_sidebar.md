@@ -9,10 +9,11 @@
   - [Control Status Registers](csr.md)
   - [Write Back](write_back.md)
   - [Exceptions and Interrupts](excpt_intr.md)
-- Development
-  - [Environment](dev_env.md)
-  - [RISC-V Compliance](compliance.md)
 - Integration
   - [kronos_core](integration.md)
 - Platforms
-  - snowflake
+  - [snowflake](snowflake.md)
+  - [KRZ SoC](krz_soc.md)
+- Development
+  - [Environment](dev_env.md)
+  - [RISC-V Compliance](compliance.md)
