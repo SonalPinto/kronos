@@ -28,34 +28,43 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_OUTPUT_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_OUTPUT_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_OUTPUT_DIR})
 
-# pre-compliled lattice primitive/simulation library for modelsim
-set(LATTICE_LIBRARY $ENV{LATTICE_LIBRARY})
-
-# Add tools
-find_package(Python3)
-find_package(RISCV)
-find_package(Verilator)
-
-# Development environment
+# =============================================================
 if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
+  #
+  # Development Environment
+  #
+
   enable_testing()
-  find_package(SRecord)
-  find_package(VUnit)
-  find_package(Yosys)
-endif()
+  find_package(RISCV REQUIRED)
+  find_package(Verilator REQUIRED)
+  find_package(Python3 REQUIRED)
+  find_package(VUnit REQUIRED)
 
-# Add Packages
-include(macros)
-include(AddHDL)
-include(AddRISCV)
-
-add_subdirectory(rtl)
-add_subdirectory(src)
-add_subdirectory(riscv-compliance)
-
-# Development environment
-if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
+  include(macros)
+  include(AddHDL)
+  include(AddRISCV)
   include(AddVUnit)
 
+  add_subdirectory(rtl)
+  add_subdirectory(src)
+  add_subdirectory(riscv-compliance)
   add_subdirectory(tests)
+  
+else()
+  #
+  # Release/Compliance Testing Environment
+  #
+  
+  find_package(RISCV REQUIRED)
+  find_package(Python3 REQUIRED)
+  find_package(Verilator)
+
+  include(macros)
+  include(AddHDL)
+  include(AddRISCV)
+
+  add_subdirectory(rtl)
+  add_subdirectory(src)
+  add_subdirectory(riscv-compliance)
+
 endif()

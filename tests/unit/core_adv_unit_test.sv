@@ -56,7 +56,7 @@ logic [31:0] mem_rdata;
 logic mem_en, mem_wren;
 logic [3:0] mem_mask;
 
-spsram32_model #(.WORDS(1024*10)) u_mem (
+spsram32_model #(.WORDS(1024)) u_mem (
     .clk  (~clk     ),
     .addr (mem_addr ),
     .wdata(mem_wdata),
@@ -106,36 +106,6 @@ endclocking
         join_none
 
         ##4 rstz = 1;
-    end
-
-    `TEST_CASE("temp") begin
-        instr_t instr;
-        int index, addr;
-        int data;
-
-        $readmemh("../../../data/prog.mem", u_mem.MEM);
-
-        // Run
-        $display("\n\nEXEC\n\n");
-        fork
-            begin
-                @(cb) cb.run <= 1;
-            end
-
-            ##1024;
-
-            forever @(cb) begin
-                if (instr_req && instr_ack) begin
-                    addr = cb.instr_addr;
-                    instr = u_mem.MEM[addr>>2];
-                    $display("[%0d] ADDR=%0d, INSTR=%h", index, addr, instr);
-                    index++;
-                end
-            end
-        join
-        $display("\n\n");
-
-        ##64;
     end
 
     `TEST_CASE("doubler") begin

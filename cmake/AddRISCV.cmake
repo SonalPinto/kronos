@@ -104,7 +104,7 @@ function(add_riscv_executable source)
       OUTPUT
         ${memfile}
       COMMAND
-        ${SREC_CAT}
+        srec_cat
       ARGS
         ${binary} -binary -byte-swap 4 
         -o ${memfile} -vmem
@@ -126,8 +126,8 @@ function(add_riscv_executable source)
 
   if (${ARG_KRZ_APP})
     # If this is an application, then prepare binary to be flashed
-    set(appfile "${name}.krz.bin")
-    set(appmemfile "${name}.krz.mem")
+    set(appfile "${TESTDATA_OUTPUT_DIR}/${name}.krz.bin")
+    set(appmemfile "${TESTDATA_OUTPUT_DIR}/${name}.krz.mem")
 
     set(outputs)
 
@@ -138,9 +138,7 @@ function(add_riscv_executable source)
         ${Python3_EXECUTABLE}
       ARGS
         ${UTILS}/krzprog.py
-        --bin ${binary}
-      WORKING_DIRECTORY
-        ${TESTDATA_OUTPUT_DIR} 
+        --bin ${TESTDATA_OUTPUT_DIR}/${binary}
     )
 
     list(APPEND outputs ${appfile})
@@ -150,12 +148,10 @@ function(add_riscv_executable source)
         OUTPUT
           ${appmemfile}
         COMMAND
-          ${SREC_CAT}
+          srec_cat
         ARGS
           ${appfile} -binary -byte-swap 4 
           -o ${appmemfile} -vmem
-        WORKING_DIRECTORY
-          ${TESTDATA_OUTPUT_DIR}
         DEPENDS
           ${appfile}
       )
