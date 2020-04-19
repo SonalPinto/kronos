@@ -132,7 +132,7 @@ snowflake_system_bus u_sysbus (
     .sys_wr_en   (sys_wr_en   )
 );
 
-generic_spsram #(.KB(4)) u_mem (
+generic_spram #(.KB(4)) u_mem (
     .clk  (~clk       ),
     .addr (mem_addr   ),
     .wdata(mem_wr_data),

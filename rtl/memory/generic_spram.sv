@@ -15,7 +15,7 @@ There are 30 EBR or Embedded Block Ram (256x16) in iCE40UP5K.
 For each KB, this module will use 2 EBR, i.e. 4KB will use 4x2 = 8 EBR
 */
 
-module generic_spsram #(
+module generic_spram #(
     parameter AWIDTH = 32,
     parameter KB = 4
 )(

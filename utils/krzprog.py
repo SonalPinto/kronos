@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import os
 import re
 import argparse
 
@@ -29,11 +28,6 @@ def convert_bin(ibinfile):
 
     IFILE.close();
     OFILE.close()
-
-    # memfile for tests
-    new_memfile = re.sub('bin$', 'mem', obinfile)
-    cmd = "srec_cat {} -binary -byte-swap 4 -o {} -vmem".format(obinfile, new_memfile)
-    os.system(cmd)
 
     print("Ready to Flash: {}".format(obinfile))
 

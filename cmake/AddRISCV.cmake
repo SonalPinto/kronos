@@ -5,7 +5,7 @@
 # Needs riscv toolchain and srecord to translate the binary code
 # into SystemVerilog readable memory files
 
-if(NOT RISCV_FOUND OR NOT SRECORD_FOUND)
+if(NOT RISCV_FOUND)
   return()
 endif()
 
@@ -69,7 +69,6 @@ function(add_riscv_executable source)
     BYPRODUCTS
       ${elf}
       ${objdump}
-      ${memfile}
     COMMAND
       ${RISCV_GCC}
     ARGS
@@ -92,14 +91,24 @@ function(add_riscv_executable source)
       ${RISCV_OBJCOPY}
     ARGS
       -O binary ${elf} ${binary}
-    COMMAND
-      ${SREC_CAT}
-    ARGS
-      ${binary} -binary -byte-swap 4 
-      -o ${memfile} -vmem
     WORKING_DIRECTORY
       ${TESTDATA_OUTPUT_DIR}
   )
+
+  if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
+    add_custom_command(
+      OUTPUT
+        ${binary}
+      APPEND
+      COMMAND
+        ${SREC_CAT}
+      ARGS
+        ${binary} -binary -byte-swap 4 
+        -o ${memfile} -vmem
+      WORKING_DIRECTORY
+        ${TESTDATA_OUTPUT_DIR}
+    )
+  endif()
 
   add_custom_target(${target}
     DEPENDS
@@ -116,14 +125,25 @@ function(add_riscv_executable source)
     add_custom_command(
       OUTPUT
         ${appfile}
-      BYPRODUCTS
-        ${appmemfile}
       COMMAND
         ${Python3_EXECUTABLE}
       ARGS
         ${UTILS}/krzprog.py
         --bin ${TESTDATA_OUTPUT_DIR}/${binary}     
     )
+
+    if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
+      add_custom_command(
+        OUTPUT
+          ${appfile}
+        APPEND
+        COMMAND
+          ${SREC_CAT}
+        ARGS
+          ${TESTDATA_OUTPUT_DIR}/${appfile} -binary -byte-swap 4 
+          -o ${appmemfile} -vmem
+      )
+    endif()
 
     add_custom_target("krz-${target}"
       DEPENDS
