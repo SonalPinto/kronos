@@ -51,7 +51,7 @@ Kronos Zero Degree (KRZ) is the System-on-Chip packaged in this project to show-
       - Debounced inputs.
   - General Purpose registers
 
-![KRZ SoC](_images/krz_soc.svg)
+![KRZ SoC](docs/_images/krz_soc.svg)
 
 Read More - [KRZ SoC](https://sonalpinto.github.io/kronos/#/krz_soc.md)
 
