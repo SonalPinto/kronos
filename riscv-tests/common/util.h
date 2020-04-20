@@ -15,7 +15,9 @@
 #define debug_printf printk
 
 void setStats(int enable);
+void printStats(void) ;
 int verify(int n, const volatile int* test, const int* verify);
+int verifyDouble(int n, const volatile double* test, const double* verify);
 void printk(const char *fmt, ...);
 void delay_us(int count_us);
 

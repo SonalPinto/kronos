@@ -67,27 +67,86 @@ void setStats(int enable) {
 }
 
 void printStats(void) {
-  printk("\n\ncycles: %u\n", counters[0]);
-  printk("intrs: %u\n", counters[1]);
+  int cycles = counters[0];
+  int instret =  counters[1];
+
+  int cpi = (cycles * 100) /  instret;
+
+  printk("cycles: %u\n", cycles);
+  printk("instret: %u\n", instret);
+  printk("CPI (x100): %u\n", cpi);
 }
 
 int verify(int n, const volatile int* test, const int* verify) {
   int i;
-
-  printStats();
+  int val;
 
   // Unrolled for faster verification
   for (i = 0; i < n/2*2; i+=2)
   {
     int t0 = test[i], t1 = test[i+1];
     int v0 = verify[i], v1 = verify[i+1];
-    if (t0 != v0) return i+1;
-    if (t1 != v1) return i+2;
+    if (t0 != v0) {
+      val = i+1;
+      break;
+    }
+    if (t1 != v1) {
+      val = i+2;
+      break;
+    }
   }
-  if (n % 2 != 0 && test[n-1] != verify[n-1])
-    return n;
-  return 0;
+
+  if (val != 0) {
+    if (n % 2 != 0 && test[n-1] != verify[n-1])
+      val = n;
+    else
+      val = 0;
+  }
+
+  if (val == 0) printk("\n\n---- PASS ----\n");
+  else printk("\n\n---- FAIL ----\n");
+  printk("Result = %u\n", val);
+  printStats();
+  while(1);
+
+  // never reaches here
+  return val;
 }
+
+int verifyDouble(int n, const volatile double* test, const double* verify) {
+  int i;
+  int val;
+
+  // Unrolled for faster verification
+  for (i = 0; i < n/2*2; i+=2)
+  {
+    double t0 = test[i], t1 = test[i+1];
+    double v0 = verify[i], v1 = verify[i+1];
+    int eq1 = t0 == v0, eq2 = t1 == v1;
+    if (!(eq1 & eq2)) {
+      val = i+1+eq1;
+      break;
+    }
+  }
+
+  if (val != 0) {
+    if (n % 2 != 0 && test[n-1] != verify[n-1])
+      val = n;
+    else
+      val = 0;
+  }
+
+
+  if (val == 0) printk("\n\n---- PASS ----\n");
+  else printk("\n\n---- FAIL ----\n");
+  printk("Result = %u\n", val);
+  printStats();
+  while(1);
+
+  // never reaches here
+  return val;
+}
+
 
 void printk(const char *fmt, ...) {
     int len;
