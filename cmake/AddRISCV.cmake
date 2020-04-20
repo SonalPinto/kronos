@@ -29,6 +29,8 @@ function(add_riscv_executable source)
 
   set(multi_value_arguments
     SOURCES
+    INCLUDES
+    DEFINES
   )
 
   # Resolve keywords into ARG_#
@@ -49,11 +51,24 @@ function(add_riscv_executable source)
 
   # Init args
   init_arg(ARG_SOURCES "")
+  init_arg(ARG_INCLUDES ${CMAKE_CURRENT_LIST_DIR})
+  init_arg(ARG_DEFINES "")
   init_arg(ARG_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/link.ld")
   init_arg(ARG_KRZ_APP FALSE)
 
   set_realpath(ARG_SOURCES)
+  set_realpath(ARG_INCLUDES)
   set_realpath(ARG_LINKER_SCRIPT)
+
+  set(includes)
+  foreach (inc ${ARG_INCLUDES})
+    list(APPEND includes "-I${inc}")
+  endforeach()
+
+  set(defines)
+  foreach (def ${ARG_DEFINES})
+    list(APPEND defines "-D${def}")
+  endforeach()
 
   set(memfile "${name}.mem")
   set(elf "${name}.elf")
@@ -72,16 +87,17 @@ function(add_riscv_executable source)
     COMMAND
       ${RISCV_GCC}
     ARGS
-      -Os
+      -O3
       -march=rv32i
       -mabi=ilp32
       -static
       -nostartfiles
       --specs=nano.specs
       --specs=nosys.specs
-      -I{CMAKE_CURRENT_LIST_DIR}
+      ${defines}
+      ${includes}
       -T${ARG_LINKER_SCRIPT}
-      ${source} ${ARG_SOURCES}
+      ${ARG_SOURCES} ${source}
       -o ${elf}
     COMMAND
       ${RISCV_OBJDUMP}

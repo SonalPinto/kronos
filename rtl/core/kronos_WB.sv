@@ -250,7 +250,7 @@ assign csr_start = wb_valid && execute.csr;
 always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) instret <= 1'b0;
     else instret <= direct_write 
-                    || direct_jump 
+                    || ((execute.branch || execute.branch_cond) & wb_valid)
                     || lsu_done 
                     || csr_done
                     || (system_call && trap_jump);

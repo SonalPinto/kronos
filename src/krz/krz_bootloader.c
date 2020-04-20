@@ -44,7 +44,7 @@ __attribute__((naked)) void _exec(void) {
     asm volatile ("\
         la gp, _global_pointer  \n\
         la sp, _stack_pointer   \n\
-        j %0                    \n\
+        call %0                 \n\
         nop                     \n\
         nop                     \n\
         nop                     \n\

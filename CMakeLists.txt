@@ -34,6 +34,8 @@ if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
   # Development Environment
   #
 
+  set(LATTICE_LIBRARY $ENV{LATTICE_LIBRARY})
+
   enable_testing()
   find_package(RISCV REQUIRED)
   find_package(Verilator REQUIRED)
@@ -49,6 +51,7 @@ if (${CMAKE_BUILD_TYPE} MATCHES "Dev")
   add_subdirectory(src)
   add_subdirectory(impl)
   add_subdirectory(riscv-compliance)
+  add_subdirectory(riscv-tests)
   add_subdirectory(tests)
   
 else()
@@ -68,5 +71,6 @@ else()
   add_subdirectory(src)
   add_subdirectory(impl)
   add_subdirectory(riscv-compliance)
+  add_subdirectory(riscv-tests)
 
 endif()
