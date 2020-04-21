@@ -4,3 +4,4 @@
 add_subdirectory(packages)
 add_subdirectory(unit)
 add_subdirectory(platform)
+add_subdirectory(other)
