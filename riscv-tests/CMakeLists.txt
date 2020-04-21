@@ -5,15 +5,15 @@ set(common_srcs common/crt0.S
   common/mini-printf.c
   common/util.c)
 
-add_riscv_executable(dhrystone/dhrystone_main.c
+add_riscv_executable(dhrystone_t/dhrystone_main.c
   SOURCES
     ${common_srcs}
-    dhrystone/dhrystone.c
+    dhrystone_t/dhrystone.c
   LINKER_SCRIPT
     common/link.ld
   INCLUDES
     common
-    dhrystone
+    dhrystone_t
   DEFINES
     HZ=24000000
   KRZ_APP TRUE

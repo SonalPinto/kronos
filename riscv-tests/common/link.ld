@@ -19,7 +19,7 @@ SECTIONS
     *(.text)
   } > ram
 
- .data : ALIGN(4)
+ .data :
   {
     . = ALIGN(4);
 
@@ -31,13 +31,13 @@ SECTIONS
     PROVIDE(_edata = .);
   } > ram
 
-  .bss (NOLOAD) : ALIGN(4)
+  .bss (NOLOAD) :
   {   
-     . = ALIGN(4);
+    . = ALIGN(4);
     PROVIDE(_sbss = .);
     *(.bss)
     *(COMMON)
-     . = ALIGN(4);
+    . = ALIGN(4);
     PROVIDE(_ebss = .);
   } > ram
 

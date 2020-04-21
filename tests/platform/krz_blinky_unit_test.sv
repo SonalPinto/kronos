@@ -30,7 +30,7 @@ endclocking
 `define MEM01 u_dut.u_mem0.MEMINST[1].u_spsram.vfb_b_inst.SRAM_inst.spram256k_core_inst.uut.mem_core_array
 
 // ============================================================
-logic [31:0] PROG [1024];
+logic [31:0] PROG [1024*128];
 
 `TEST_SUITE begin
     `TEST_SUITE_SETUP begin
@@ -49,17 +49,17 @@ logic [31:0] PROG [1024];
 
         // setup program: krz_blinky.c
         PROG = '{default: '0};
-        $readmemh("../../../data/krz_blinky.mem", PROG);
+        $readmemh("../../../data/dhrystone_main.mem", PROG);
 
         foreach (PROG[i]) begin
-            $display("%h",PROG[i]);
+            // $display("%h",PROG[i]);
             {`MEM01[i], `MEM00[i]} = PROG[i];
         end
 
         // Run
         $display("\n\nEXEC\n\n");
         fork
-            ##10000; // timeout watchdog
+            ##40000; // timeout watchdog
             forever @(LEDG) begin
                 if (LEDG) $display("LEDG OFF!");
                 else if (~LEDG) $display("LEDG ON!");
