@@ -147,7 +147,7 @@ logic hcu_rs2_forward;
 logic csr_regrd, csr_regwr;
 
 // ============================================================
-// [rv32i] Instruction Decoder
+// Instruction Decoder
 
 assign IR = fetch.ir;
 assign PC = fetch.pc;
@@ -155,11 +155,9 @@ assign PC = fetch.pc;
 // Aliases to IR segments
 assign opcode = IR[6:0];
 assign OP = opcode[6:2];
-
 assign rs1 = IR[19:15];
 assign rs2 = IR[24:20];
 assign rd  = IR[11: 7];
-
 assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
 

@@ -32,6 +32,11 @@ add_hdl_source(kronos_IF.sv
     kronos_types
 )
 
+add_hdl_source(kronos_ID0.sv
+  DEPENDS
+    kronos_types
+)
+
 add_hdl_source(kronos_ID.sv
   DEPENDS
     kronos_types

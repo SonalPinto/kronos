@@ -39,6 +39,7 @@ module kronos_IF
 
 logic [31:0] pc, pc_last;
 logic [31:0] skid_buffer;
+logic pipe_rdy;
 
 enum logic [1:0] {
   INIT,
@@ -79,13 +80,13 @@ always_comb begin
 
     FETCH:
       if (instr_ack) begin
-        if (~fetch_vld || fetch_rdy) next_state = FETCH;
+        if (pipe_rdy) next_state = FETCH;
         else next_state = STALL;
       end
       else next_state = MISS;
 
     MISS: if (instr_ack) begin
-      if (~fetch_vld || fetch_rdy) next_state = FETCH;
+      if (pipe_rdy) next_state = FETCH;
       else next_state = STALL;
     end
 
@@ -104,7 +105,7 @@ always_ff @(posedge clk or negedge rstz) begin
       fetch_vld <= 1'b0;
     end
     else if ((state == FETCH || state == MISS) && instr_ack) begin
-      if (fetch_rdy) begin
+      if (pipe_rdy) begin
         // Successful fetch if instruction is read and the pipeline can accept it
         fetch.pc <= pc_last;
         fetch.ir <= instr_data;
@@ -127,6 +128,8 @@ always_ff @(posedge clk or negedge rstz) begin
     end
   end
 end
+
+assign pipe_rdy = ~fetch_vld || fetch_rdy;
 
 // ============================================================
 // Instruction Memory Interface
