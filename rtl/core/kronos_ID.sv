@@ -3,148 +3,55 @@
 
 /*
 Kronos Decoder
-The 32b instruction and PC from the IF stage is decoded
-into a generic form:
-
-    RESULT1 = ALU( OP1, OP2 )
-    RESULT2 = ADD( OP3, OP4 )
-    EX_CTRL
-    WB_CTRL
-    System
-    Exceptions
-    PC
-
-where,
-    OP1-4       : Operands, where OP1/2 are primary kronos_ALU operands,
-                  and OP3/4 are secondary adder operands
-                  Each operand can take one of many values as listed below,
-                  OP1 <= REG[rs1], PC, ZERO
-                  OP2 <= REG[rs2], IMM, FOUR, IR
-                  OP3 <= REG[rs1], PC, ZIMM, ZERO
-                  OP4 <= REG[rs2], IMM, FOUR, ZERO
-    EX_CTRL     : Execute stage controls
-    WB_CTRL     : Write Back stage controls which perform an action using
-                  RESULT1/2
-    System      : System instructions
-    Exceptions  : Exceptions caught
-    RESULT1     : register write data
-                  memory access address
-                  branch condition
-    RESULT2     : memory write data
-                  branch target
-
-EX_CTRL,
-    cin, rev, uns , eq, inv, align, sel  
-    Check kronos_alu for details
-
-WB_CTRL
-    rd, rd_write, branch, branch_cond, ld, st, funct3 (load/store data size+sign)
-
-System
-    csr, ecall, ret, wfi, funct3 (csr operation: rw/set/clr)
-
-Exceptions
-    is_illegal
-
-PC:
-    forward PC
-
-Note: The 4 operand requirement comes from the RISC-V's Branch instructions which perform
-    if compare(rs1, rs2):
-        pc <= pc + Imm
-
-    Which consumes rs1, rs2, pc and Imm at the same time!
 */
 
-
 module kronos_ID
-    import kronos_types::*;
-(
-    input  logic        clk,
-    input  logic        rstz,
-    input  logic        flush,
-    // IF/ID
-    input  pipeIFID_t   fetch,
-    input  logic        pipe_in_vld,
-    output logic        pipe_in_rdy,
-    // ID/EX
-    output pipeIDEX_t   decode,
-    output logic        pipe_out_vld,
-    input  logic        pipe_out_rdy,
-    // REG Write
-    input  logic [31:0] regwr_data,
-    input  logic [4:0]  regwr_sel,
-    input  logic        regwr_en
+  import kronos_types::*;
+#(
+  parameter CATCH_ILLEGAL_INSTR = 1,
+  parameter USE_REGISTER_FORWARDING = 1 
+)(
+  input  logic        clk,
+  input  logic        rstz,
+  input  logic        flush,
+  // IF/ID
+  input  pipeIFID_t   fetch,
+  input  logic [31:0] immediate,
+  input  logic [31:0] regrd_rs1,
+  input  logic [31:0] regrd_rs2,
+  input  logic        regrd_rs1_en,
+  input  logic        regrd_rs2_en,
+  input  logic        fetch_vld,
+  output logic        fetch_rdy,
+  // ID/EX
+  output pipeIDEX_t   decode,
+  output logic        decode_vld,
+  input  logic        decode_rdy,
+  // REG Write
+  input  logic [31:0] regwr_data,
+  input  logic [4:0]  regwr_sel,
+  input  logic        regwr_en
 );
 
 logic [31:0] IR, PC;
 logic [4:0] OP;
 logic [6:0] opcode;
-logic [4:0] rs1, rs2, rd, zimm;
+logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
 
-logic is_nop;
-logic is_fencei;
-logic is_csr;
-logic is_ecall;
-logic is_ebreak;
-logic is_mret;
-logic is_wfi;
+logic is_reg_write;
 
-logic is_illegal;
-logic instr_valid;
-logic illegal_opcode;
-
-logic regrd_rs1_en, regrd_rs2_en;
-logic [31:0] tregrd_rs1, tregrd_rs2;
-logic [31:0] regrd_rs1, regrd_rs2;
-logic regwr_rd_en, is_reg_write;
-
-logic sign;
-logic format_I;
-logic format_J;
-logic format_S;
-logic format_B;
-logic format_U;
-
-// Immediate Operand segments
-// A: [0]
-// B: [4:1]
-// C: [10:5]
-// D: [11]
-// E: [19:12]
-// F: [31:20]
-logic           ImmA;
-logic [3:0]     ImmB;
-logic [5:0]     ImmC;
-logic           ImmD;
-logic [7:0]     ImmE;
-logic [11:0]    ImmF;
-
-logic [31:0] immediate;
-
-// Zero Extended immediate
-logic [31:0] zimmediate;
-
-// Execute Stage controls
-logic       cin;
-logic       rev;
-logic       uns;
-logic       eq;
-logic       inv;
-logic       align;
-logic [2:0] sel;
+logic [3:0] aluop;
+logic regwr_alu;
 
 // Hazard controls
-logic hcu_upgrade;
-logic hcu_downgrade;
-logic hcu_stall;
-logic hcu_rs1_forward;
-logic hcu_rs2_forward;
+logic stall;
+logic [4:0] rpend;
 
 // CSR register access
-logic csr_regrd, csr_regwr;
+logic csr_regwr;
+
 
 // ============================================================
 // Instruction Decoder
@@ -161,563 +68,117 @@ assign rd  = IR[11: 7];
 assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
 
-assign zimm = IR[19:15];
-
-// opcode is illegal if LSB 2b are not 2'b11
-assign illegal_opcode = opcode[1:0] != 2'b11;
-
 
 // ============================================================
-// Integer Registers
-
-/*
-Note: Since this ID module is geared towards FPGA, 
-    Dual-Port Embedded Block Ram will be used to implement the 32x32 registers.
-    Register (EBR) access is clocked. We need to read two registers on 
-    the off-edge to have it ready by the next active edge.
-
-    In the iCE40UP5K this would inefficiently take 4 EBR (each being 16x256)
-*/
-
-logic [31:0] REG1 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
-logic [31:0] REG2 [32] /* synthesis syn_ramstyle = "no_rw_check" */;
-
-// RS1/RS2 register read conditions
-assign regrd_rs1_en = OP == INSTR_OPIMM 
-                    || OP == INSTR_OP 
-                    || OP == INSTR_JALR 
-                    || OP == INSTR_BR
-                    || OP == INSTR_LOAD
-                    || OP == INSTR_STORE
-                    || csr_regrd;
-
-assign regrd_rs2_en = OP == INSTR_OP 
-                    || OP == INSTR_BR
-                    || OP == INSTR_STORE;
+// Register Write
 
 // Indicates a register will be written by this instructions
 // regardless of source. This is useful for hazard tracking
 assign is_reg_write = (rd != '0) && (OP == INSTR_LUI
-                                || OP == INSTR_AUIPC
-                                || OP == INSTR_JAL
-                                || OP == INSTR_JALR
-                                || OP == INSTR_OPIMM 
-                                || OP == INSTR_OP
-                                || OP == INSTR_LOAD
-                                || csr_regwr);
-
-// Direct register write (when the WB writes to the Register directly)
-assign regwr_rd_en = (rd != '0) && (OP == INSTR_LUI
-                                || OP == INSTR_AUIPC
-                                || OP == INSTR_JAL
-                                || OP == INSTR_JALR
-                                || OP == INSTR_OPIMM 
-                                || OP == INSTR_OP);
-
-assign csr_regrd = OP == INSTR_SYS && (funct3 == 3'b001
-                                    || funct3 == 3'b010
-                                    || funct3 == 3'b011);
+                    || OP == INSTR_AUIPC
+                    || OP == INSTR_JAL
+                    || OP == INSTR_JALR
+                    || OP == INSTR_OPIMM 
+                    || OP == INSTR_OP
+                    || OP == INSTR_LOAD
+                    || csr_regwr);
 
 assign csr_regwr = OP == INSTR_SYS && (funct3 == 3'b001
-                                    || funct3 == 3'b010
-                                    || funct3 == 3'b011
-                                    || funct3 == 3'b101
-                                    || funct3 == 3'b110
-                                    || funct3 == 3'b111);
+                    || funct3 == 3'b010
+                    || funct3 == 3'b011
+                    || funct3 == 3'b101
+                    || funct3 == 3'b110
+                    || funct3 == 3'b111);
 
-// REG read
-always_ff @(negedge clk) begin
-    if (regrd_rs1_en) tregrd_rs1 <= (rs1 != 0) ? REG1[rs1] : '0;
-    if (regrd_rs2_en) tregrd_rs2 <= (rs2 != 0) ? REG2[rs2] : '0;
-end
-
-// Register forwarding
-// Note: this is the critical path in the design.
-assign regrd_rs1 = hcu_rs1_forward ? regwr_data : tregrd_rs1;
-assign regrd_rs2 = hcu_rs2_forward ? regwr_data : tregrd_rs2;
-
-// REG Write
-always_ff @(posedge clk) begin
-    if (regwr_en) begin
-        REG1[regwr_sel] <= regwr_data;
-        REG2[regwr_sel] <= regwr_data;
-    end
-end
-
-
-// ============================================================
-// Immediate Decoder
-
-assign sign = IR[31];
-
-always_comb begin
-    // Instruction format --- used to decode Immediate 
-    format_I = OP == INSTR_OPIMM || OP == INSTR_JALR || OP == INSTR_LOAD;
-    format_J = OP == INSTR_JAL;
-    format_S = OP == INSTR_STORE;
-    format_B = OP == INSTR_BR;
-    format_U = OP == INSTR_LUI || OP == INSTR_AUIPC;
-
-    // Immediate Segment A - [0]
-    if (format_I) ImmA = IR[20];
-    else if (format_S) ImmA = IR[7];
-    else ImmA = 1'b0; // B/J/U
-    
-    // Immediate Segment B - [4:1]
-    if (format_U) ImmB = 4'b0;
-    else if (format_I || format_J) ImmB = IR[24:21];
-    else ImmB = IR[11:8]; // S/B
-
-    // Immediate Segment C - [10:5]
-    if (format_U) ImmC = 6'b0;
-    else ImmC = IR[30:25];
-
-    // Immediate Segment D - [11]
-    if (format_U) ImmD = 1'b0;
-    else if (format_B) ImmD = IR[7];
-    else if (format_J) ImmD = IR[20];
-    else ImmD = sign;
-
-    // Immediate Segment E - [19:12]
-    if (format_U || format_J) ImmE = IR[19:12];
-    else ImmE = {8{sign}};
-    
-    // Immediate Segment F - [31:20]
-    if (format_U) ImmF = IR[31:20];
-    else ImmF = {12{sign}};
-end
-
-// As A-Team's Hannibal would say, "I love it when a plan comes together"
-assign immediate = {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
-
-// Zero extended immediate used in CSR sytsem instructions
-assign zimmediate = {27'b0, zimm};
+// Write the result of the ALU back into the Registers
+assign regwr_alu = (rd != '0) && (OP == INSTR_LUI
+                    || OP == INSTR_AUIPC
+                    || OP == INSTR_JAL
+                    || OP == INSTR_JALR
+                    || OP == INSTR_OPIMM 
+                    || OP == INSTR_OP);
 
 
 // ============================================================
 // Execute Stage Operation Decoder
 
 always_comb begin
-    // Default ALU Operation: ADD 
-    //  result1 <= ALU.adder
-    //  result2 <= unaligned add
-    cin             = 1'b0;
-    rev             = 1'b0;
-    uns             = 1'b0;
-    eq              = 1'b0;
-    inv             = 1'b0;
-    align           = 1'b0;
-    sel             = ALU_ADDER;
-    instr_valid     = 1'b0;
-    is_nop          = 1'b0;
-    is_fencei       = 1'b0;
-    is_csr          = 1'b0;
-    is_ecall        = 1'b0;
-    is_ebreak       = 1'b0;
-    is_mret         = 1'b0;
-    is_wfi          = 1'b0;
+  // Default ALU Operation is ADD
+  aluop = ADD;
 
-    // ALU Controls are decoded using {funct7, funct3, OP}
-    /* verilator lint_off CASEINCOMPLETE */
-    case(OP)
-    // --------------------------------
-    INSTR_LUI,
-    INSTR_AUIPC,
-    INSTR_JAL: instr_valid = 1'b1;
-    // --------------------------------
-    INSTR_JALR: if (funct3 == 3'b000) begin
-        align = 1'b1;
-        instr_valid = 1'b1;
-    end
-    // --------------------------------
-    INSTR_BR: begin
-        case(funct3)
-            3'b000: begin // BEQ
-                eq = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-            3'b001: begin // BNE
-                eq = 1'b1;
-                inv = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-            3'b100: begin // BLT
-                cin = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-            3'b101: begin // BGE
-                cin = 1'b1;
-                inv = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-            3'b110: begin // BLTU
-                cin = 1'b1;
-                uns = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-            3'b111: begin // BGEU
-                cin = 1'b1;
-                inv = 1'b1;
-                uns = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-        endcase // funct3
-    end
-    // --------------------------------
-    INSTR_LOAD: begin
-        case(funct3)
-            3'b000, // LB
-            3'b001, // LH
-            3'b010, // LW
-            3'b100, // LBU
-            3'b101: // LHU 
-                instr_valid = 1'b1;
-        endcase // funct3
-    end
-    // --------------------------------
-    INSTR_STORE: begin
-        case(funct3)
-            3'b000, // SB
-            3'b001, // SH
-            3'b010: // SW
-                instr_valid = 1'b1;
-        endcase // funct3
-    end
+  /* verilator lint_off CASEINCOMPLETE */
+  case(OP)
     // --------------------------------
     INSTR_OPIMM: begin
-        case(funct3)
-            3'b000: begin // ADDI
-                instr_valid = 1'b1;
-            end
-            3'b010: begin // SLTI
-                cin = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-
-            3'b011: begin // SLTIU
-                cin = 1'b1;
-                uns = 1'b1;
-                sel = ALU_COMP;
-                instr_valid = 1'b1;
-            end
-
-            3'b100: begin // XORI
-                sel = ALU_XOR;
-                instr_valid = 1'b1;
-            end
-
-            3'b110: begin // ORI
-                sel = ALU_OR;
-                instr_valid = 1'b1;
-            end
-
-            3'b111: begin // ANDI
-                sel = ALU_AND;
-                instr_valid = 1'b1;
-            end
-
-            3'b001: begin // SLLI
-                if (funct7 == 7'd0) begin
-                    rev = 1'b1;
-                    uns = 1'b1;
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b101: begin // SRLI/SRAI
-                if (funct7 == 7'd0) begin
-                    uns = 1'b1;
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-                else if (funct7 == 7'd32) begin
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-            end
-        endcase // funct3
+      if (funct3 == 3'b001 || funct3 == 3'b101) aluop = {funct7[5], funct3};
+      else aluop = {1'b0, funct3};
     end
-    // --------------------------------
     INSTR_OP: begin
-        case(funct3)
-            3'b000: begin // ADD/SUB
-                if (funct7 == 7'd0) begin
-                    instr_valid = 1'b1;
-                end
-                else if (funct7 == 7'd32) begin
-                    cin = 1'b1;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b001: begin // SLL
-                if (funct7 == 7'd0) begin
-                    rev = 1'b1;
-                    uns = 1'b1;
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b010: begin // SLT
-                if (funct7 == 7'd0) begin
-                    cin = 1'b1;
-                    sel = ALU_COMP;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b011: begin // SLTU
-                if (funct7 == 7'd0) begin
-                    cin = 1'b1;
-                    uns = 1'b1;
-                    sel = ALU_COMP;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b100: begin // XOR
-                if (funct7 == 7'd0) begin
-                    sel = ALU_XOR;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b101: begin // SRL/SRA
-                if (funct7 == 7'd0) begin
-                    uns = 1'b1;
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-                else if (funct7 == 7'd32) begin
-                    sel = ALU_SHIFT;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b110: begin // OR
-                if (funct7 == 7'd0) begin
-                    sel = ALU_OR;
-                    instr_valid = 1'b1;
-                end
-            end
-
-            3'b111: begin // AND
-                if (funct7 == 7'd0) begin
-                    sel = ALU_AND;
-                    instr_valid = 1'b1;
-                end
-            end
-        endcase // funct3
+      aluop = {funct7[5], funct3};
     end
-    // --------------------------------
-    INSTR_MISC: begin
-        case(funct3)
-            3'b000: begin // FENCE
-                if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) begin
-                    is_nop = 1'b1;
-                    instr_valid = 1'b1;
-                end
-            end
-            3'b001: begin // FENCE.I
-                if (IR[31:20] == 12'b0 && rs1 == '0 && rd =='0) begin
-                    // implementing fence.i as `j f1` (jump to pc+4) 
-                    // as this will flush the pipeline and cause a fresh 
-                    // fetch of the instructions after the fence.i instruction
-                    is_fencei = 1'b1;
-                    instr_valid = 1'b1;
-                end
-            end
-        endcase // funct3
-    end
-    // --------------------------------
-    INSTR_SYS: begin
-        case(funct3)
-            3'b000: begin
-                if (rs1 == '0 && rd =='0) begin
-                    if (IR[31:20] == 12'h000) begin // ECALL
-                        is_ecall = 1'b1;
-                        instr_valid = 1'b1;
-                    end
-                    else if (IR[31:20] == 12'h001) begin // EBREAK
-                        is_ebreak = 1'b1;
-                        instr_valid = 1'b1;
-                    end
-                    else if (IR[31:20] == 12'h302) begin // MRET
-                        is_mret = 1'b1;
-                        instr_valid = 1'b1;
-                    end
-                    else if (IR[31:20] == 12'h105) begin // WFI
-                        is_wfi = 1'b1;
-                        instr_valid = 1'b1;
-                    end
-                end
-            end
-            3'b001,       // CSRRW
-            3'b010,       // CSRRS
-            3'b011,       // CSRRC
-            3'b101,       // CSRRWI
-            3'b110,       // CSRRSI
-            3'b111: begin // CSRRCI
-                is_csr = 1'b1;
-                instr_valid = 1'b1;
-            end
-        endcase // funct3
-    end
-    endcase // OP
-    /* verilator lint_on CASEINCOMPLETE */
+  endcase // OP
+  /* verilator lint_on CASEINCOMPLETE */
 end
 
-// Consolidate factors that deem an instruction as illegal
-assign is_illegal = ~(instr_valid) | illegal_opcode;
+
+// ============================================================
+// Hazard Controls
+assign rpend = '0;
+assign stall = 1'b0;
 
 
 // ============================================================
-// Hazard Control
-
-// Note that there is no need to guard against illegal instructions,
-// as upon jumping to the trap handler, the HCU will be flushed anyway
-assign hcu_upgrade = is_reg_write && pipe_in_vld && pipe_in_rdy;
-assign hcu_downgrade = regwr_en;
-
-kronos_hcu u_hcu (
-    .clk         (clk            ),
-    .rstz        (rstz           ),
-    .flush       (flush          ),
-    .rs1         (rs1            ),
-    .rs2         (rs2            ),
-    .rd          (rd             ),
-    .regrd_rs1_en(regrd_rs1_en   ),
-    .regrd_rs2_en(regrd_rs2_en   ),
-    .upgrade     (hcu_upgrade    ),
-    .regwr_sel   (regwr_sel      ),
-    .downgrade   (hcu_downgrade  ),
-    .rs1_forward (hcu_rs1_forward),
-    .rs2_forward (hcu_rs2_forward),
-    .stall       (hcu_stall      )
-);
-
-
-// ============================================================
-// Instruction Decode Output Pipe (decoded instruction)
+// Instruction Decode Output
 
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        pipe_out_vld <= 1'b0;
+  if (~rstz) begin
+    decode_vld <= 1'b0;
+  end
+  else begin
+    if (flush) begin
+      decode_vld <= 1'b0;
     end
-    else begin
-        if (flush) begin
-            pipe_out_vld <= 1'b0;
+    else if(fetch_vld && fetch_rdy) begin
+
+      decode_vld <= 1'b1;
+
+      decode.pc <= PC;
+      decode.ir <= IR;
+
+      decode.aluop <= aluop;
+      decode.regwr_alu <= regwr_alu;
+
+      // ALU operands
+      decode.op1 <= PC;
+      decode.op2 <= FOUR;
+      
+      /* verilator lint_off CASEINCOMPLETE */
+      case(OP)
+        INSTR_LUI: begin
+          decode.op1 <= ZERO;
+          decode.op2 <= immediate;
         end
-        else if(pipe_in_vld && pipe_in_rdy) begin
-            pipe_out_vld <= ~is_nop;
-
-            decode.pc   <= PC;
-
-            // EX controls
-            decode.cin   <= cin;
-            decode.rev   <= rev;
-            decode.uns   <= uns;
-            decode.eq    <= eq;
-            decode.inv   <= inv;
-            decode.align <= align;
-            decode.sel   <= sel;
-            
-            // WB controls
-            decode.rd           <= rd;
-            decode.rd_write     <= regwr_rd_en;
-            decode.branch       <= OP == INSTR_JAL || OP == INSTR_JALR || is_fencei;
-            decode.branch_cond  <= OP == INSTR_BR;
-            decode.ld           <= OP == INSTR_LOAD;
-            decode.st           <= OP == INSTR_STORE;
-            decode.funct3       <= funct3;
-
-            // System
-            decode.csr          <= is_csr;
-            decode.ecall        <= is_ecall;
-            decode.ebreak       <= is_ebreak;
-            decode.ret          <= is_mret;
-            decode.wfi          <= is_wfi;
-
-            // Exceptions
-            decode.is_illegal   <= is_illegal;
-
-            // Store defaults in operands
-            decode.op1 <= PC;
-            decode.op2 <= FOUR;
-            decode.op3 <= PC;
-            decode.op4 <= FOUR;
-
-            if (is_illegal) begin
-                decode.op1 <= ZERO;
-                decode.op2 <= IR;
-            end
-            else begin
-                // Fill out OP1-4 as per opcode
-                /* verilator lint_off CASEINCOMPLETE */
-                case(OP)
-                    INSTR_LUI: begin
-                        decode.op1 <= ZERO;
-                        decode.op2 <= immediate;
-                    end
-                    INSTR_AUIPC: begin
-                        decode.op2 <= immediate;
-                    end
-                    INSTR_JAL: begin
-                        decode.op4 <= immediate;
-                    end
-                    INSTR_JALR: begin
-                        decode.op3 <= regrd_rs1;
-                        decode.op4 <= immediate;
-                    end
-                    INSTR_BR: begin
-                        decode.op1 <= regrd_rs1;
-                        decode.op2 <= regrd_rs2;
-                        decode.op4 <= immediate;
-                    end
-                    INSTR_LOAD: begin
-                        decode.op1 <= regrd_rs1;
-                        decode.op2 <= immediate;
-                    end
-                    INSTR_STORE: begin
-                        decode.op1 <= regrd_rs1;
-                        decode.op2 <= immediate;
-                        decode.op3 <= ZERO;
-                        decode.op4 <= regrd_rs2;
-                    end
-                    INSTR_OPIMM: begin
-                        decode.op1 <= regrd_rs1;
-                        decode.op2 <= immediate;
-                    end
-                    INSTR_OP: begin
-                        decode.op1 <= regrd_rs1;
-                        decode.op2 <= regrd_rs2;
-                    end
-                    INSTR_SYS: begin
-                        decode.op1 <= ZERO;
-                        decode.op2 <= IR;
-                        decode.op3 <= (csr_regrd) ? regrd_rs1 : zimmediate;
-                        decode.op4 <= ZERO;
-                    end
-                endcase // OP
-                /* verilator lint_off CASEINCOMPLETE */
-            end
+        INSTR_AUIPC: begin
+          decode.op2 <= immediate;
         end
-        else if (pipe_out_vld && pipe_out_rdy) begin
-            pipe_out_vld <= 1'b0;
+        INSTR_OPIMM: begin
+          decode.op1 <= regrd_rs1;
+          decode.op2 <= immediate;
         end
+        INSTR_OP: begin
+          decode.op1 <= regrd_rs1;
+          decode.op2 <= regrd_rs2;
+        end
+      endcase // OP
     end
+    /* verilator lint_on CASEINCOMPLETE */
+
+    else if (decode_vld && decode_rdy) begin
+      decode_vld <= 1'b0;
+    end
+  end
 end
 
-// Pipethru can only happen in the ID1 state
-assign pipe_in_rdy = (~pipe_out_vld | pipe_out_rdy) && ~hcu_stall;
+assign fetch_rdy = (~decode_vld | decode_rdy) && ~stall;
 
 endmodule

@@ -11,6 +11,7 @@ add_hdl_unit_test(kronos_IF_unit_test.sv
 
 add_hdl_unit_test(kronos_ID_unit_test.sv
     DEPENDS
+        kronos_RF
         kronos_ID
         rv32_assembler
         utils

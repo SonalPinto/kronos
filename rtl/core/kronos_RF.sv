@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-Kronos Stage-0 Decoder
-  - Houses the Integer Registers.
-  - Decodes 32b Immediate and Register Operands for the main Decode stage.
+Kronos Integer Register File
+
+  - Decodes 32b Immediate and Register Operands for the Decode stage.
   - Operates in parallel to the Fetch stage, such that when the fetch is valid, 
   so are the outputs of this block. 
 */
 
-module kronos_ID0 
+module kronos_RF
   import kronos_types::*;
 (
   input  logic        clk,
@@ -56,6 +56,7 @@ logic format_U;
 
 logic csr_regrd;
 
+
 // ============================================================
 // Instruction Decoder
 
@@ -66,6 +67,7 @@ assign OP = IR[6:2];
 assign rs1 = IR[19:15];
 assign rs2 = IR[24:20];
 assign funct3 = IR[14:12];
+
 
 // ============================================================
 // Immediate Decoder
@@ -114,6 +116,7 @@ always_ff @(posedge clk) begin
   if (load) immediate <= {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
 end
 
+
 // ============================================================
 // Integer Registers
 
@@ -121,16 +124,20 @@ logic [31:0] REG [32] /* synthesis syn_ramstyle = "no_rw_check" */;
 
 // REG read
 always_ff @(posedge clk) begin
-  if (load) begin
-    regrd_rs1 <= (rs1 != 0) ? REG[rs1] : '0;
-    regrd_rs2 <= (rs2 != 0) ? REG[rs2] : '0;
-  end
+  if (regwr_en && rs1 == regwr_sel) regrd_rs1 <= regwr_data;
+  else if (load) regrd_rs1 <= (rs1 != 0) ? REG[rs1] : '0;
+end
+
+always_ff @(posedge clk) begin
+  if (regwr_en && rs2 == regwr_sel) regrd_rs2 <= regwr_data;
+  else if (load) regrd_rs2 <= (rs2 != 0) ? REG[rs2] : '0;
 end
 
 // REG Write
 always_ff @(posedge clk) begin
   if (regwr_en) REG[regwr_sel] <= regwr_data;
 end
+
 
 // ============================================================
 // Hazard tracking
@@ -155,6 +162,7 @@ always_ff @(posedge clk) begin
                 || OP == INSTR_STORE;
   end
 end
+
 
 // ------------------------------------------------------------
 `ifdef verilator

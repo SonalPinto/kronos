@@ -48,6 +48,7 @@ enum logic [1:0] {
   STALL
 } state, next_state;
 
+
 // ============================================================
 // Program Counter (PC) Generation
 always_ff @(posedge clk or negedge rstz) begin
@@ -63,6 +64,7 @@ always_ff @(posedge clk or negedge rstz) begin
     pc_last <= pc;
   end
 end
+
 
 // ============================================================
 // Instruction Fetch
@@ -130,6 +132,7 @@ always_ff @(posedge clk or negedge rstz) begin
 end
 
 assign pipe_rdy = ~fetch_vld || fetch_rdy;
+
 
 // ============================================================
 // Instruction Memory Interface

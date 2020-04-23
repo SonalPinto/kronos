@@ -14,38 +14,13 @@ typedef struct packed {
 
 typedef struct packed {
     logic [31:0] pc;
+    logic [31:0] ir;
     logic [31:0] op1;
     logic [31:0] op2;
-    logic [31:0] op3;
-    logic [31:0] op4;
     // ------------------------
     // EX controls
-    logic        cin;
-    logic        rev;
-    logic        uns;
-    logic        eq;
-    logic        inv;
-    logic        align;
-    logic [2:0]  sel;
-    // ------------------------
-    // WB controls
-    logic [4:0]  rd;
-    logic        rd_write;
-    logic        branch;
-    logic        branch_cond;
-    logic        ld;
-    logic        st;
-    logic [2:0]  funct3;
-    // ------------------------
-    // System
-    logic        csr;
-    logic        ecall;
-    logic        ebreak;
-    logic        ret;
-    logic        wfi;
-    // ------------------------
-    // Exceptions
-    logic        is_illegal;
+    logic [3:0]  aluop;
+    logic        regwr_alu;
 } pipeIDEX_t;
 
 typedef struct packed {
@@ -93,13 +68,17 @@ parameter logic [4:0] INSTR_AUIPC = 5'b00_101;
 parameter logic [4:0] INSTR_LUI   = 5'b01_101;
 
 // ============================================================
-// ALU Result Select
-parameter logic [2:0] ALU_ADDER = 3'd0;
-parameter logic [2:0] ALU_AND   = 3'd1;
-parameter logic [2:0] ALU_OR    = 3'd2;
-parameter logic [2:0] ALU_XOR   = 3'd3;
-parameter logic [2:0] ALU_COMP  = 3'd4;
-parameter logic [2:0] ALU_SHIFT = 3'd5;
+// ALU Operations
+parameter logic [3:0] ADD       = 4'b0000;
+parameter logic [3:0] SUB       = 4'b1000;
+parameter logic [3:0] SLT       = 4'b0010;
+parameter logic [3:0] SLTU      = 4'b0011;
+parameter logic [3:0] XOR       = 4'b0100;
+parameter logic [3:0] OR        = 4'b0110;
+parameter logic [3:0] AND       = 4'b0111;
+parameter logic [3:0] SLL       = 4'b0001;
+parameter logic [3:0] SRL       = 4'b0101;
+parameter logic [3:0] SRA       = 4'b1101;
 
 // ============================================================
 // Memory Acess Size
