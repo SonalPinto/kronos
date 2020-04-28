@@ -77,7 +77,7 @@ end
 always_comb begin
   next_state = state;
   /* verilator lint_off CASEINCOMPLETE */
-  case (state)
+  unique case (state)
     INIT: next_state = FETCH;
 
     FETCH:

@@ -42,12 +42,19 @@ logic [6:0] funct7;
 
 logic is_reg_write;
 
+logic [31:0] op1, op2;
 logic [3:0] aluop;
 logic regwr_alu;
+logic branch;
+
+// Address generation
+logic [31:0] addr, addr_raw, base, offset;
+logic align;
 
 // Hazard controls
 logic stall;
 logic [4:0] rpend;
+logic [31:0] rs1_data, rs2_data;
 
 // CSR register access
 logic csr_regwr;
@@ -100,31 +107,96 @@ assign regwr_alu = (rd != '0) && (OP == INSTR_LUI
 
 
 // ============================================================
-// Execute Stage Operation Decoder
+// Operation Decoder
 
 always_comb begin
   // Default ALU Operation is ADD
   aluop = ADD;
 
+  // Default ALU Operands
+  op1 = PC;
+  op2 = FOUR;
+
+  // Default addressGen operands
+  align = 1'b0;
+  base = PC;
+  offset = FOUR;
+
   /* verilator lint_off CASEINCOMPLETE */
-  case(OP)
-    // --------------------------------
+  unique case(OP)
+
+    INSTR_LUI: begin
+      op1 = ZERO;
+      op2 = immediate;
+    end
+
+    INSTR_AUIPC: begin
+      op2 = immediate;
+    end
+
+    INSTR_JAL: begin
+      op2 = FOUR;
+      offset = immediate;
+    end
+
+    INSTR_JALR: begin
+      op2 = FOUR;
+      align = 1'b1;
+      base = rs1_data;
+      offset = immediate;
+    end
+
+    INSTR_BR: begin
+      offset = immediate;
+    end
+
     INSTR_OPIMM: begin
       if (funct3 == 3'b001 || funct3 == 3'b101) aluop = {funct7[5], funct3};
       else aluop = {1'b0, funct3};
+
+      op1 = rs1_data;
+      op2 = immediate;
     end
+
     INSTR_OP: begin
       aluop = {funct7[5], funct3};
+      op1 = rs1_data;
+      op2 = rs2_data;
     end
+
   endcase // OP
   /* verilator lint_on CASEINCOMPLETE */
 end
 
 
 // ============================================================
+// Address Generation Unit
+// Straightforward 32b adder
+always_comb begin
+  addr_raw = base + offset;
+  addr[31:1] = addr_raw[31:1];
+  // blank the LSB for aligned add
+  addr[0] = ~align & addr_raw[0];
+end
+
+
+// ============================================================
+// Branch Comparator
+kronos_branch u_branch (
+  .op    (funct3  ),
+  .rs1   (rs1_data),
+  .rs2   (rs2_data),
+  .branch(branch  )
+);
+
+
+// ============================================================
 // Hazard Controls
 assign rpend = '0;
 assign stall = 1'b0;
+
+assign rs1_data = regrd_rs1;
+assign rs2_data = regrd_rs2;
 
 
 // ============================================================
@@ -147,32 +219,14 @@ always_ff @(posedge clk or negedge rstz) begin
 
       decode.aluop <= aluop;
       decode.regwr_alu <= regwr_alu;
+      decode.op1 <= op1;
+      decode.op2 <= op2;
 
-      // ALU operands
-      decode.op1 <= PC;
-      decode.op2 <= FOUR;
-      
-      /* verilator lint_off CASEINCOMPLETE */
-      case(OP)
-        INSTR_LUI: begin
-          decode.op1 <= ZERO;
-          decode.op2 <= immediate;
-        end
-        INSTR_AUIPC: begin
-          decode.op2 <= immediate;
-        end
-        INSTR_OPIMM: begin
-          decode.op1 <= regrd_rs1;
-          decode.op2 <= immediate;
-        end
-        INSTR_OP: begin
-          decode.op1 <= regrd_rs1;
-          decode.op2 <= regrd_rs2;
-        end
-      endcase // OP
+      decode.addr <= addr;
+      decode.jump <= OP == INSTR_JAL || OP == INSTR_JALR;
+      decode.branch <= branch && OP == INSTR_BR;
+
     end
-    /* verilator lint_on CASEINCOMPLETE */
-
     else if (decode_vld && decode_rdy) begin
       decode_vld <= 1'b0;
     end

@@ -17,10 +17,13 @@ typedef struct packed {
     logic [31:0] ir;
     logic [31:0] op1;
     logic [31:0] op2;
+    logic [31:0] addr;
     // ------------------------
     // EX controls
     logic [3:0]  aluop;
     logic        regwr_alu;
+    logic        jump;
+    logic        branch;
 } pipeIDEX_t;
 
 typedef struct packed {
@@ -79,6 +82,15 @@ parameter logic [3:0] AND       = 4'b0111;
 parameter logic [3:0] SLL       = 4'b0001;
 parameter logic [3:0] SRL       = 4'b0101;
 parameter logic [3:0] SRA       = 4'b1101;
+
+// ============================================================
+// Branch Operations
+parameter logic [2:0] BEQ       = 3'b000;
+parameter logic [2:0] BNE       = 3'b001;
+parameter logic [2:0] BLT       = 3'b100;
+parameter logic [2:0] BGE       = 3'b101;
+parameter logic [2:0] BLTU      = 3'b110;
+parameter logic [2:0] BGEU      = 3'b111;
 
 // ============================================================
 // Memory Acess Size

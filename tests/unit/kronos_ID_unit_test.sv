@@ -201,7 +201,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     logic [4:0] zimm;
 
     // generate scenario
-    op = $urandom_range(0,20);
+    op = $urandom_range(0,28);
     imm = $urandom();
     rs1 = $urandom();
     rs2 = $urandom();
@@ -214,6 +214,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     // Blank out decode
     decode = '0;
     decode.pc = instr.pc;
+    decode.addr = instr.pc + 4;
 
     // indicate that a register write back is required
     write_back = 0;
@@ -253,7 +254,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = ADD;
             decode.regwr_alu = rd != 0;
 
@@ -266,7 +267,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = SLT;
             decode.regwr_alu = rd != 0;
 
@@ -279,7 +280,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = SLTU;
             decode.regwr_alu = rd != 0;
 
@@ -292,7 +293,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = XOR;
             decode.regwr_alu = rd != 0;
 
@@ -305,7 +306,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = OR;
             decode.regwr_alu = rd != 0;
 
@@ -318,7 +319,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(imm[11:0]);
+            decode.op2 = $signed(imm[11:0]);
             decode.aluop = AND;
             decode.regwr_alu = rd != 0;
 
@@ -331,7 +332,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(instr.ir[31-:12]);
+            decode.op2 = $signed(instr.ir[31-:12]);
             decode.aluop = SLL;
             decode.regwr_alu = rd != 0;
 
@@ -344,7 +345,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(instr.ir[31-:12]);
+            decode.op2 = $signed(instr.ir[31-:12]);
             decode.aluop = SRL;
             decode.regwr_alu = rd != 0;
 
@@ -357,7 +358,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             decode.ir = instr.ir;
 
             decode.op1 = REG[rs1];
-            decode.op2 = signed'(instr.ir[31-:12]);
+            decode.op2 = $signed(instr.ir[31-:12]);
             decode.aluop = SRA;
             decode.regwr_alu = rd != 0;
 
@@ -495,136 +496,126 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
             write_back = rd != 0;
         end
 
-        // 21: begin
-        //     optype = "JAL";
-        //     instr.ir = rv32_jal(rd, imm);
+        21: begin
+            optype = "JAL";
+            instr.ir = rv32_jal(rd, imm);
+            decode.ir = instr.ir;
 
-        //     decode.op1 = instr.pc;
-        //     decode.op2 = 4;
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[20:1], 1'b0});
-        //     decode.rd  = rd;
-        //     decode.rd_write = rd != 0;
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
+            decode.addr = $signed(instr.pc) + $signed({imm[20:1], 1'b0});
 
-        //     decode.branch = 1;
-        // end
+            decode.regwr_alu = rd != 0;
+            write_back = rd != 0;
 
-        // 22: begin
-        //     optype = "JALR";
-        //     instr.ir = rv32_jalr(rd, rs1, imm);
+            decode.jump = 1;
+        end
 
-        //     decode.op1 = instr.pc;
-        //     decode.op2 = 4;
-        //     decode.op3 = REG[rs1];
-        //     decode.op4 = signed'(imm[11:0]);
-        //     decode.rd  = rd;
-        //     decode.rd_write = rd != 0;
+        22: begin
+            optype = "JALR";
+            instr.ir = rv32_jalr(rd, rs1, imm);
+            decode.ir = instr.ir;
 
-        //     decode.align = 1;
-        //     decode.branch = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
+            decode.addr = ($signed(REG[rs1]) + $signed(imm[11:0])) & ~1;
 
-        // 23: begin
-        //     optype = "BEQ";
-        //     instr.ir = rv32_beq(rs1, rs2, imm);
+            decode.regwr_alu = rd != 0;
+            write_back = rd != 0;
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.jump = 1;
+        end
 
-        //     decode.eq = 1;
-        //     decode.sel = ALU_COMP;
+        23: begin
+            optype = "BEQ";
+            instr.ir = rv32_beq(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
 
-        // 24: begin
-        //     optype = "BNE";
-        //     instr.ir = rv32_bne(rs1, rs2, imm);
+            $display("%b", $signed(imm[11:0]));
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = REG[rs1] == REG[rs2];
+        end
 
-        //     decode.eq = 1;
-        //     decode.inv = 1;
-        //     decode.sel = ALU_COMP;
+        24: begin
+            optype = "BNE";
+            instr.ir = rv32_bne(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
 
-        // 25: begin
-        //     optype = "BLT";
-        //     instr.ir = rv32_blt(rs1, rs2, imm);
+            $display("%b", $signed(imm[11:0]));
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = REG[rs1] != REG[rs2];
+        end
 
-        //     decode.cin = 1;
-        //     decode.sel = ALU_COMP;
+        25: begin
+            optype = "BLT";
+            instr.ir = rv32_blt(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
 
-        // 26: begin
-        //     optype = "BGE";
-        //     instr.ir = rv32_bge(rs1, rs2, imm);
+            $display("%b", $signed(imm[11:0]));
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = $signed(REG[rs1]) < $signed(REG[rs2]);
+        end
 
-        //     decode.cin = 1;
-        //     decode.inv = 1;
-        //     decode.sel = ALU_COMP;
+        26: begin
+            optype = "BGE";
+            instr.ir = rv32_bge(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
 
-        // 27: begin
-        //     optype = "BLTU";
-        //     instr.ir = rv32_bltu(rs1, rs2, imm);
+            $display("%b", $signed(imm[11:0]));
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = $signed(REG[rs1]) >= $signed(REG[rs2]);
+        end
 
-        //     decode.cin = 1;
-        //     decode.uns = 1;
-        //     decode.sel = ALU_COMP;
+        27: begin
+            optype = "BLTU";
+            instr.ir = rv32_bltu(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
 
-        // 28: begin
-        //     optype = "BGEU";
-        //     instr.ir = rv32_bgeu(rs1, rs2, imm);
+            $display("%b", $signed(imm[11:0]));
 
-        //     decode.op1 = REG[rs1];
-        //     decode.op2 = REG[rs2];
-        //     decode.op3 = instr.pc;
-        //     decode.op4 = signed'({imm[12:1], 1'b0});
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = REG[rs1] < REG[rs2];
+        end
 
-        //     decode.cin = 1;
-        //     decode.inv = 1;
-        //     decode.uns = 1;
-        //     decode.sel = ALU_COMP;
+        28: begin
+            optype = "BGEU";
+            instr.ir = rv32_bgeu(rs1, rs2, imm);
+            decode.ir = instr.ir;
 
-        //     decode.branch_cond = 1;
-        // end
+            decode.op1 = instr.pc;
+            decode.op2 = 4;
+
+            $display("%b", $signed(imm[11:0]));
+
+            decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
+            decode.branch = REG[rs1] >= REG[rs2];
+        end
 
         // 29: begin
         //     optype = "LB";
         //     instr.ir = rv32_lb(rd, rs1, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
 
         //     decode.rd = rd;
         //     decode.ld = 1;
@@ -637,7 +628,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_lh(rd, rs1, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
 
         //     decode.rd = rd;
         //     decode.ld = 1;
@@ -650,7 +641,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_lw(rd, rs1, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
 
         //     decode.rd = rd;
         //     decode.ld = 1;
@@ -663,7 +654,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_lbu(rd, rs1, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
 
         //     decode.rd = rd;
         //     decode.ld = 1;
@@ -676,7 +667,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_lhu(rd, rs1, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
 
         //     decode.rd = rd;
         //     decode.ld = 1;
@@ -689,7 +680,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_sb(rs1, rs2, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
         //     decode.op3 = 0;
         //     decode.op4 = REG[rs2];
 
@@ -701,7 +692,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_sh(rs1, rs2, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
         //     decode.op3 = 0;
         //     decode.op4 = REG[rs2];
 
@@ -713,7 +704,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         //     instr.ir = rv32_sw(rs1, rs2, imm);
 
         //     decode.op1 = REG[rs1];
-        //     decode.op2 = signed'(imm[11:0]);
+        //     decode.op2 = $signed(imm[11:0]);
         //     decode.op3 = 0;
         //     decode.op4 = REG[rs2];
 

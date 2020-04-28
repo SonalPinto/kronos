@@ -13,9 +13,12 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("---- OP --------");
     $display("  op1: %h",           d.op1);
     $display("  op2: %h",           d.op2);
+    $display("  addr: %h",          d.addr);
     $display("---- EXCTRL ----");
     $display("  aluop: %b",         d.aluop);
     $display("  regwr_alu: %b",     d.regwr_alu);
+    $display("  jump: %b",          d.jump);
+    $display("  branch: %b",        d.branch);
 endtask
 
 task automatic print_execute(input pipeEXWB_t e);

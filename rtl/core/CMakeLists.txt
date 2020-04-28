@@ -5,6 +5,11 @@ add_hdl_source(kronos_types.sv)
 
 add_hdl_source(kronos_counter64.sv)
 
+add_hdl_source(kronos_branch.sv
+  DEPENDS
+    kronos_types
+)
+
 add_hdl_source(kronos_hcu.sv
   DEPENDS
     kronos_types
@@ -40,6 +45,7 @@ add_hdl_source(kronos_RF.sv
 add_hdl_source(kronos_ID.sv
   DEPENDS
     kronos_types
+    kronos_branch
 )
 
 add_hdl_source(kronos_EX.sv
