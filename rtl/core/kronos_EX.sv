@@ -3,94 +3,87 @@
 
 /*
 Kronos Execution Unit
-
-Pipestage with the Kronos ALU
-
 */
 
-
 module kronos_EX
-    import kronos_types::*;
+  import kronos_types::*;
 (
-    input  logic        clk,
-    input  logic        rstz,
-    input  logic        flush,
-    // IF/ID
-    input  pipeIDEX_t   decode,
-    input  logic        pipe_in_vld,
-    output logic        pipe_in_rdy,
-    // EX/WB
-    output pipeEXWB_t   execute,
-    output logic        pipe_out_vld,
-    input  logic        pipe_out_rdy
+  input  logic        clk,
+  input  logic        rstz,
+  // ID/EX
+  input  pipeIDEX_t   decode,
+  input  logic        decode_vld,
+  output logic        decode_rdy,
+  // REG Write
+  output logic [31:0] regwr_data,
+  output logic [4:0]  regwr_sel,
+  output logic        regwr_en,
+  // Branch
+  output logic [31:0] branch_target,
+  output logic        branch
 );
 
-logic [31:0] result1;
-logic [31:0] result2;
+logic [31:0] result;
+logic [4:0] rd;
+
+logic wb_valid;
+logic branch_request;
+
+enum logic {
+  STEADY
+} state, next_state;
+
+// ============================================================
+// EX Sequencer
+always_ff @(posedge clk or negedge rstz) begin
+  if (~rstz) state <= STEADY;
+  else state <= next_state;
+end
+
+always_comb begin
+  next_state = state;
+end
+
+assign decode_rdy = state == STEADY;
+
+// Direct write-back is always valid in continued steady state
+assign wb_valid = decode_vld && decode_rdy;
+
+// IR Segments
+assign rd  = decode.ir[11:7];
 
 // ============================================================
 // ALU
 kronos_alu u_alu (
-    .op1    (decode.op1  ),
-    .op2    (decode.op2  ),
-    .op3    (decode.op3  ),
-    .op4    (decode.op4  ),
-    .cin    (decode.cin  ),
-    .rev    (decode.rev  ),
-    .uns    (decode.uns  ),
-    .eq     (decode.eq   ),
-    .inv    (decode.inv  ),
-    .align  (decode.align),
-    .sel    (decode.sel  ),
-    .result1(result1     ),
-    .result2(result2     )
+  .op1   (decode.op1  ),
+  .op2   (decode.op2  ),
+  .aluop (decode.aluop),
+  .result(result      )
 );
 
 // ============================================================
-// Execute Output Stage (calculated results)
-
+// Register Write Back
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        pipe_out_vld <= 1'b0;
+  if (~rstz) begin
+    regwr_en <= 1'b0;
+  end
+  else begin
+    if (wb_valid && decode.regwr_alu) begin
+      // Write back ALU result
+      regwr_en <= 1'b1;
+      regwr_sel <= rd;
+      regwr_data <= result;
     end
     else begin
-        if (flush) begin
-            pipe_out_vld <= 1'b0;
-        end
-        else if(pipe_in_vld && pipe_in_rdy) begin
-            pipe_out_vld <= 1'b1;
-
-            // Results
-            execute.result1 <= result1;
-            execute.result2 <= result2;
-
-            // Forwarded PC
-            execute.pc          <= decode.pc;
-            // Forward WB controls
-            execute.rd          <= decode.rd;
-            execute.rd_write    <= decode.rd_write;
-            execute.branch      <= decode.branch;
-            execute.branch_cond <= decode.branch_cond;
-            execute.ld          <= decode.ld;
-            execute.st          <= decode.st;
-            execute.funct3      <= decode.funct3;
-            // Forward System controls
-            execute.csr         <= decode.csr;
-            execute.ecall       <= decode.ecall;
-            execute.ebreak      <= decode.ebreak;
-            execute.ret         <= decode.ret;
-            execute.wfi         <= decode.wfi;
-            // Forward caught exceptions
-            execute.is_illegal  <= decode.is_illegal;
-
-        end
-        else if (pipe_out_vld && pipe_out_rdy) begin
-            pipe_out_vld <= 1'b0;
-        end
+      regwr_en <= 1'b0;
     end
+  end
 end
 
-// Pipethru can only happen in the EX1 state
-assign pipe_in_rdy = ~pipe_out_vld | pipe_out_rdy;
+// ============================================================
+// Jump and Branch
+assign branch_target = decode.addr;
+assign branch_request = decode.jump || decode.branch;
+assign branch = wb_valid && branch_request;
 
 endmodule

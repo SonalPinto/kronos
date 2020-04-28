@@ -22,6 +22,16 @@ add_hdl_unit_test(kronos_branch_unit_test.sv
     kronos_branch
 )
 
+add_hdl_unit_test(kronos_EX_branch_unit_test.sv
+  DEPENDS
+    kronos_RF
+    kronos_ID
+    kronos_EX
+    rv32_assembler
+)
+
+# -------------------------------------------------------------
+
 add_hdl_unit_test(kronos_EX_unit_test.sv
   DEPENDS
     kronos_EX
@@ -72,13 +82,7 @@ add_hdl_unit_test(hcu_unit_test.sv
     utils
 )
 
-add_hdl_unit_test(branch_unit_test.sv
-  DEPENDS
-    kronos_ID
-    kronos_EX
-    kronos_WB
-    rv32_assembler
-)
+# -------------------------------------------------------------
 
 add_hdl_unit_test(ice40up_sram_unit_test.sv
   DEPENDS

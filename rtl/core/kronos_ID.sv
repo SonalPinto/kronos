@@ -164,6 +164,9 @@ always_comb begin
       op2 = rs2_data;
     end
 
+    default: begin
+    end
+
   endcase // OP
   /* verilator lint_on CASEINCOMPLETE */
 end

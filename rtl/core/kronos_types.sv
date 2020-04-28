@@ -26,32 +26,6 @@ typedef struct packed {
     logic        branch;
 } pipeIDEX_t;
 
-typedef struct packed {
-    logic [31:0] pc;
-    logic [31:0] result1;
-    logic [31:0] result2;
-    // ------------------------
-    // WB controls
-    logic [4:0]  rd;
-    logic        rd_write;
-    logic        branch;
-    logic        branch_cond;
-    logic        ld;
-    logic        st;
-    logic [2:0]  funct3;
-    // ------------------------
-    // System
-    logic        csr;
-    logic        ecall;
-    logic        ebreak;
-    logic        ret;
-    logic        wfi;
-    // ------------------------
-    // Exceptions
-    logic        is_illegal;
-} pipeEXWB_t;
-
-
 // ============================================================
 // Instruction Types: {opcode[6:2]}
 parameter logic [4:0] INSTR_LOAD  = 5'b00_000;
@@ -93,7 +67,7 @@ parameter logic [2:0] BLTU      = 3'b110;
 parameter logic [2:0] BGEU      = 3'b111;
 
 // ============================================================
-// Memory Acess Size
+// Memory Access Size
 parameter logic [1:0] BYTE      = 2'b00;
 parameter logic [1:0] HALF      = 2'b01;
 parameter logic [1:0] WORD      = 2'b10;
