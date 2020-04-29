@@ -13,9 +13,11 @@ module kronos_RF
   import kronos_types::*;
 (
   input  logic        clk,
-  input  logic        load,
+  input  logic        rstz,
   // Fetch
   input  logic [31:0] instr_data,
+  input  logic        instr_vld,
+  input  logic        fetch_rdy,
   // Decode
   output logic [31:0] immediate,
   output logic [31:0] regrd_rs1,
@@ -27,6 +29,8 @@ module kronos_RF
   input  logic [4:0]  regwr_sel,
   input  logic        regwr_en
 );
+
+logic reg_vld, instr_rdy;
 
 logic [31:0] IR;
 logic [4:0] OP;
@@ -46,6 +50,7 @@ logic [5:0]     ImmC;
 logic           ImmD;
 logic [7:0]     ImmE;
 logic [11:0]    ImmF;
+logic [31:0]    Imm;
 
 logic sign;
 logic format_I;
@@ -55,6 +60,8 @@ logic format_B;
 logic format_U;
 
 logic csr_regrd;
+logic is_regrd_rs1_en;
+logic is_regrd_rs2_en;
 
 
 // ============================================================
@@ -112,32 +119,7 @@ always_comb begin
 end
 
 // As A-Team's Hannibal would say, "I love it when a plan comes together"
-always_ff @(posedge clk) begin
-  if (load) immediate <= {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
-end
-
-
-// ============================================================
-// Integer Registers
-
-logic [31:0] REG [32] /* synthesis syn_ramstyle = "no_rw_check" */;
-
-// REG read
-always_ff @(posedge clk) begin
-  if (regwr_en && rs1 == regwr_sel) regrd_rs1 <= regwr_data;
-  else if (load) regrd_rs1 <= (rs1 != 0) ? REG[rs1] : '0;
-end
-
-always_ff @(posedge clk) begin
-  if (regwr_en && rs2 == regwr_sel) regrd_rs2 <= regwr_data;
-  else if (load) regrd_rs2 <= (rs2 != 0) ? REG[rs2] : '0;
-end
-
-// REG Write
-always_ff @(posedge clk) begin
-  if (regwr_en) REG[regwr_sel] <= regwr_data;
-end
-
+assign Imm = {ImmF, ImmE, ImmD, ImmC, ImmB, ImmA};
 
 // ============================================================
 // Hazard tracking
@@ -147,9 +129,7 @@ assign csr_regrd = OP == INSTR_SYS && (funct3 == 3'b001
                                     || funct3 == 3'b011);
 
 // RS1/RS2 register read conditions
-always_ff @(posedge clk) begin
-  if (load) begin
-    regrd_rs1_en <= OP == INSTR_OPIMM 
+assign is_regrd_rs1_en = OP == INSTR_OPIMM 
                 || OP == INSTR_OP 
                 || OP == INSTR_JALR 
                 || OP == INSTR_BR
@@ -157,12 +137,59 @@ always_ff @(posedge clk) begin
                 || OP == INSTR_STORE
                 || csr_regrd;
 
-    regrd_rs2_en <= OP == INSTR_OP 
+assign is_regrd_rs2_en = OP == INSTR_OP 
                 || OP == INSTR_BR
                 || OP == INSTR_STORE;
+
+
+
+// ============================================================
+// Integer Registers
+
+logic [31:0] REG [32] /* synthesis syn_ramstyle = "no_rw_check" */;
+
+// REG Read
+always_ff @(posedge clk or negedge rstz) begin
+  if (~rstz) begin
+    reg_vld <= 1'b0;
+  end
+  else begin
+    if (instr_vld && instr_rdy) begin
+      reg_vld <= 1'b1;
+
+      // Load next operands for instruction,
+      // Ensuring write-bypass for rs1/rs2
+      immediate <= Imm;
+      
+      if (rs1 == 0) regrd_rs1 <= '0;
+      else if (regwr_en && rs1 == regwr_sel) regrd_rs1 <= regwr_data;
+      else regrd_rs1 <= REG[rs1];
+
+      if (rs2 == 0) regrd_rs2 <= '0;
+      else if (regwr_en && rs2 == regwr_sel) regrd_rs2 <= regwr_data;
+      else regrd_rs2 <= REG[rs2];
+
+      regrd_rs1_en <= is_regrd_rs1_en;
+      regrd_rs2_en <= is_regrd_rs2_en;
+    end
+    else if (reg_vld && regwr_en) begin
+      // Update read registers
+      if (rs1 == regwr_sel) regrd_rs1 <= regwr_data;
+      if (rs2 == regwr_sel) regrd_rs2 <= regwr_data;
+    end
+    else if (reg_vld && fetch_rdy) begin
+      // drain
+      reg_vld <= 1'b0;
+    end
   end
 end
 
+assign instr_rdy = ~reg_vld | fetch_rdy;
+
+// REG Write
+always_ff @(posedge clk) begin
+  if (regwr_en) REG[regwr_sel] <= regwr_data;
+end
 
 // ------------------------------------------------------------
 `ifdef verilator

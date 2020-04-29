@@ -28,13 +28,15 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
-logic load;
+logic instr_vld;
 logic [31:0] instr_data;
 
 kronos_RF u_rf (
   .clk         (clk         ),
-  .load        (load        ),
+  .rstz        (rstz        ),
   .instr_data  (instr_data  ),
+  .instr_vld   (instr_vld   ),
+  .fetch_rdy   (fetch_rdy   ),
   .immediate   (immediate   ),
   .regrd_rs1   (regrd_rs1   ),
   .regrd_rs2   (regrd_rs2   ),
@@ -72,7 +74,7 @@ default clocking cb @(posedge clk);
   default input #10ps output #10ps;
   input decode_vld, decode;
   input negedge fetch_rdy;
-  output fetch_vld, fetch, regwr_en, load, instr_data;
+  output fetch_vld, fetch, regwr_en, instr_vld, instr_data;
   output negedge decode_rdy;
 endclocking
 
@@ -94,7 +96,7 @@ logic [31:0] REG [32];
     regwr_en = 0;
     regwr_sel = 0;
 
-    load = 0;
+    instr_vld = 0;
     flush = 0;
 
     // init regfile with random values
@@ -131,11 +133,11 @@ logic [31:0] REG [32];
 
       @(cb);
       cb.instr_data <= tinstr.ir;
-      cb.load <= 1;
+      cb.instr_vld <= 1;
       @(cb);
       cb.fetch <= tinstr;
       cb.fetch_vld <= 1;
-      cb.load <= 0;
+      cb.instr_vld <= 0;
       @(cb iff cb.fetch_rdy) begin
         cb.fetch_vld <= 0;
       end

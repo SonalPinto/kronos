@@ -54,8 +54,8 @@ logic [31:0] p0, p1, p2, p3, p4;
 
 // ============================================================
 //  Operation Decode
-assign cin = aluop[3];
-assign rev = aluop[2];
+assign cin = aluop[3] || aluop[1];
+assign rev = ~aluop[2];
 assign uns = aluop[0];
 
 // ============================================================

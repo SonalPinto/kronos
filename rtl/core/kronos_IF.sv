@@ -30,16 +30,26 @@ module kronos_IF
   input  logic        instr_ack,
   // IF/ID interface
   output pipeIFID_t   fetch,
+  output logic [31:0] immediate,
+  output logic [31:0] regrd_rs1,
+  output logic [31:0] regrd_rs2,
+  output logic        regrd_rs1_en,
+  output logic        regrd_rs2_en,
   output logic        fetch_vld,
   input  logic        fetch_rdy,
   // BRANCH
   input logic [31:0]  branch_target,
-  input logic         branch
+  input logic         branch,
+  // Write back
+  input  logic [31:0] regwr_data,
+  input  logic [4:0]  regwr_sel,
+  input  logic        regwr_en
 );
 
 logic [31:0] pc, pc_last;
 logic [31:0] skid_buffer;
 logic pipe_rdy;
+logic instr_vld;
 
 enum logic [1:0] {
   INIT,
@@ -140,5 +150,26 @@ assign pipe_rdy = ~fetch_vld || fetch_rdy;
 assign instr_addr = ((state == FETCH || state == MISS) && ~instr_ack) ? pc_last : pc;
 assign instr_req = 1'b1;
 
+// ============================================================
+// Register File
+
+assign instr_vld = ((state == FETCH || state == MISS) && instr_ack && pipe_rdy)
+                || (state == STALL && fetch_rdy);
+
+kronos_RF u_rf (
+  .clk         (clk         ),
+  .rstz        (rstz        ),
+  .instr_data  (instr_data  ),
+  .instr_vld   (instr_vld   ),
+  .fetch_rdy   (fetch_rdy   ),
+  .immediate   (immediate   ),
+  .regrd_rs1   (regrd_rs1   ),
+  .regrd_rs2   (regrd_rs2   ),
+  .regrd_rs1_en(regrd_rs1_en),
+  .regrd_rs2_en(regrd_rs2_en),
+  .regwr_data  (regwr_data  ),
+  .regwr_sel   (regwr_sel   ),
+  .regwr_en    (regwr_en    )
+);
 
 endmodule

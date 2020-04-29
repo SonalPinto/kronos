@@ -18,6 +18,14 @@ logic fetch_vld;
 logic fetch_rdy;
 logic [31:0] branch_target;
 logic branch;
+logic [31:0] immediate;
+logic [31:0] regrd_rs1;
+logic [31:0] regrd_rs2;
+logic regrd_rs1_en;
+logic regrd_rs2_en;
+logic [31:0] regwr_data;
+logic [4:0] regwr_sel;
+logic regwr_en;
 
 logic miss;
 
@@ -29,10 +37,18 @@ kronos_IF u_dut (
   .instr_req    (instr_req    ),
   .instr_ack    (instr_ack    ),
   .fetch        (fetch        ),
+  .immediate    (immediate    ),
+  .regrd_rs1    (regrd_rs1    ),
+  .regrd_rs2    (regrd_rs2    ),
+  .regrd_rs1_en (regrd_rs1_en ),
+  .regrd_rs2_en (regrd_rs2_en ),
   .fetch_vld    (fetch_vld    ),
   .fetch_rdy    (fetch_rdy    ),
   .branch_target(branch_target),
-  .branch       (branch       )
+  .branch       (branch       ),
+  .regwr_data   (regwr_data   ),
+  .regwr_sel    (regwr_sel    ),
+  .regwr_en     (regwr_en     )
 );
 
 spsram32_model #(.WORDS(256)) u_imem (
@@ -55,6 +71,10 @@ default clocking cb @(posedge clk);
   output negedge fetch_rdy;
 endclocking
 
+always_ff @(posedge clk) begin
+  assert (fetch_vld == u_dut.u_rf.reg_vld);
+end
+
 // ============================================================
 
 `TEST_SUITE begin
@@ -66,6 +86,7 @@ endclocking
     branch = 0;
     branch_target = 0;
     fetch_rdy = 0;
+    regwr_en = 0;
 
     for(int i=0; i<256; i++)
       u_imem.MEM[i] = $urandom;
