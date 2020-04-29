@@ -3,7 +3,7 @@
 
 `include "vunit_defines.svh"
 
-module tb_branch_ut;
+module tb_EX_ut;
 
 import kronos_types::*;
 import rv32_assembler::*;

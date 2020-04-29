@@ -4,106 +4,99 @@
 /*
 Kronos Hazard Control Unit
 
-The HCU monitors for Register Read hazards at the Decode Stage
-These hazards occur when a register is being read before it's
-latest value is written back from the Write Back stage,
-either as a result of a Direct Write or a Load
-
+Minimalist HCU to detect pending writes on an operand and assert a STALL
+condition that halts the pipeline.
 */
-
 
 module kronos_hcu 
-    import kronos_types::*;
+  import kronos_types::*;
 (
-    input  logic        clk,
-    input  logic        rstz,
-    input  logic        flush,
-    // Decoder inputs
-    input  logic [4:0]  rs1,
-    input  logic [4:0]  rs2,
-    input  logic [4:0]  rd,
-    input  logic        regrd_rs1_en,
-    input  logic        regrd_rs2_en,
-    input  logic        upgrade,
-    // Write Back inputs
-    input  logic [4:0]  regwr_sel,
-    input  logic        downgrade,
-    // Decoder Stall & forward status
-    output logic        rs1_forward,
-    output logic        rs2_forward,
-    output logic        stall
+  input  logic        clk,
+  input  logic        rstz,
+  input  logic        flush,
+  // Instruction
+  input  logic [31:0] instr,
+  input  logic        regrd_rs1_en,
+  input  logic        regrd_rs2_en,
+  input  logic        fetch_vld,
+  input  logic        fetch_rdy,
+  // REG Write
+  input  logic [4:0]  regwr_sel,
+  input  logic        regwr_en,
+  // Stall
+  output logic        stall
 );
 
-/*
-Register Pending Tracker
-------------------------
-In the Kronos pipeline, there are 2 stages ahead of the Decoder.
+logic [4:0] OP;
+logic [4:0] rs1, rs2, rd;
+logic [2:0] funct3;
 
-Hence, there can be a maximum of two pending writes to any register.
+// Hazard controls
+logic is_reg_write, csr_regwr;
+logic regwr_pending;
+logic rs1_hazard, rs2_hazard;
+logic [4:0] rpend;
 
-This is tracked as 2b shift register which shifts in a '1' to track
-that a write is pending, and shifts out when it is written back.
+// ============================================================
+// Hazard Tracking and Control
 
-This is representative of upgrading or downgrading the hazard level
-on that register.
+// Aliases to IR segments
+assign OP = instr[6:2];
+assign rs1 = instr[19:15];
+assign rs2 = instr[24:20];
+assign rd  = instr[11: 7];
+assign funct3 = instr[14:12];
 
-The LSB of this 2b hazard vector indicates the hazard status.
+// Indicates a register will be written by this instructions
+// regardless of source. This is useful for hazard tracking
+assign is_reg_write = (rd != '0) && (OP == INSTR_LUI
+                    || OP == INSTR_AUIPC
+                    || OP == INSTR_JAL
+                    || OP == INSTR_JALR
+                    || OP == INSTR_OPIMM 
+                    || OP == INSTR_OP
+                    || OP == INSTR_LOAD
+                    || csr_regwr);
 
-Controls,
-Upgrade     : decode is ready to register for the next stage, and regwr_rd_en is valid
-Downgrade   : write back is valid, i.e. regwr_en
+assign csr_regwr = OP == INSTR_SYS && (funct3 == 3'b001
+                    || funct3 == 3'b010
+                    || funct3 == 3'b011
+                    || funct3 == 3'b101
+                    || funct3 == 3'b110
+                    || funct3 == 3'b111);
 
-Note,
-1. This HCU design scales really well. For deeper levels of 
-pending write-backs (downgrades), the hazard vector needs to be widened.
-However, the stall condition only checks the LSB.
+// Hazard on register operands
+assign rs1_hazard = regrd_rs1_en & regwr_pending & rpend == rs1;
+assign rs2_hazard = regrd_rs2_en & regwr_pending & rpend == rs2;
 
-2. Register forwarding is possible when the hazard level is 1
-
-This architecture can pretty much be used anywhere and at any stage if the IO is generalized
-
-*/
-
-logic [31:0][1:0] rpend;
-logic rs1_stall, rs2_stall;
+// Stall condition if either operand has a hazard,
+// and register write back isn't ready
+assign stall = (rs1_hazard | rs2_hazard) & ~(regwr_en & rpend == regwr_sel);
 
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        rpend <= '0;
+  if (~rstz) begin
+    regwr_pending <= 1'b0;
+  end
+  else begin
+    if (flush) begin
+      regwr_pending <= 1'b0;
     end
-    else begin
-        if (flush) begin
-            rpend <= '0;
-        end
-        else if (upgrade && ~downgrade) begin
-            // Decode ready. Upgrade register's hazard level
-            rpend[rd] <= {rpend[rd][0], 1'b1};
-        end
-        else if (~upgrade && downgrade) begin
-            // Register written back. Downgrade register's hazard level
-            rpend[regwr_sel] <= {1'b0, rpend[regwr_sel][1]};
-        end
-        else if (upgrade && downgrade) begin
-            // Hazard level remains the same if both decoder and write
-            // back collide on the same register
-            // Else, upgrade and downgrade specified registers
-            if (rd != regwr_sel) begin
-                rpend[rd] <= {rpend[rd][0], 1'b1};
-                rpend[regwr_sel] <= {1'b0, rpend[regwr_sel][1]};
-            end
-        end
+    else if(fetch_vld && fetch_rdy) begin
+      regwr_pending <= is_reg_write;
+      rpend <= rd;
     end
+    else if(regwr_pending) begin
+      regwr_pending <= ~(regwr_en & rpend == regwr_sel);
+    end
+  end
 end
 
-// Detect register forwarding
-assign rs1_forward = downgrade && rs1 == regwr_sel && rpend[rs1] == 2'b01;
-assign rs2_forward = downgrade && rs2 == regwr_sel && rpend[rs2] == 2'b01;
-
-// Stall conditions
-assign rs1_stall = regrd_rs1_en && rpend[rs1][0] && ~rs1_forward;
-assign rs2_stall = regrd_rs2_en && rpend[rs2][0] && ~rs2_forward;
-
-// Stall if rs1 or rs2 is pending, and the register operands aren't being forwarded
-assign stall = rs1_stall || rs2_stall;
+// ------------------------------------------------------------
+`ifdef verilator
+logic _unused = &{1'b0
+    , instr[1:0]
+    , instr[31:25]
+};
+`endif
 
 endmodule

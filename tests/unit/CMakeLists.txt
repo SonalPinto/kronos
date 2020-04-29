@@ -69,13 +69,6 @@ add_hdl_unit_test(core_adv_unit_test.sv
      fibonnaci
 )
 
-add_hdl_unit_test(hcu_unit_test.sv
-  DEPENDS
-    kronos_ID
-    rv32_assembler
-    utils
-)
-
 # -------------------------------------------------------------
 
 add_hdl_unit_test(ice40up_sram_unit_test.sv

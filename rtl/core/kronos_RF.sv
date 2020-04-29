@@ -31,6 +31,7 @@ module kronos_RF
 );
 
 logic reg_vld, instr_rdy;
+logic [4:0] reg_rs1, reg_rs2;
 
 logic [31:0] IR;
 logic [4:0] OP;
@@ -74,7 +75,6 @@ assign OP = IR[6:2];
 assign rs1 = IR[19:15];
 assign rs2 = IR[24:20];
 assign funct3 = IR[14:12];
-
 
 // ============================================================
 // Immediate Decoder
@@ -142,7 +142,6 @@ assign is_regrd_rs2_en = OP == INSTR_OP
                 || OP == INSTR_STORE;
 
 
-
 // ============================================================
 // Integer Registers
 
@@ -171,11 +170,15 @@ always_ff @(posedge clk or negedge rstz) begin
 
       regrd_rs1_en <= is_regrd_rs1_en;
       regrd_rs2_en <= is_regrd_rs2_en;
+
+      reg_rs1 <= rs1;
+      reg_rs2 <= rs2;
     end
     else if (reg_vld && regwr_en) begin
-      // Update read registers
-      if (rs1 == regwr_sel) regrd_rs1 <= regwr_data;
-      if (rs2 == regwr_sel) regrd_rs2 <= regwr_data;
+      // Update register operands with latest data when stalling
+      // i.e. latched register forwarding
+      if (reg_rs1 == regwr_sel) regrd_rs1 <= regwr_data;
+      if (reg_rs2 == regwr_sel) regrd_rs2 <= regwr_data;
     end
     else if (reg_vld && fetch_rdy) begin
       // drain

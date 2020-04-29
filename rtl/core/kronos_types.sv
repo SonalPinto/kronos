@@ -66,6 +66,10 @@ parameter logic [2:0] BGE       = 3'b101;
 parameter logic [2:0] BLTU      = 3'b110;
 parameter logic [2:0] BGEU      = 3'b111;
 
+parameter logic [1:0] EQ        = 2'b00;
+parameter logic [1:0] LT        = 2'b01;
+parameter logic [1:0] GT        = 2'b10;
+
 // ============================================================
 // Memory Access Size
 parameter logic [1:0] BYTE      = 2'b00;

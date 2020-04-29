@@ -10,12 +10,12 @@ add_hdl_source(kronos_branch.sv
     kronos_types
 )
 
-add_hdl_source(kronos_hcu.sv
+add_hdl_source(kronos_alu.sv
   DEPENDS
     kronos_types
 )
 
-add_hdl_source(kronos_alu.sv
+add_hdl_source(kronos_hcu.sv
   DEPENDS
     kronos_types
 )
@@ -47,6 +47,7 @@ add_hdl_source(kronos_ID.sv
   DEPENDS
     kronos_types
     kronos_branch
+    kronos_hcu
 )
 
 add_hdl_source(kronos_EX.sv
@@ -68,5 +69,4 @@ add_hdl_source(kronos_core.sv
     kronos_IF
     kronos_ID
     kronos_EX
-    kronos_WB
 )

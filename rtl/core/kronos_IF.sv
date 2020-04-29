@@ -14,6 +14,7 @@ Kronos Instruction Fetch
       be leisurely driven valid next cycle. No need to clock the SPSRAM on the off-edge
       to get the ack on the same cycle as the req. You could if you wanted to, but not
       required.
+  - Houses the Kronos Register File
 */
 
 module kronos_IF
@@ -50,6 +51,7 @@ logic [31:0] pc, pc_last;
 logic [31:0] skid_buffer;
 logic pipe_rdy;
 logic instr_vld;
+logic [31:0] next_instr;
 
 enum logic [1:0] {
   INIT,
@@ -153,13 +155,25 @@ assign instr_req = 1'b1;
 // ============================================================
 // Register File
 
-assign instr_vld = ((state == FETCH || state == MISS) && instr_ack && pipe_rdy)
-                || (state == STALL && fetch_rdy);
+always_comb begin
+  if ((state == FETCH || state == MISS) && instr_ack && pipe_rdy) begin
+    instr_vld = 1'b1;
+    next_instr = instr_data;
+  end
+  else if (state == STALL && fetch_rdy) begin
+    instr_vld = 1'b1;
+    next_instr = skid_buffer;
+  end
+  else begin
+    instr_vld = 1'b0;
+    next_instr = instr_data;
+  end
+end
 
 kronos_RF u_rf (
   .clk         (clk         ),
   .rstz        (rstz        ),
-  .instr_data  (instr_data  ),
+  .instr_data  (next_instr  ),
   .instr_vld   (instr_vld   ),
   .fetch_rdy   (fetch_rdy   ),
   .immediate   (immediate   ),

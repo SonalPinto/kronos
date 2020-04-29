@@ -34,10 +34,6 @@ module kronos_branch
   output logic        branch
 );
 
-localparam logic [1:0] EQ = 2'b00;
-localparam logic [1:0] LT = 2'b01;
-localparam logic [1:0] GT = 2'b10;
-
 logic [3:0][7:0] a, b;
 assign a = rs1;
 assign b = rs2;
