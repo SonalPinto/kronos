@@ -15,12 +15,18 @@ Kronos Instruction Fetch
       to get the ack on the same cycle as the req. You could if you wanted to, but not
       required.
   - Houses the Kronos Register File
+
+FAST_BRANCH
+  - Branch instructions take 2 cycles because the PC is set first. But, with FAST_BRANCH,
+    the branch_target is forwarded for instruction fetch. Costs an extra adder, 
+    but jumps are 1 cycle faster.
 */
 
 module kronos_IF
   import kronos_types::*;
 #(
-  parameter logic [31:0] BOOT_ADDR = 32'h0
+  parameter logic [31:0] BOOT_ADDR = 32'h0,
+  parameter FAST_BRANCH = 0
 )(
   input  logic        clk,
   input  logic        rstz,
@@ -69,7 +75,13 @@ always_ff @(posedge clk or negedge rstz) begin
     pc_last <= '0;
   end
   else if (branch) begin
-    pc <= branch_target;
+    if (FAST_BRANCH) begin
+      pc <= branch_target + 32'h4;
+      pc_last <= branch_target;
+    end
+    else begin
+      pc <= branch_target;
+    end
   end
   else if (next_state == FETCH) begin
     pc <= pc + 32'h4;
@@ -82,7 +94,7 @@ end
 // Instruction Fetch
 always_ff @(posedge clk or negedge rstz) begin
   if (~rstz) state <= INIT;
-  else if (branch) state <= INIT;
+  else if (branch & !FAST_BRANCH) state <= INIT;
   else state <= next_state;
 end
 
@@ -149,7 +161,10 @@ assign pipe_rdy = ~fetch_vld || fetch_rdy;
 // ============================================================
 // Instruction Memory Interface
 
-assign instr_addr = ((state == FETCH || state == MISS) && ~instr_ack) ? pc_last : pc;
+always_comb begin
+  if (FAST_BRANCH & branch) instr_addr = branch_target;
+  else instr_addr = ((state == FETCH || state == MISS) && ~instr_ack) ? pc_last : pc;
+end
 assign instr_req = 1'b1;
 
 // ============================================================

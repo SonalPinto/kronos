@@ -31,7 +31,9 @@ logic data_ack;
 
 logic run;
 
-kronos_core u_dut (
+kronos_core #(
+  .FAST_BRANCH(1)
+) u_dut (
   .clk               (clk            ),
   .rstz              (rstz           ),
   .instr_addr        (instr_addr     ),
@@ -260,6 +262,122 @@ endclocking
     assert(reg_x1 == a);
     assert(reg_x2 == b);
     assert(reg_x3 == c);
+
+    ##64;
+  end
+
+  `TEST_CASE("multiply") begin
+    logic [31:0] PROGRAM [$];
+    instr_t instr;
+    int a, b, c;
+    int prog_size, index, instr_ret;
+    int data;
+
+    cb.run <= 0;
+
+    a = $urandom_range(0,255);
+    b = $urandom_range(0,255);
+    c = a * b;
+
+
+    // setup program: MULTIPLY
+    /*  
+      0:  a0 = multiplicand
+      1:  a1 = multiplier
+      2:  mv  a2,a0
+      3:  li  a0,0
+      4:  andi  a3,a1,1
+      5:  beqz  a3, +8
+      6:  add a0,a0,a2
+      7:  srli  a1,a1,0x1
+      8:  slli  a2,a2,0x1
+      9:  bnez  a1, -20
+      10: j -4
+    */
+
+    // 0:  a0 = multiplicand
+    instr = rv32_addi(x10, x0, a);
+    PROGRAM.push_back(instr);
+
+    // 1:  a1 = multiplier
+    instr = rv32_addi(x11, x0, b);
+    PROGRAM.push_back(instr);
+
+    // 2:  mv  a2,a0
+    instr = rv32_addi(x12, x10, 0);
+    PROGRAM.push_back(instr);
+
+    // 3:  li  a0,0
+    instr = rv32_addi(x10, x0, 0);
+    PROGRAM.push_back(instr);
+
+    // 4:  andi  a3,a1,1
+    instr = rv32_andi(x13, x11, 1);
+    PROGRAM.push_back(instr);
+
+    // 5:  beqz  a3, +8
+    instr = rv32_beq(x13, x0, 8);
+    PROGRAM.push_back(instr);
+
+    // 6:  add a0,a0,a2
+    instr = rv32_add(x10, x10, x12);
+    PROGRAM.push_back(instr);
+
+    // 7:  srli  a1,a1,0x1
+    instr = rv32_srli(x11, x11, 1);
+    PROGRAM.push_back(instr);
+
+    // 8:  slli  a2,a2,0x1
+    instr = rv32_slli(x12, x12, 1);
+    PROGRAM.push_back(instr);
+
+    // 9:  bnez  a1, -20
+    instr = rv32_bne(x11, x0, -20);
+    PROGRAM.push_back(instr);
+
+    // 10: j -4
+    instr = rv32_jal(x0, -4);
+    PROGRAM.push_back(instr);
+
+    prog_size = PROGRAM.size();
+    instr_ret = 0;
+
+    // Bootload
+    foreach(PROGRAM[i]) begin
+      u_imem.MEM[i] = PROGRAM[i];
+      $display("PROG[%d] %h", i, PROGRAM[i]);
+    end
+
+    // Run
+    fork 
+      begin
+        @(cb) cb.run <= 1;
+      end
+
+      forever @(cb) begin
+        if (instr_req && instr_ack) begin
+          index = cb.instr_addr>>2;
+          instr_ret++;
+          if (instr_ret > 128) begin
+            cb.run <= 0;
+            break;
+          end
+          instr = PROGRAM[index];
+          $display("[%0d] INSTR=%h", index, instr);
+        end
+      end
+    join
+
+    ##32;
+
+    data = `REG[10];
+
+    $display("\n\n");
+    $display("a = %d", a);
+    $display("b = %d", b);
+    $display("a * b = %d", c);
+    $display("result: %d", data);
+    assert(data == c);
 
     ##64;
   end

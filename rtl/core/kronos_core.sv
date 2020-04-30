@@ -9,7 +9,8 @@ Kronos
 module kronos_core 
   import kronos_types::*;
 #(
-  parameter logic [31:0]  BOOT_ADDR = 32'h0
+  parameter logic [31:0]  BOOT_ADDR = 32'h0,
+  parameter FAST_BRANCH = 0
 )(
   input  logic        clk,
   input  logic        rstz,
@@ -56,7 +57,10 @@ logic decode_vld, decode_rdy;
 // ============================================================
 // Fetch
 // ============================================================
-kronos_IF #(.BOOT_ADDR(BOOT_ADDR)) u_if (
+kronos_IF #(
+  .BOOT_ADDR(BOOT_ADDR),
+  .FAST_BRANCH(FAST_BRANCH)
+) u_if (
   .clk          (clk          ),
   .rstz         (rstz         ),
   .instr_addr   (instr_addr   ),
@@ -118,7 +122,7 @@ kronos_EX u_ex (
 );
 
 // Flush pipeline on branch
-assign flush = 1'b0;
+assign flush = branch;
 
 assign data_addr = 0;
 assign data_wr_data = 0;
