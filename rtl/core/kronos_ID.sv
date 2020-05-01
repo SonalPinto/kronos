@@ -6,7 +6,9 @@ Kronos RV32I Decoder
   - Arranges operands (OP1/OP2) and ALUOP for the alu in the EX stage.
   - Evaluates branch condition for branch instructions.
   - Generates branch target or memory access address.
-  - Tracks hazards on register operands and stalls if necessary
+  - Generates store data and mask.
+  - Detects misaligned jumps and memory access
+  - Tracks hazards on register operands and stalls if necessary.
 */
 
 module kronos_ID
@@ -42,6 +44,7 @@ logic [6:0] opcode;
 logic [4:0] rs1, rs2, rd;
 logic [2:0] funct3;
 logic [6:0] funct7;
+logic [1:0] data_size;
 
 logic [31:0] op1, op2;
 logic [3:0] aluop;
@@ -49,8 +52,13 @@ logic regwr_alu;
 logic branch;
 
 // Address generation
-logic [31:0] addr, addr_raw, base, offset;
-logic align;
+logic [31:0] addr, base, offset;
+logic misaligned;
+
+// Memory Access
+logic [3:0] mask;
+logic [1:0] byte_addr;
+logic [3:0][7:0] sdata, store_data;
 
 // Register forwarding
 logic rs1_forward, rs2_forward;
@@ -73,6 +81,7 @@ assign rs2 = IR[24:20];
 assign rd  = IR[11: 7];
 assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
+assign data_size = funct3[1:0];
 
 // ============================================================
 // Register Write
@@ -103,9 +112,32 @@ always_comb begin
   op2 = FOUR;
 
   // Default addressGen operands
-  align = 1'b0;
   base = PC;
   offset = FOUR;
+
+  // Memory Access
+  byte_addr = addr[1:0];
+
+  // Memory access
+  sdata = rs2_data;
+
+  // setup write data
+  // Barrel Rotate Left store_data bytes as per offset
+  case(byte_addr)
+    2'b00: store_data = sdata;
+    2'b01: store_data = {sdata[2:0], sdata[3]};
+    2'b10: store_data = {sdata[1:0], sdata[3:2]};
+    2'b11: store_data = {sdata[0]  , sdata[3:1]};
+  endcase
+
+  if (OP == INSTR_STORE) begin
+    if (data_size == BYTE) mask = 4'h1 << byte_addr;
+    else if (data_size == HALF) mask = byte_addr[1] ? 4'hC : 4'h3;
+    else mask = 4'hF;
+  end
+  else begin
+    mask = 4'hF;
+  end
 
   /* verilator lint_off CASEINCOMPLETE */
   unique case(OP)
@@ -122,11 +154,16 @@ always_comb begin
     end
     INSTR_JALR: begin
       op2 = FOUR;
-      align = 1'b1;
       base = rs1_data;
       offset = immediate;
     end
     INSTR_BR: begin
+      offset = immediate;
+    end
+    INSTR_LOAD,
+    INSTR_STORE: begin
+      op2 = store_data;
+      base = rs1_data;
       offset = immediate;
     end
     INSTR_OPIMM: begin
@@ -149,13 +186,13 @@ end
 
 // ============================================================
 // Address Generation Unit
-// Straightforward 32b adder
-always_comb begin
-  addr_raw = base + offset;
-  addr[31:1] = addr_raw[31:1];
-  // blank the LSB for aligned add (JALR)
-  addr[0] = ~align & addr_raw[0];
-end
+kronos_agu u_agu (
+  .instr     (IR        ),
+  .base      (base      ),
+  .offset    (offset    ),
+  .addr      (addr      ),
+  .misaligned(misaligned)
+);
 
 // ============================================================
 // Branch Comparator
@@ -205,8 +242,11 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.op2 <= op2;
 
       decode.addr <= addr;
-      decode.jump <= OP == INSTR_JAL || OP == INSTR_JALR;
-      decode.branch <= branch && OP == INSTR_BR;
+      decode.branch <= (OP == INSTR_JAL || OP == INSTR_JALR) || (branch && OP == INSTR_BR);
+      decode.load <= OP == INSTR_LOAD; 
+      decode.store <= OP == INSTR_STORE;
+      decode.mask  <= mask;
+      decode.misaligned <= misaligned;
 
     end
     else if (decode_vld && decode_rdy) begin

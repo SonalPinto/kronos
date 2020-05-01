@@ -49,7 +49,7 @@ assign funct3 = instr[14:12];
 
 // Indicates a register will be written by this instructions
 // regardless of source. This is useful for hazard tracking
-assign is_reg_write = (rd != '0) && (OP == INSTR_LUI
+assign is_reg_write = (rd != '0) &&  (OP == INSTR_LUI
                     || OP == INSTR_AUIPC
                     || OP == INSTR_JAL
                     || OP == INSTR_JALR

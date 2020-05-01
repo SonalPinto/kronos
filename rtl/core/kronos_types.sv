@@ -22,8 +22,11 @@ typedef struct packed {
     // EX controls
     logic [3:0]  aluop;
     logic        regwr_alu;
-    logic        jump;
     logic        branch;
+    logic        load;
+    logic        store;
+    logic [3:0]  mask;
+    logic        misaligned;
 } pipeIDEX_t;
 
 // ============================================================

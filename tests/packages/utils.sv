@@ -17,8 +17,11 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("---- EXCTRL ----");
     $display("  aluop: %b",         d.aluop);
     $display("  regwr_alu: %b",     d.regwr_alu);
-    $display("  jump: %b",          d.jump);
     $display("  branch: %b",        d.branch);
+    $display("  load: %b",          d.load);
+    $display("  store: %b",         d.store);
+    $display("  mask: %b",          d.mask);
+    $display("  misaligned: %b",    d.misaligned);
 endtask
 
 endpackage

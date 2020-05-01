@@ -48,8 +48,7 @@ kronos_RF u_rf (
 );
 
 kronos_ID #(
-  .CATCH_ILLEGAL_INSTR    (1),
-  .USE_REGISTER_FORWARDING(1)
+  .CATCH_ILLEGAL_INSTR    (1)
 ) u_id (
   .clk         (clk         ),
   .rstz        (rstz        ),
@@ -201,9 +200,12 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
   logic [31:0] imm;
   logic [11:0] csr;
   logic [4:0] zimm;
+  logic [63:0] store_data;
+
+  store_data = '0;
 
   // generate scenario
-  op = $urandom_range(0,28);
+  op = $urandom_range(0,36);
   imm = $urandom();
   rs1 = $urandom();
   rs2 = $urandom();
@@ -217,6 +219,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
   decode = '0;
   decode.pc = instr.pc;
   decode.addr = instr.pc + 4;
+  decode.mask = 4'hF;
 
   // indicate that a register write back is required
   write_back = 0;
@@ -507,10 +510,12 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op2 = 4;
       decode.addr = $signed(instr.pc) + $signed({imm[20:1], 1'b0});
 
-      decode.regwr_alu = rd != 0;
-      write_back = rd != 0;
+      decode.branch = 1;
 
-      decode.jump = 1;
+      decode.regwr_alu = rd != 0;
+      decode.misaligned = decode.addr[1:0] != 0;
+
+      write_back = rd != 0;
     end
 
     22: begin
@@ -522,10 +527,12 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op2 = 4;
       decode.addr = ($signed(REG[rs1]) + $signed(imm[11:0])) & ~1;
 
-      decode.regwr_alu = rd != 0;
-      write_back = rd != 0;
+      decode.branch = 1;
 
-      decode.jump = 1;
+      decode.regwr_alu = rd != 0;
+      decode.misaligned = decode.addr[1:0] != 0;
+
+      write_back = rd != 0;
     end
 
     23: begin
@@ -536,10 +543,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op1 = instr.pc;
       decode.op2 = 4;
 
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] == REG[rs2];
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
     24: begin
@@ -550,10 +556,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op1 = instr.pc;
       decode.op2 = 4;
 
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] != REG[rs2];
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
     25: begin
@@ -564,10 +569,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op1 = instr.pc;
       decode.op2 = 4;
 
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = $signed(REG[rs1]) < $signed(REG[rs2]);
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
     26: begin
@@ -578,10 +582,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op1 = instr.pc;
       decode.op2 = 4;
 
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = $signed(REG[rs1]) >= $signed(REG[rs2]);
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
     27: begin
@@ -592,10 +595,9 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.op1 = instr.pc;
       decode.op2 = 4;
 
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] < REG[rs2];
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
     28: begin
@@ -605,113 +607,146 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
 
       decode.op1 = instr.pc;
       decode.op2 = 4;
-
-      $display("%b", $signed(imm[11:0]));
-
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] >= REG[rs2];
+      decode.misaligned = decode.addr[1:0] != 0;
     end
 
-    // 29: begin
-    //     optype = "LB";
-    //     instr.ir = rv32_lb(rd, rs1, imm);
+    29: begin
+      optype = "LB";
+      instr.ir = rv32_lb(rd, rs1, imm);
+      decode.ir = instr.ir;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.load = 1;
 
-    //     decode.rd = rd;
-    //     decode.ld = 1;
+      write_back = rd != 0;
 
-    //     write_back = 1;
-    // end
+      store_data = REG[imm[4:0]];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    // 30: begin
-    //     optype = "LH";
-    //     instr.ir = rv32_lh(rd, rs1, imm);
+    30: begin
+      optype = "LH";
+      instr.ir = rv32_lh(rd, rs1, imm);
+      decode.ir = instr.ir;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.load = 1;
 
-    //     decode.rd = rd;
-    //     decode.ld = 1;
+      decode.misaligned = decode.addr[0] != 0;
 
-    //     write_back = 1;
-    // end
+      write_back = rd != 0;
 
-    // 31: begin
-    //     optype = "LW";
-    //     instr.ir = rv32_lw(rd, rs1, imm);
+      store_data = REG[imm[4:0]];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
+    31: begin
+      optype = "LW";
+      instr.ir = rv32_lw(rd, rs1, imm);
+      decode.ir = instr.ir;
 
-    //     decode.rd = rd;
-    //     decode.ld = 1;
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.load = 1;
 
-    //     write_back = 1;
-    // end
+      decode.misaligned = decode.addr[1:0] != 0;
 
-    // 32: begin
-    //     optype = "LBU";
-    //     instr.ir = rv32_lbu(rd, rs1, imm);
+      write_back = rd != 0;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
+      store_data = REG[imm[4:0]];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    //     decode.rd = rd;
-    //     decode.ld = 1;
+    32: begin
+      optype = "LBU";
+      instr.ir = rv32_lbu(rd, rs1, imm);
+      decode.ir = instr.ir;
 
-    //     write_back = 1;
-    // end
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.load = 1;
 
-    // 33: begin
-    //     optype = "LHU";
-    //     instr.ir = rv32_lhu(rd, rs1, imm);
+      write_back = rd != 0;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
+      store_data = REG[imm[4:0]];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    //     decode.rd = rd;
-    //     decode.ld = 1;
+    33: begin
+      optype = "LHU";
+      instr.ir = rv32_lhu(rd, rs1, imm);
+      decode.ir = instr.ir;
 
-    //     write_back = 1;
-    // end
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.load = 1;
 
-    // 34: begin
-    //     optype = "SB";
-    //     instr.ir = rv32_sb(rs1, rs2, imm);
+      decode.misaligned = decode.addr[0] != 0;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
-    //     decode.op3 = 0;
-    //     decode.op4 = REG[rs2];
+      write_back = rd != 0;
 
-    //     decode.st = 1;
-    // end
+      store_data = REG[imm[4:0]];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    // 35: begin
-    //     optype = "SH";
-    //     instr.ir = rv32_sh(rs1, rs2, imm);
+    34: begin
+      optype = "SB";
+      instr.ir = rv32_sb(rs1, rs2, imm);
+      decode.ir = instr.ir;
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
-    //     decode.op3 = 0;
-    //     decode.op4 = REG[rs2];
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.store = 1;
 
-    //     decode.st = 1;
-    // end
+      decode.mask = 1 << decode.addr[1:0];
 
-    // 36: begin
-    //     optype = "SW";
-    //     instr.ir = rv32_sw(rs1, rs2, imm);
+      store_data = REG[rs2];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
-    //     decode.op1 = REG[rs1];
-    //     decode.op2 = $signed(imm[11:0]);
-    //     decode.op3 = 0;
-    //     decode.op4 = REG[rs2];
+    35: begin
+      optype = "SH";
+      instr.ir = rv32_sh(rs1, rs2, imm);
+      decode.ir = instr.ir;
 
-    //     decode.st = 1;
-    // end
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.store = 1;
+
+      decode.misaligned = decode.addr[0] != 0;
+
+      decode.mask = 3 << (decode.addr[1] * 2);
+
+      store_data = REG[rs2];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
+
+    36: begin
+      optype = "SW";
+      instr.ir = rv32_sw(rs1, rs2, imm);
+      decode.ir = instr.ir;
+
+      decode.op1 = instr.pc;
+      decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
+      decode.store = 1;
+
+      decode.misaligned = decode.addr[1:0] != 0;
+
+      store_data = REG[rs2];
+      store_data = store_data << (8 * decode.addr[1:0]);
+      decode.op2 = store_data[31:0] | store_data[63:32];
+    end
 
     // 37: begin
     //     optype = "FENCEI";

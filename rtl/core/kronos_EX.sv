@@ -27,7 +27,6 @@ logic [31:0] result;
 logic [4:0] rd;
 
 logic wb_valid;
-logic branch_request;
 
 enum logic {
   STEADY
@@ -83,7 +82,6 @@ end
 // ============================================================
 // Jump and Branch
 assign branch_target = decode.addr;
-assign branch_request = decode.jump || decode.branch;
-assign branch = wb_valid && branch_request;
+assign branch = wb_valid && decode.branch;
 
 endmodule
