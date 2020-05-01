@@ -3,6 +3,19 @@
 
 add_subdirectory(src)
 
+
+add_hdl_unit_test(branch_unit_test.sv
+  DEPENDS
+    kronos_branch
+)
+
+add_hdl_unit_test(lsu_unit_test.sv
+  DEPENDS
+    spsram32_model
+    kronos_lsu
+    rv32_assembler
+)
+
 add_hdl_unit_test(kronos_IF_unit_test.sv
   DEPENDS
     spsram32_model
@@ -17,11 +30,6 @@ add_hdl_unit_test(kronos_ID_unit_test.sv
     utils
 )
 
-add_hdl_unit_test(branch_unit_test.sv
-  DEPENDS
-    kronos_branch
-)
-
 add_hdl_unit_test(kronos_EX_unit_test.sv
   DEPENDS
     kronos_RF
@@ -30,14 +38,14 @@ add_hdl_unit_test(kronos_EX_unit_test.sv
     rv32_assembler
 )
 
-# -------------------------------------------------------------
-
-add_hdl_unit_test(lsu_unit_test.sv
+add_hdl_unit_test(core_basic_unit_test.sv
   DEPENDS
     spsram32_model
-    kronos_WB
+    kronos_core
+    rv32_assembler
 )
 
+# -------------------------------------------------------------
 add_hdl_unit_test(counters_unit_test.sv
   DEPENDS
     kronos_WB
@@ -50,13 +58,6 @@ add_hdl_unit_test(csr_unit_test.sv
     kronos_WB
     rv32_assembler
     utils
-)
-
-add_hdl_unit_test(core_basic_unit_test.sv
-  DEPENDS
-    spsram32_model
-    kronos_core
-    rv32_assembler
 )
 
 add_hdl_unit_test(core_adv_unit_test.sv

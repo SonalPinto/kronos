@@ -118,16 +118,17 @@ kronos_EX u_ex (
   .regwr_sel    (regwr_sel    ),
   .regwr_en     (regwr_en     ),
   .branch_target(branch_target),
-  .branch       (branch       )
+  .branch       (branch       ),
+  .data_addr    (data_addr    ),
+  .data_rd_data (data_rd_data ),
+  .data_wr_data (data_wr_data ),
+  .data_mask    (data_mask    ),
+  .data_wr_en   (data_wr_en   ),
+  .data_req     (data_req     ),
+  .data_ack     (data_ack     )
 );
 
 // Flush pipeline on branch
 assign flush = branch;
-
-assign data_addr = 0;
-assign data_wr_data = 0;
-assign data_mask = 0;
-assign data_wr_en = 0;
-assign data_req = 0;
 
 endmodule

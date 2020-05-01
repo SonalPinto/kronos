@@ -3,20 +3,18 @@
 
 `include "vunit_defines.svh"
 
-module tb_kronos_WB_ut;
+module tb_lsu_ut;
 
 import kronos_types::*;
+import rv32_assembler::*;
 
 logic clk;
-logic rstz;
-pipeEXWB_t execute;
-logic execute_vld;
-logic execute_rdy;
-logic [31:0] regwr_data;
-logic [4:0] regwr_sel;
-logic regwr_en;
-logic [31:0] branch_target;
-logic branch;
+
+pipeIDEX_t decode;
+logic decode_vld;
+logic decode_rdy;
+logic [31:0] load_data;
+logic regwr_lsu;
 logic [31:0] data_addr;
 logic [31:0] data_rd_data;
 logic [31:0] data_wr_data;
@@ -25,167 +23,100 @@ logic data_wr_en;
 logic data_req;
 logic data_ack;
 
-kronos_WB u_wb (
-    .clk               (clk          ),
-    .rstz              (rstz         ),
-    .execute           (execute      ),
-    .pipe_in_vld       (execute_vld  ),
-    .pipe_in_rdy       (execute_rdy  ),
-    .regwr_data        (regwr_data   ),
-    .regwr_sel         (regwr_sel    ),
-    .regwr_en          (regwr_en     ),
-    .branch_target     (branch_target),
-    .branch            (branch       ),
-    .data_addr         (data_addr    ),
-    .data_rd_data      (data_rd_data ),
-    .data_wr_data      (data_wr_data ),
-    .data_mask         (data_mask    ),
-    .data_wr_en        (data_wr_en   ),
-    .data_req          (data_req     ),
-    .data_ack          (data_ack     ),
-    .software_interrupt(1'b0         ),
-    .timer_interrupt   (1'b0         ),
-    .external_interrupt(1'b0         )
+kronos_lsu u_dut (
+  .decode      (decode      ),
+  .decode_vld  (decode_vld  ),
+  .decode_rdy  (decode_rdy  ),
+  .load_data   (load_data   ),
+  .regwr_lsu   (regwr_lsu   ),
+  .data_addr   (data_addr   ),
+  .data_rd_data(data_rd_data),
+  .data_wr_data(data_wr_data),
+  .data_mask   (data_mask   ),
+  .data_wr_en  (data_wr_en  ),
+  .data_req    (data_req    ),
+  .data_ack    (data_ack    )
 );
 
-spsram32_model #(.WORDS(1024)) u_dmem (
-    .clk  (~clk        ),
-    .addr (data_addr   ),
-    .wdata(data_wr_data),
-    .rdata(data_rd_data),
-    .en   (data_req    ),
-    .wr_en(data_wr_en  ),
-    .mask (data_mask   )
+spsram32_model #(.WORDS(256)) u_dmem (
+  .clk  (clk         ),
+  .addr (data_addr   ),
+  .wdata(data_wr_data),
+  .rdata(data_rd_data),
+  .en   (data_req    ),
+  .wr_en(data_wr_en  ),
+  .mask (data_mask   )
 );
 
-always_ff @(negedge clk) begin
-    if (data_req) begin
-        data_ack <= 1;
-        // Confirm that access is always 4B aligned
-        assert(data_addr[1:0] == 2'b00);
-    end
-    else data_ack <= 0;
+`define MEM u_dmem.MEM
+
+always_ff @(posedge clk) begin
+  if (data_req) begin
+    data_ack <= 1;
+    // Confirm that access is always 4B aligned
+    assert(data_addr[1:0] == 2'b00);
+  end
+  else data_ack <= 0;
 end
 
 default clocking cb @(posedge clk);
-    default input #10ps output #10ps;
-    input negedge execute_rdy;
-    output execute_vld, execute;
+  default input #10ps output #10ps;
+  output decode, decode_vld;
+  input decode_rdy, regwr_lsu, load_data;
 endclocking
 
-
 // ============================================================
-`define MEM u_dmem.MEM
-
-logic [31:0] expected_regwr_data;
-logic [4:0] expected_regwr_sel;
-
-logic [31:0] store_addr;
-logic [7:0][7:0] expected_store_data;
+logic [31:0] expected_load_data, got_load_data;
 
 `TEST_SUITE begin
-    `TEST_SUITE_SETUP begin
-        clk = 0;
-        rstz = 0;
+  `TEST_SUITE_SETUP begin
+  logic [31:0] data;
 
-        execute = '0;
-        execute_vld = 0;
+  clk = 0;
+  decode_vld = 0;
 
-        for(int i=0; i<256; i++)
-            `MEM[i] = $urandom;
+  for(int i=0; i<256; i++)
+    `MEM[i] = $urandom;
 
-        fork 
-            forever #1ns clk = ~clk;
-        join_none
+  fork 
+    forever #1ns clk = ~clk;
+  join_none
 
-        ##4 rstz = 1;
-    end
+  ##8;
+  end
 
-    `TEST_CASE("load") begin
-        string optype;
-        pipeEXWB_t texecute;
+  `TEST_CASE("load") begin
+    pipeIDEX_t tdecode;
+    string optype;
 
-        repeat (2**10) begin
-            fork 
-                // Drive stimulus
-                begin
-                    rand_load(texecute, optype);
-                    $display("OPTYPE=%s", optype);
-                    $display("Expected: ");
-                    $display("  regwr_data: %h", expected_regwr_data);
-                    $display("  regwr_sel: %h", expected_regwr_sel);
-                    @(cb);
-                    cb.execute <= texecute;
-                    cb.execute_vld <= 1;
-                    repeat (16) begin
-                        @(cb) if (cb.execute_rdy) begin
-                            cb.execute_vld <= 0;
-                            break;
-                        end
-                    end
-                end
+    repeat (1024) begin
+      rand_load(tdecode, optype);
+      $display("OPTYPE=%s", optype);
+      $display("Expected: ");
+      $display("  load_data: %h", expected_load_data);
 
-                // REG write back checker
-                forever @(cb) begin
-                    if (regwr_en) begin
-                        $display("GOT");
-                        $display("  regwr_data: %h", regwr_data);
-                        $display("  regwr_sel: %h", regwr_sel);
-                        assert(expected_regwr_data == regwr_data);
-                        assert(expected_regwr_sel == regwr_sel);
-                        break;
-                    end
-                end
-            join
-
-            $display("-----------------\n\n");
+      @(cb);
+      cb.decode <= tdecode;
+      cb.decode_vld <= 1;
+      @(cb);
+      cb.decode_vld <= 0;
+      
+      repeat (8) begin
+        @(cb) if (cb.decode_rdy) begin
+          assert(cb.regwr_lsu);
+          got_load_data = cb.load_data;
+          $display("Got:");
+          $display("  load_data: %h", got_load_data);
         end
+      end
 
-        ##64;
+      assert(got_load_data == expected_load_data);
+
+      $display("-----------------\n\n");
     end
 
-    `TEST_CASE("store") begin
-        string optype;
-        pipeEXWB_t texecute;
-        logic [7:0][7:0] mem_data;
-
-        repeat (2**10) begin
-            fork 
-                // Drive stimulus
-                begin
-                    rand_store(texecute, optype);
-                    $display("OPTYPE=%s", optype);
-                    $display("Expected: ");
-                    $display("  store_data: %h", expected_store_data);
-                    $display("  store_addr: %h", store_addr);
-                    @(cb);
-                    cb.execute <= texecute;
-                    cb.execute_vld <= 1;
-                    repeat (16) begin
-                        @(cb) if (cb.execute_rdy) begin
-                            cb.execute_vld <= 0;
-                            break;
-                        end
-                    end
-                end
-
-                // Store checker
-                forever @(cb) begin
-                    if (u_wb.lsu_done) begin
-                        mem_data = {`MEM[store_addr+1], `MEM[store_addr]};
-                        $display("GOT");
-                        $display("  store_data: %h", mem_data);
-                        assert(expected_store_data == mem_data);
-                        break;
-                    end
-                end
-            join
-
-            $display("-----------------\n\n");
-        end
-
-        ##64;
-    end
+    ##64;
+  end
 end
 
 `WATCHDOG(1ms);
@@ -194,178 +125,101 @@ end
 // METHODS
 // ============================================================
 
-task automatic rand_load(output pipeEXWB_t execute, output string optype);
-    int op;
-    logic [4:0] rd;
-    int maddr;
+task automatic rand_load(output pipeIDEX_t decode, output string optype);
+  int op;
+  logic [4:0] rd;
+  int addr;
+  logic [3:0][7:0] mem_word;
+  int offset;
+  int aligned_addr;
+  logic [7:0] dbyte;
+  logic [15:0] dhalf;
+  logic [31:0] dword;
 
-    logic [7:0][7:0] mem_word;
-    int offset;
-    logic [7:0] dbyte;
-    logic [15:0] dhalf;
-    logic [31:0] dword;
+  // generate scenario
+  op = $urandom_range(0,4);
+  rd = $urandom_range(1,31);
+  addr = $urandom_range(0,252);
 
-    int aligned_addr;
+  if (op == 2 || op == 3) begin
+    addr = addr & ~1; // 2B aligned
+  end
+  else if (op == 4) begin
+    addr = addr & ~3; // 4B aligned
+  end
 
+  // Fetch 4B word and next word from the memory
+  aligned_addr = addr>>2;
+  offset = addr & 3;
 
-    // generate scenario
-    op = $urandom_range(0,4);
-    rd = $urandom_range(1,31);
-    maddr = $urandom_range(0,252);
+  mem_word = `MEM[aligned_addr];
+  dbyte = mem_word[offset];
+  dhalf = offset[1] ? mem_word[3:2] : mem_word[1:0];
+  dword = mem_word;
 
-    // clear out execute
-    execute = '0;
+  $display("addr = %h", addr);
+  $display("byte index = %0d", offset);
+  $display("mem[%h]: %h", aligned_addr, mem_word);
 
-    // Fetch 4B word and next word from the memory
-    aligned_addr = maddr>>2;
-    offset = maddr & 3;
-    mem_word = {`MEM[aligned_addr+1], `MEM[aligned_addr]};
-    $display("MEMADDR: %h",maddr);
-    $display("MEMWORD: %h",mem_word);
+  // clear out decode
+  decode = '0;
 
-    case(op)
-        0: begin
-            optype = "LB";
+  case(op)
+    0: begin
+      optype = "LB";
 
-            execute.result1 = maddr;
-            execute.rd = rd;
-            execute.ld = 1;
-            execute.funct3 = {1'b0, BYTE};
+      decode.ir = rv32_lb(rd, 0, 0);
+      decode.load = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
 
-            dbyte = mem_word[offset];
-            expected_regwr_data = signed'(dbyte);
-            expected_regwr_sel = rd;
-        end
+      expected_load_data = signed'(dbyte);
+    end
 
-        1: begin
-            optype = "LBU";
+    1: begin
+      optype = "LBU";
 
-            execute.result1 = maddr;
-            execute.rd = rd;
-            execute.ld = 1;
-            execute.funct3 = {1'b1, BYTE};
+      decode.ir = rv32_lbu(rd, 0, 0);
+      decode.load = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
 
-            dbyte = mem_word[offset];
-            expected_regwr_data = {24'b0, dbyte};
-            expected_regwr_sel = rd;
-        end
+      expected_load_data = dbyte;
+    end
 
-        2: begin
-            optype = "LH";
+    2: begin
+      optype = "LH";
 
-            execute.result1 = maddr;
-            execute.rd = rd;
-            execute.ld = 1;
-            execute.funct3 = {1'b0, HALF};
+      decode.ir = rv32_lh(rd, 0, 0);
+      decode.load = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
 
-            expected_regwr_sel = rd;
+      expected_load_data = signed'(dhalf);
+    end
 
-            dhalf = {mem_word[offset+1], mem_word[offset]};
-            expected_regwr_data = signed'(dhalf);
-            expected_regwr_sel = rd;
-        end
+    3: begin
+      optype = "LHU";
 
-        3: begin
-            optype = "LHU";
+      decode.ir = rv32_lhu(rd, 0, 0);
+      decode.load = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
 
-            execute.result1 = maddr;
-            execute.rd = rd;
-            execute.ld = 1;
-            execute.funct3 = {1'b1, HALF};
+      expected_load_data = dhalf;
+    end
 
-            expected_regwr_sel = rd;
+    4: begin
+      optype = "LW";
 
-            dhalf = {mem_word[offset+1], mem_word[offset]};
-            expected_regwr_data = {16'b0, dhalf};
-            expected_regwr_sel = rd;
-        end
+      decode.ir = rv32_lw(rd, 0, 0);
+      decode.load = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
 
-        4: begin
-            optype = "LW";
-
-            execute.result1 = maddr;
-            execute.rd = rd;
-            execute.ld = 1;
-            execute.funct3 = {1'b0, WORD};
-
-            expected_regwr_sel = rd;
-
-            dword = {mem_word[offset+3], mem_word[offset+2],
-                    mem_word[offset+1], mem_word[offset]};
-            expected_regwr_data = dword;
-            expected_regwr_sel = rd;
-        end
-    endcase // op
-endtask
-
-task automatic rand_store(output pipeEXWB_t execute, output string optype);
-    int op;
-    int maddr;
-
-    logic [7:0][7:0] mem_word;
-    int offset;
-    logic [7:0] dbyte;
-    logic [15:0] dhalf;
-    logic [31:0] dword;
-
-    int aligned_addr;
-
-    // generate scenario
-    op = $urandom_range(0,2);
-    maddr = $urandom_range(0,252);
-    dbyte = $urandom;
-    dhalf = $urandom;
-    dword = $urandom;
-
-    // clear out execute
-    execute = '0;
-
-    // Fetch 4B word and next word from the memory
-    aligned_addr = maddr>>2;
-    offset = maddr & 3;
-    mem_word = {`MEM[aligned_addr+1], `MEM[aligned_addr]};
-    $display("MEMADDR: %h",maddr);
-    $display("MEMWORD: %h",mem_word);
-
-    case(op)
-        0: begin
-            optype = "SB";
-
-            execute.result1 = maddr;
-            execute.result2 = dbyte;
-            execute.st = 1;
-            execute.funct3 = {1'b0, BYTE};
-
-            mem_word[offset] = dbyte;
-        end
-
-        1: begin
-            optype = "SH";
-
-            execute.result1 = maddr;
-            execute.result2 = dhalf;
-            execute.st = 1;
-            execute.funct3 = {1'b0, HALF};
-
-            {mem_word[offset+1], mem_word[offset]} = dhalf;
-        end
-
-        2: begin
-            optype = "SW";
-
-            execute.result1 = maddr;
-            execute.result2 = dword;
-            execute.st = 1;
-            execute.funct3 = {1'b0, WORD};
-
-            {mem_word[offset+3], mem_word[offset+2],
-                mem_word[offset+1], mem_word[offset]} = dword;
-        end
-    endcase
-
-    // Setup expected stored data at word-aligned address
-    store_addr = aligned_addr;
-    expected_store_data = mem_word;
+      expected_load_data = dword;
+    end
+  endcase // op
 endtask
 
 endmodule
