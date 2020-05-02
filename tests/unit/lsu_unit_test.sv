@@ -67,6 +67,7 @@ endclocking
 
 // ============================================================
 logic [31:0] expected_load_data, got_load_data;
+logic [31:0] store_addr, expected_store_data, got_store_data;
 
 `TEST_SUITE begin
   `TEST_SUITE_SETUP begin
@@ -111,6 +112,36 @@ logic [31:0] expected_load_data, got_load_data;
       end
 
       assert(got_load_data == expected_load_data);
+
+      $display("-----------------\n\n");
+    end
+
+    ##64;
+  end
+
+  `TEST_CASE("store") begin
+    pipeIDEX_t tdecode;
+    string optype;
+
+    repeat (1024) begin
+      rand_store(tdecode, optype);
+      $display("OPTYPE=%s", optype);
+      $display("Expected: ");
+      $display("  store_data: %h", expected_store_data);
+      $display("  store_addr: %h", store_addr);
+
+      @(cb);
+      cb.decode <= tdecode;
+      cb.decode_vld <= 1;
+      @(cb);
+      cb.decode_vld <= 0;
+      
+      ##2;
+      got_store_data = `MEM[store_addr];
+      $display("Got:");
+      $display("  store_data: %h", got_store_data);
+
+      assert(got_store_data == expected_store_data);
 
       $display("-----------------\n\n");
     end
@@ -220,6 +251,89 @@ task automatic rand_load(output pipeIDEX_t decode, output string optype);
       expected_load_data = dword;
     end
   endcase // op
+endtask
+
+task automatic rand_store(output pipeIDEX_t decode, output string optype);
+  int op;
+  logic [4:0] rd;
+  int addr;
+  logic [3:0][7:0] mem_word;
+  int offset;
+  int aligned_addr;
+  logic [7:0] dbyte;
+  logic [15:0] dhalf;
+  logic [31:0] dword;
+
+
+  // generate scenario
+  op = $urandom_range(0,2);
+  addr = $urandom_range(0,252);
+  dbyte = $urandom;
+  dhalf = $urandom;
+  dword = $urandom;
+
+  if (op == 1) begin
+    addr = addr & ~1; // 2B aligned
+  end
+  else if (op == 2) begin
+    addr = addr & ~3; // 4B aligned
+  end
+
+  // Fetch 4B word and next word from the memory
+  aligned_addr = addr>>2;
+  offset = addr & 3;
+
+  mem_word = `MEM[aligned_addr];
+
+  $display("addr = %h", addr);
+  $display("byte index = %0d", offset);
+  $display("mem[%h]: %h", aligned_addr, mem_word);
+
+  // clear out decode
+  decode = '0;
+
+  case(op)
+    0: begin
+      optype = "SB";
+
+      decode.ir = rv32_sb(rd, 0, 0);
+      decode.store = 1;
+      decode.addr = addr;
+      decode.mask = 4'h1 << offset;
+      decode.op2 = dbyte << (8 * offset);
+
+      mem_word[offset] = dbyte;
+    end
+
+    1: begin
+      optype = "SH";
+
+      decode.ir = rv32_sh(rd, 0, 0);
+      decode.store = 1;
+      decode.addr = addr;
+      decode.mask = 4'h3 << offset;
+      decode.op2 = dhalf << (8 * offset);
+
+      {mem_word[offset+1], mem_word[offset]} = dhalf;
+    end
+
+    2: begin
+      optype = "SW";
+
+      decode.ir = rv32_sw(rd, 0, 0);
+      decode.store = 1;
+      decode.addr = addr;
+      decode.mask = 4'hF;
+      decode.op2 = dword;
+
+      mem_word = dword;
+    end
+  endcase
+
+  // Setup expected stored data at word-aligned address
+  store_addr = aligned_addr;
+  expected_store_data = mem_word;
+
 endtask
 
 endmodule

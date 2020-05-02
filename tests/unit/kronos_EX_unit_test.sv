@@ -26,6 +26,14 @@ logic [31:0] regwr_data;
 logic [4:0] regwr_sel;
 logic regwr_en;
 
+logic [31:0] data_addr;
+logic [31:0] data_rd_data;
+logic [31:0] data_wr_data;
+logic [3:0] data_mask;
+logic data_wr_en;
+logic data_req;
+logic data_ack;
+
 logic instr_vld;
 logic [31:0] instr_data;
 
@@ -78,7 +86,14 @@ kronos_EX u_ex (
   .regwr_sel    (regwr_sel    ),
   .regwr_en     (regwr_en     ),
   .branch_target(branch_target),
-  .branch       (branch       )
+  .branch       (branch       ),
+  .data_addr    (data_addr    ),
+  .data_rd_data (data_rd_data ),
+  .data_wr_data (data_wr_data ),
+  .data_mask    (data_mask    ),
+  .data_wr_en   (data_wr_en   ),
+  .data_req     (data_req     ),
+  .data_ack     (data_ack     )
 );
 
 default clocking cb @(posedge clk);
@@ -111,6 +126,7 @@ struct packed {
     fetch_vld = 0;
     instr_vld = 0;
     flush = 0;
+    data_ack = 0;
 
     // init regfile with random values
     for(int i=0; i<32; i++) begin
@@ -227,6 +243,11 @@ task automatic rand_instr(output pipeIFID_t instr, output string optype);
   rs1 = $urandom();
   rs2 = $urandom();
   rd = $urandom_range(1,31);
+
+  if (op == 1) begin
+    REG[rs1] = REG[rs1] & ~3;
+    u_rf.REG[rs1] = REG[rs1];
+  end
 
   instr.pc = $urandom & ~3;
   pc = int'(instr.pc);
