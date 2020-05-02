@@ -7,7 +7,11 @@ Kronos Execution Unit
 
 module kronos_EX
   import kronos_types::*;
-(
+#(
+  parameter logic [31:0]  BOOT_ADDR = 32'h0,
+  parameter EN_COUNTERS = 1,
+  parameter EN_COUNTERS64B = 1
+)(
   input  logic        clk,
   input  logic        rstz,
   // ID/EX
@@ -28,31 +32,49 @@ module kronos_EX
   output logic [3:0]  data_mask,
   output logic        data_wr_en,
   output logic        data_req,
-  input  logic        data_ack
+  input  logic        data_ack,
+  // Interrupt sources
+  input  logic        software_interrupt,
+  input  logic        timer_interrupt,
+  input  logic        external_interrupt
 );
 
 logic [31:0] result;
 logic [4:0] rd;
-logic [3:0] funct3;
 
-logic wb_rdy, lsu_rdy;
+logic instr_vld;
+
+logic basic_rdy;
+
+logic lsu_vld, lsu_rdy;
 logic [31:0] load_data;
 logic regwr_lsu;
 
+logic csr_vld,csr_rdy;
+logic [31:0] csr_data;
+logic regwr_csr;
+logic instret;
+logic core_interrupt;
+logic [3:0] core_interrupt_cause;
+
+logic activate_trap, return_trap;
+logic [31:0] trap_cause, trap_handle, trap_value;
+logic trap_jump;
+
 enum logic [2:0] {
   STEADY,
+  LSU,
   CSR,
   TRAP,
   RETURN,
-  WFI,
+  WFINTR,
   JUMP
 } state, next_state;
 
+
 // ============================================================
 // IR Segments
-assign OP = decode.ir[6:2];
 assign rd  = decode.ir[11:7];
-assign funct3 = decode.ir[14:12];
 
 // ============================================================
 // EX Sequencer
@@ -66,19 +88,44 @@ always_comb begin
   /* verilator lint_off CASEINCOMPLETE */
   unique case (state)
     STEADY: if (decode_vld) begin
-      if (decode.misaligned) next_state = TRAP;
+      if (core_interrupt) next_state = TRAP;
+      else if (decode.misaligned || decode.illegal) next_state = TRAP;
       else if (decode.system) begin
-      end 
+        unique case (decode.sysop)
+          ECALL,
+          EBREAK: next_state = TRAP;
+          MRET  : next_state = RETURN;
+          WFI   : next_state = WFINTR;
+        endcase
+      end
+      else if (decode.load || decode.store) next_state = LSU;
+      else if (decode.csr) next_state = CSR;
     end
+
+    LSU: if (lsu_rdy) next_state = STEADY;
+
+    CSR: if (csr_rdy) next_state = STEADY;
+
+    WFINTR: if (core_interrupt) next_state = TRAP;
+
+    TRAP: next_state = JUMP;
+
+    RETURN: next_state = JUMP;
+
+    JUMP: if (trap_jump) next_state = STEADY;
+
   endcase // state
   /* verilator lint_on CASEINCOMPLETE */
 end
 
-// Direct write-back is always ready in continued steady state
-assign wb_rdy = state == STEADY && decode_vld && ~decode.system;
+// Decoded instruction valid
+assign instr_vld = decode_vld && state == STEADY && ~decode.except && ~core_interrupt;
+
+// Basic instructions
+assign basic_rdy = instr_vld && decode.basic;
 
 // Next instructions
-assign decode_rdy = wb_rdy || lsu_rdy;
+assign decode_rdy = |{basic_rdy, lsu_rdy, csr_rdy};
 
 // ============================================================
 // ALU
@@ -91,10 +138,12 @@ kronos_alu u_alu (
 
 // ============================================================
 // LSU
+assign lsu_vld = instr_vld || state == LSU;
+
 kronos_lsu u_lsu (
   .decode      (decode      ),
-  .decode_vld  (decode_vld  ),
-  .decode_rdy  (lsu_rdy     ),
+  .lsu_vld     (lsu_vld     ),
+  .lsu_rdy     (lsu_rdy     ),
   .load_data   (load_data   ),
   .regwr_lsu   (regwr_lsu   ),
   .data_addr   (data_addr   ),
@@ -114,17 +163,22 @@ always_ff @(posedge clk or negedge rstz) begin
     regwr_en <= 1'b0;
   end
   else begin
-    if (wb_rdy && decode.regwr_alu) begin
+    regwr_sel <= rd;
+
+    if (instr_vld && decode.regwr_alu) begin
       // Write back ALU result
       regwr_en <= 1'b1;
-      regwr_sel <= rd;
       regwr_data <= result;
     end
     else if (lsu_rdy && regwr_lsu) begin
       // Write back Load Data
       regwr_en <= 1'b1;
-      regwr_sel <= rd;
       regwr_data <= load_data;
+    end
+    else if (csr_rdy && regwr_csr) begin
+      // Write back CSR Read Data
+      regwr_en <= 1'b1;
+      regwr_data <= csr_data;
     end
     else begin
       regwr_en <= 1'b0;
@@ -134,7 +188,82 @@ end
 
 // ============================================================
 // Jump and Branch
-assign branch_target = decode.addr;
-assign branch = wb_rdy && decode.branch;
+assign branch_target = trap_jump ? trap_handle : decode.addr;
+assign branch = (instr_vld && decode.branch) || trap_jump;
+
+// ============================================================
+// Trap Handling
+
+// setup for trap
+always_ff @(posedge clk) begin
+  if (decode_vld && state == STEADY) begin
+    if (core_interrupt) begin
+      trap_cause <= {1'b1, 27'b0, core_interrupt_cause};
+      trap_value <= '0;
+    end
+    else if (decode.illegal) begin
+      trap_cause <= {28'b0, ILLEGAL_INSTR};
+      trap_value <= decode.ir;
+    end
+    else if (decode.misaligned) begin
+      trap_cause <= {28'b0, INSTR_ADDR_MISALIGNED};
+      trap_value <= decode.addr;
+    end
+    else if (decode.sysop == ECALL) begin
+      trap_cause <= {28'b0, ECALL_MACHINE};
+      trap_value <= '0;
+    end
+    else if (decode.sysop == EBREAK) begin
+      trap_cause <= {28'b0, BREAKPOINT};
+      trap_value <= decode.pc;
+    end
+  end
+  else if (state == WFINTR) begin
+    if (core_interrupt) begin
+      trap_cause <= {1'b1, 27'b0, core_interrupt_cause};
+      trap_value <= '0;
+    end
+  end
+end
+
+// ============================================================
+// CSR
+assign csr_vld = instr_vld || state == CSR;
+
+kronos_csr #(
+  .BOOT_ADDR     (BOOT_ADDR     ),
+  .EN_COUNTERS   (EN_COUNTERS   ),
+  .EN_COUNTERS64B(EN_COUNTERS64B)
+) u_csr (
+  .clk                 (clk                 ),
+  .rstz                (rstz                ),
+  .decode              (decode              ),
+  .csr_vld             (csr_vld             ),
+  .csr_rdy             (csr_rdy             ),
+  .csr_data            (csr_data            ),
+  .regwr_csr           (regwr_csr           ),
+  .instret             (instret             ),
+  .activate_trap       (activate_trap       ),
+  .return_trap         (return_trap         ),
+  .trap_cause          (trap_cause          ),
+  .trap_value          (trap_value          ),
+  .trap_handle         (trap_handle         ),
+  .trap_jump           (trap_jump           ),
+  .software_interrupt  (software_interrupt  ),
+  .timer_interrupt     (timer_interrupt     ),
+  .external_interrupt  (external_interrupt  ),
+  .core_interrupt      (core_interrupt      ),
+  .core_interrupt_cause(core_interrupt_cause)
+);
+
+assign activate_trap = state == TRAP;
+assign return_trap = state == RETURN;
+
+// instruction retired event
+always_ff @(posedge clk or negedge rstz) begin
+  if (~rstz) instret <= 1'b0;
+  else instret <= (decode_vld && decode_rdy)
+              || (decode.system && trap_jump);
+end
 
 endmodule

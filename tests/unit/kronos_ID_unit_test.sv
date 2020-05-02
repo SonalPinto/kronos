@@ -238,6 +238,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     1: begin
@@ -251,6 +252,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     2: begin
@@ -264,6 +266,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     3: begin
@@ -277,6 +280,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     4: begin
@@ -290,6 +294,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     5: begin
@@ -303,6 +308,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     6: begin
@@ -316,6 +322,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     7: begin
@@ -329,6 +336,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     8: begin
@@ -342,6 +350,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     9: begin
@@ -355,6 +364,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     10: begin
@@ -368,6 +378,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     11: begin
@@ -381,6 +392,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     12: begin
@@ -394,6 +406,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     13: begin
@@ -407,6 +420,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     14: begin
@@ -420,6 +434,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
 
@@ -434,6 +449,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     16: begin
@@ -447,6 +463,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     17: begin
@@ -460,6 +477,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     18: begin
@@ -473,6 +491,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     19: begin
@@ -486,6 +505,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     20: begin
@@ -499,6 +519,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     21: begin
@@ -515,9 +536,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     22: begin
@@ -534,9 +556,10 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       write_back = rd != 0;
+      decode.basic = 1;
     end
 
     23: begin
@@ -551,7 +574,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = REG[rs1] == REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     24: begin
@@ -566,7 +590,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = REG[rs1] != REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     25: begin
@@ -581,7 +606,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = $signed(REG[rs1]) < $signed(REG[rs2]);
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     26: begin
@@ -596,7 +622,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = $signed(REG[rs1]) >= $signed(REG[rs2]);
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     27: begin
@@ -611,7 +638,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = REG[rs1] < REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     28: begin
@@ -625,7 +653,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.branch = REG[rs1] >= REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
 
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
+      decode.basic = 1;
     end
 
     29: begin
@@ -652,7 +681,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[0] != 0;
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       write_back = rd != 0;
     end
@@ -668,7 +697,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[1:0] != 0;
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       write_back = rd != 0;
     end
@@ -697,7 +726,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[0] != 0;
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       write_back = rd != 0;
     end
@@ -728,7 +757,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.store = 1;
 
       decode.misaligned = decode.addr[0] != 0;
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       decode.mask = 3 << (decode.addr[1] * 2);
 
@@ -747,7 +776,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.store = 1;
 
       decode.misaligned = decode.addr[1:0] != 0;
-      decode.system = decode.misaligned;
+      decode.except = decode.misaligned;
 
       store_data = REG[rs2];
       store_data = store_data << (8 * decode.addr[1:0]);
@@ -762,6 +791,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         decode.op1 = instr.pc;
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
+
+        decode.basic = 1;
     end
 
     38: begin
@@ -774,6 +805,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         decode.addr = $signed(instr.pc) + 4;
 
         decode.branch = 1;
+
+        decode.basic = 1;
     end
 
     39: begin
@@ -781,12 +814,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         instr.ir = rv32_csrrw(rd, rs1, csr);
         decode.ir = instr.ir;
 
-        decode.op1 = instr.pc;
+        decode.op1 = REG[rs1];
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end
@@ -796,12 +828,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         instr.ir = rv32_csrrs(rd, rs1, csr);
         decode.ir = instr.ir;
 
-        decode.op1 = instr.pc;
+        decode.op1 = REG[rs1];
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end
@@ -811,12 +842,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         instr.ir = rv32_csrrc(rd, rs1, csr);
         decode.ir = instr.ir;
 
-        decode.op1 = instr.pc;
+        decode.op1 = REG[rs1];
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end
@@ -830,8 +860,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end
@@ -845,8 +874,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end
@@ -860,8 +888,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
         decode.op2 = 4;
         decode.addr = $signed(instr.pc) + 4;
 
-        decode.system = 1;
-        decode.sysop = CSR;
+        decode.csr = 1;
 
         write_back = rd != 0;
     end

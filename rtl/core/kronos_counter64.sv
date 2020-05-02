@@ -9,56 +9,64 @@ for lower-end implementations (ex: Lattice iCE40UP)
 The upper word update is delayed by a cycle
 */
 
-module kronos_counter64 (
-    input  logic        clk,
-    input  logic        rstz,
-    input  logic        incr,
-    input  logic [31:0] load_data,
-    input  logic        load_low,
-    input  logic        load_high,
-    output logic [63:0] count,
-    output logic        count_vld
+module kronos_counter64 #(
+  parameter EN_COUNTERS = 1,
+  parameter EN_COUNTERS64B = 1
+)(
+  input  logic        clk,
+  input  logic        rstz,
+  input  logic        incr,
+  input  logic [31:0] load_data,
+  input  logic        load_low,
+  input  logic        load_high,
+  output logic [63:0] count,
+  output logic        count_vld
 );
-
-parameter logic IS_32BIT = 1'b0;
 
 logic [31:0] count_low, count_high;
 logic incr_high;
 
 always_ff @(posedge clk or negedge rstz) begin
-    if (~rstz) begin
-        count_low <= '0;
-        count_high <= '0;
-        incr_high <= 1'b0;
-    end
+  if (~rstz) begin
+    count_low <= '0;
+    count_high <= '0;
+    incr_high <= 1'b0;
+  end
+  else begin
+    incr_high <= 1'b0;
+
+    // during a load (any segment), the count is paused
+    if (load_low) count_low <= load_data;
+    else if (load_high) count_high <= load_data;
     else begin
-        incr_high <= 1'b0;
+      if (incr) begin
+        count_low <= count_low + 1'b1;
+        // indicate that the upper word needs to increment
+        incr_high <= count_low == '1;
+      end
 
-        // during a load (any segment), the count is paused
-        if (load_low) count_low <= load_data;
-        else if (load_high) count_high <= load_data;
-        else begin
-            if (incr) begin
-                count_low <= count_low + 1'b1;
-                // indicate that the upper word needs to increment
-                incr_high <= count_low == '1;
-            end
-
-            if (incr_high) count_high <= count_high + 1'b1;
-        end
+      if (incr_high) count_high <= count_high + 1'b1;
     end
+  end
 end
 
-// the output 64b count is valid when the upper word update has settled
-assign count_vld = IS_32BIT ? 1'b1 : ~incr_high;
-
 generate
-    if (IS_32BIT == 1'b1)
-        // the upper word will be optimized out
-        assign count = {32'b0, count_low};
-    else
-        assign count = {count_high, count_low};
+  if (EN_COUNTERS) begin
+    if (EN_COUNTERS64B) begin
+      // the output 64b count is valid when the upper word update has settled
+      assign count = {count_high, count_low};
+      assign count_vld = ~incr_high;
+    end
+    else begin
+      // the upper word will be optimized out
+      assign count = {32'b0, count_low};
+      assign count_vld = 1'b1;
+    end
+  end
+  else begin
+    assign count = '0;
+    assign count_vld = 1'b1;
+  end
 endgenerate
-
 
 endmodule

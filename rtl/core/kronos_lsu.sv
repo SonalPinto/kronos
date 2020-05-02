@@ -16,8 +16,8 @@ module kronos_lsu
 (
   // ID/EX
   input  pipeIDEX_t   decode,
-  input  logic        decode_vld,
-  output logic        decode_rdy,
+  input  logic        lsu_vld,
+  output logic        lsu_rdy,
   // Register write-back
   output logic [31:0] load_data,
   output logic        regwr_lsu,
@@ -30,8 +30,6 @@ module kronos_lsu
   output logic        data_req,
   input  logic        data_ack
 );
-
-logic memory_access;
 
 logic [4:0] rd;
 logic [1:0] byte_addr;
@@ -50,16 +48,14 @@ assign rd  = decode.ir[11:7];
 
 // ============================================================
 // Memory interface
-assign memory_access = decode_vld && ~decode.misaligned;
-
 assign data_addr = {decode.addr[31:2], 2'b0};
 assign data_wr_data = decode.op2;
 assign data_mask = decode.mask;
-assign data_wr_en = memory_access && decode.store;
-assign data_req = memory_access && (decode.load | decode.store);
+assign data_wr_en = lsu_vld && decode.store && ~data_ack;
+assign data_req = lsu_vld && (decode.load | decode.store) && ~data_ack;
 
 // response controls
-assign decode_rdy = data_ack;
+assign lsu_rdy = data_ack;
 assign regwr_lsu = decode.load && rd != '0;
 
 // ============================================================

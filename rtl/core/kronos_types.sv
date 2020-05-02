@@ -20,16 +20,19 @@ typedef struct packed {
     logic [31:0] addr;
     // ------------------------
     // EX controls
+    logic        basic;
     logic [3:0]  aluop;
     logic        regwr_alu;
     logic        branch;
     logic        load;
     logic        store;
     logic [3:0]  mask;
+    logic        csr;
     logic        system;
-    logic [2:0]  sysop;
+    logic [1:0]  sysop;
     logic        illegal;
     logic        misaligned;
+    logic        except;
 } pipeIDEX_t;
 
 // ============================================================
@@ -84,11 +87,10 @@ parameter logic [1:0] WORD      = 2'b10;
 
 // ============================================================
 // System Operations
-parameter logic [2:0] ECALL     = 3'b000;
-parameter logic [2:0] EBREAK    = 3'b001;
-parameter logic [2:0] MRET      = 3'b010;
-parameter logic [2:0] WFI       = 3'b011;
-parameter logic [2:0] CSR       = 3'b100;
+parameter logic [1:0] ECALL     = 2'b00;
+parameter logic [1:0] EBREAK    = 2'b01;
+parameter logic [1:0] MRET      = 2'b10;
+parameter logic [1:0] WFI       = 2'b11;
 
 // ============================================================
 // Constants

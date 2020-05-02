@@ -11,8 +11,8 @@ import rv32_assembler::*;
 logic clk;
 
 pipeIDEX_t decode;
-logic decode_vld;
-logic decode_rdy;
+logic lsu_vld;
+logic lsu_rdy;
 logic [31:0] load_data;
 logic regwr_lsu;
 logic [31:0] data_addr;
@@ -25,8 +25,8 @@ logic data_ack;
 
 kronos_lsu u_dut (
   .decode      (decode      ),
-  .decode_vld  (decode_vld  ),
-  .decode_rdy  (decode_rdy  ),
+  .lsu_vld     (lsu_vld     ),
+  .lsu_rdy     (lsu_rdy     ),
   .load_data   (load_data   ),
   .regwr_lsu   (regwr_lsu   ),
   .data_addr   (data_addr   ),
@@ -61,8 +61,8 @@ end
 
 default clocking cb @(posedge clk);
   default input #10ps output #10ps;
-  output decode, decode_vld;
-  input decode_rdy, regwr_lsu, load_data;
+  output decode, lsu_vld;
+  input lsu_rdy, regwr_lsu, load_data;
 endclocking
 
 // ============================================================
@@ -74,7 +74,7 @@ logic [31:0] store_addr, expected_store_data, got_store_data;
   logic [31:0] data;
 
   clk = 0;
-  decode_vld = 0;
+  lsu_vld = 0;
 
   for(int i=0; i<256; i++)
     `MEM[i] = $urandom;
@@ -98,12 +98,11 @@ logic [31:0] store_addr, expected_store_data, got_store_data;
 
       @(cb);
       cb.decode <= tdecode;
-      cb.decode_vld <= 1;
-      @(cb);
-      cb.decode_vld <= 0;
-      
+      cb.lsu_vld <= 1;
+
       repeat (8) begin
-        @(cb) if (cb.decode_rdy) begin
+        @(cb) if (cb.lsu_rdy) begin
+          cb.lsu_vld <= 0;
           assert(cb.regwr_lsu);
           got_load_data = cb.load_data;
           $display("Got:");
@@ -132,9 +131,9 @@ logic [31:0] store_addr, expected_store_data, got_store_data;
 
       @(cb);
       cb.decode <= tdecode;
-      cb.decode_vld <= 1;
-      @(cb);
-      cb.decode_vld <= 0;
+      cb.lsu_vld <= 1;
+      @(cb iff cb.lsu_rdy);
+      cb.lsu_vld <= 0;
       
       ##2;
       got_store_data = `MEM[store_addr];

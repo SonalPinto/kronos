@@ -15,16 +15,19 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  op2: %h",           d.op2);
     $display("  addr: %h",          d.addr);
     $display("---- EXCTRL ----");
+    $display("  basic: %b",         d.basic);
     $display("  aluop: %b",         d.aluop);
     $display("  regwr_alu: %b",     d.regwr_alu);
     $display("  branch: %b",        d.branch);
     $display("  load: %b",          d.load);
     $display("  store: %b",         d.store);
     $display("  mask: %b",          d.mask);
+    $display("  csr: %b",           d.csr);
     $display("  system: %b",        d.system);
     $display("  sysop: %b",         d.sysop);
     $display("  illegal: %b",       d.illegal);
     $display("  misaligned: %b",    d.misaligned);
+    $display("  except: %b",        d.except);
 endtask
 
 endpackage

@@ -50,7 +50,8 @@ logic [31:0] op1, op2;
 logic [3:0] aluop;
 logic regwr_alu;
 logic branch;
-logic [2:0] sysop;
+logic csr;
+logic [1:0] sysop;
 logic is_fencei;
 
 logic illegal;
@@ -115,7 +116,8 @@ assign rs2_data = rs2_forward ? regwr_data : regrd_rs2;
 always_comb begin
   instr_valid = 1'b0;
   is_fencei = 1'b0;
-  sysop = '0;
+  sysop = 2'b0;
+  csr = 1'b0;
 
   // Default ALU Operation is ADD
   aluop = ADD;
@@ -322,12 +324,16 @@ always_comb begin
         end
         3'b001,       // CSRRW
         3'b010,       // CSRRS
-        3'b011,       // CSRRC
+        3'b011: begin // CSRRC
+          op1 = rs1_data;
+          csr = 1'b1;
+          instr_valid = 1'b1;
+        end
         3'b101,       // CSRRWI
         3'b110,       // CSRRSI
         3'b111: begin // CSRRCI
-            sysop = CSR;
-            instr_valid = 1'b1;
+          csr = 1'b1;
+          instr_valid = 1'b1;
         end
       endcase // funct3
     end
@@ -393,6 +399,15 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.pc <= PC;
       decode.ir <= IR;
 
+      decode.basic <= OP == INSTR_LUI
+                    || OP == INSTR_AUIPC
+                    || OP == INSTR_OPIMM
+                    || OP == INSTR_OP
+                    || OP == INSTR_BR
+                    || OP == INSTR_JAL
+                    || OP == INSTR_JALR
+                    || OP == INSTR_MISC;
+
       decode.aluop <= aluop;
       decode.regwr_alu <= regwr_alu;
       decode.op1 <= op1;
@@ -404,11 +419,13 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.store <= OP == INSTR_STORE;
       decode.mask  <= mask;
 
+      decode.csr <= csr;
+      decode.system <= OP == INSTR_SYS && ~csr;
+      decode.sysop <= sysop;
+
       decode.illegal   <= illegal;
       decode.misaligned <= misaligned;
-
-      decode.system <= misaligned || illegal || OP == INSTR_SYS;
-      decode.sysop <= sysop;
+      decode.except <= misaligned || illegal;
 
     end
     else if (decode_vld && decode_rdy) begin

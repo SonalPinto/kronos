@@ -77,23 +77,26 @@ kronos_ID u_id (
 );
 
 kronos_EX u_ex (
-  .clk          (clk          ),
-  .rstz         (rstz         ),
-  .decode       (decode       ),
-  .decode_vld   (decode_vld   ),
-  .decode_rdy   (decode_rdy   ),
-  .regwr_data   (regwr_data   ),
-  .regwr_sel    (regwr_sel    ),
-  .regwr_en     (regwr_en     ),
-  .branch_target(branch_target),
-  .branch       (branch       ),
-  .data_addr    (data_addr    ),
-  .data_rd_data (data_rd_data ),
-  .data_wr_data (data_wr_data ),
-  .data_mask    (data_mask    ),
-  .data_wr_en   (data_wr_en   ),
-  .data_req     (data_req     ),
-  .data_ack     (data_ack     )
+  .clk               (clk               ),
+  .rstz              (rstz              ),
+  .decode            (decode            ),
+  .decode_vld        (decode_vld        ),
+  .decode_rdy        (decode_rdy        ),
+  .regwr_data        (regwr_data        ),
+  .regwr_sel         (regwr_sel         ),
+  .regwr_en          (regwr_en          ),
+  .branch_target     (branch_target     ),
+  .branch            (branch            ),
+  .data_addr         (data_addr         ),
+  .data_rd_data      (data_rd_data      ),
+  .data_wr_data      (data_wr_data      ),
+  .data_mask         (data_mask         ),
+  .data_wr_en        (data_wr_en        ),
+  .data_req          (data_req          ),
+  .data_ack          (data_ack          ),
+  .software_interrupt(1'b0              ),
+  .timer_interrupt   (1'b0              ),
+  .external_interrupt(1'b0              )
 );
 
 default clocking cb @(posedge clk);
@@ -169,9 +172,7 @@ struct packed {
       cb.fetch <= tinstr;
       cb.fetch_vld <= 1;
       cb.instr_vld <= 0;
-      @(cb iff cb.fetch_rdy) begin
-        cb.fetch_vld <= 0;
-      end
+      @(cb iff cb.fetch_rdy) cb.fetch_vld <= 0;
 
       // Wait until EX stage is done, and collect outputs
       got_wb = '0;
