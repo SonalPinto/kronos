@@ -205,7 +205,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
   store_data = '0;
 
   // generate scenario
-  op = $urandom_range(0,37);
+  op = $urandom_range(0,48);
   imm = $urandom();
   rs1 = $urandom();
   rs2 = $urandom();
@@ -634,14 +634,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.ir = instr.ir;
 
       decode.op1 = instr.pc;
+      decode.op2 = 4;
       decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
       decode.load = 1;
 
       write_back = rd != 0;
-
-      store_data = REG[imm[4:0]];
-      store_data = store_data << (8 * decode.addr[1:0]);
-      decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
     30: begin
@@ -650,6 +647,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.ir = instr.ir;
 
       decode.op1 = instr.pc;
+      decode.op2 = 4;
       decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
       decode.load = 1;
 
@@ -657,10 +655,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.system = decode.misaligned;
 
       write_back = rd != 0;
-
-      store_data = REG[imm[4:0]];
-      store_data = store_data << (8 * decode.addr[1:0]);
-      decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
     31: begin
@@ -669,6 +663,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.ir = instr.ir;
 
       decode.op1 = instr.pc;
+      decode.op2 = 4;
       decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
       decode.load = 1;
 
@@ -676,10 +671,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.system = decode.misaligned;
 
       write_back = rd != 0;
-
-      store_data = REG[imm[4:0]];
-      store_data = store_data << (8 * decode.addr[1:0]);
-      decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
     32: begin
@@ -688,14 +679,11 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.ir = instr.ir;
 
       decode.op1 = instr.pc;
+      decode.op2 = 4;
       decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
       decode.load = 1;
 
       write_back = rd != 0;
-
-      store_data = REG[imm[4:0]];
-      store_data = store_data << (8 * decode.addr[1:0]);
-      decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
     33: begin
@@ -704,6 +692,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.ir = instr.ir;
 
       decode.op1 = instr.pc;
+      decode.op2 = 4;
       decode.addr = $signed(REG[rs1]) + $signed(imm[11:0]);
       decode.load = 1;
 
@@ -711,10 +700,6 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.system = decode.misaligned;
 
       write_back = rd != 0;
-
-      store_data = REG[imm[4:0]];
-      store_data = store_data << (8 * decode.addr[1:0]);
-      decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
     34: begin
@@ -770,156 +755,169 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
     end
 
     37: begin
+        optype = "FENCE";
+        instr.ir = rv32_fence();
+        decode.ir = instr.ir;
+
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
+    end
+
+    38: begin
         optype = "FENCEI";
         instr.ir = rv32_fencei();
         decode.ir = instr.ir;
 
         decode.op1 = instr.pc;
         decode.op2 = 4;
-
         decode.addr = $signed(instr.pc) + 4;
 
         decode.branch = 1;
     end
 
-    // 38: begin
-    //     optype = "CSRRW";
-    //     instr.ir = rv32_csrrw(rd, rs1, csr);
+    39: begin
+        optype = "CSRRW";
+        instr.ir = rv32_csrrw(rd, rs1, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = REG[rs1];
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 39: begin
-    //     optype = "CSRRS";
-    //     instr.ir = rv32_csrrs(rd, rs1, csr);
+    40: begin
+        optype = "CSRRS";
+        instr.ir = rv32_csrrs(rd, rs1, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = REG[rs1];
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 40: begin
-    //     optype = "CSRRC";
-    //     instr.ir = rv32_csrrc(rd, rs1, csr);
+    41: begin
+        optype = "CSRRC";
+        instr.ir = rv32_csrrc(rd, rs1, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = REG[rs1];
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 41: begin
-    //     optype = "CSRRWI";
-    //     instr.ir = rv32_csrrwi(rd, zimm, csr);
+    42: begin
+        optype = "CSRRWI";
+        instr.ir = rv32_csrrwi(rd, zimm, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = zimm;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 42: begin
-    //     optype = "CSRRSI";
-    //     instr.ir = rv32_csrrsi(rd, zimm, csr);
+    43: begin
+        optype = "CSRRSI";
+        instr.ir = rv32_csrrsi(rd, zimm, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = zimm;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 43: begin
-    //     optype = "CSRRCI";
-    //     instr.ir = rv32_csrrci(rd, zimm, csr);
+    44: begin
+        optype = "CSRRCI";
+        instr.ir = rv32_csrrci(rd, zimm, csr);
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = zimm;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.rd = rd;
-    //     decode.csr = 1;
+        decode.system = 1;
+        decode.sysop = CSR;
 
-    //     write_back = 1;
-    // end
+        write_back = rd != 0;
+    end
 
-    // 44: begin
-    //     optype = "ECALL";
-    //     instr.ir = rv32_ecall();
+    45: begin
+        optype = "ECALL";
+        instr.ir = rv32_ecall();
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = 0;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.ecall = 1;
-    // end
+        decode.system = 1;
+        decode.sysop = ECALL;
+    end
 
 
-    // 45: begin
-    //     optype = "EBREAK";
-    //     instr.ir = rv32_ebreak();
+    46: begin
+        optype = "EBREAK";
+        instr.ir = rv32_ebreak();
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = 0;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.ebreak = 1;
-    // end
+        decode.system = 1;
+        decode.sysop = EBREAK;
+    end
 
-    // 46: begin
-    //     optype = "MRET";
-    //     instr.ir = rv32_mret();
+    47: begin
+        optype = "MRET";
+        instr.ir = rv32_mret();
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = 0;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.ret = 1;
-    // end
+        decode.system = 1;
+        decode.sysop = MRET;
+    end
 
-    // 47: begin
-    //     optype = "WFI";
-    //     instr.ir = rv32_wfi();
+    48: begin
+        optype = "WFI";
+        instr.ir = rv32_wfi();
+        decode.ir = instr.ir;
 
-    //     decode.op1 = 0;
-    //     decode.op2 = instr.ir;
-    //     decode.op3 = 0;
-    //     decode.op4 = 0;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
+        decode.addr = $signed(instr.pc) + 4;
 
-    //     decode.wfi = 1;
-    // end
+        decode.system = 1;
+        decode.sysop = WFI;
+    end
   endcase // instr
 endtask
 

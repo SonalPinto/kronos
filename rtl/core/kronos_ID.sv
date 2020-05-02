@@ -50,7 +50,12 @@ logic [31:0] op1, op2;
 logic [3:0] aluop;
 logic regwr_alu;
 logic branch;
+logic [2:0] sysop;
 logic is_fencei;
+
+logic illegal;
+logic instr_valid;
+logic illegal_opcode;
 
 // Address generation
 logic [31:0] addr, base, offset;
@@ -84,6 +89,9 @@ assign funct3 = IR[14:12];
 assign funct7 = IR[31:25];
 assign data_size = funct3[1:0];
 
+// opcode is illegal if LSB 2b are not 2'b11
+assign illegal_opcode = opcode[1:0] != 2'b11;
+
 // ============================================================
 // Register Write
 // Write the result of the ALU back into the Registers
@@ -105,7 +113,9 @@ assign rs2_data = rs2_forward ? regwr_data : regrd_rs2;
 // ============================================================
 // Operation Decoder
 always_comb begin
+  instr_valid = 1'b0;
   is_fencei = 1'b0;
+  sysop = '0;
 
   // Default ALU Operation is ADD
   aluop = ADD;
@@ -144,56 +154,192 @@ always_comb begin
 
   /* verilator lint_off CASEINCOMPLETE */
   unique case(OP)
+    // --------------------------------
     INSTR_LUI: begin
       op1 = ZERO;
       op2 = immediate;
+      instr_valid = 1'b1;
     end
+    // --------------------------------
     INSTR_AUIPC: begin
       op2 = immediate;
+      instr_valid = 1'b1;
     end
+    // --------------------------------
     INSTR_JAL: begin
       op2 = FOUR;
       offset = immediate;
+      instr_valid = 1'b1;
     end
+    // --------------------------------
     INSTR_JALR: begin
       op2 = FOUR;
       base = rs1_data;
       offset = immediate;
+      instr_valid = funct3 == 3'b000;
     end
+    // --------------------------------
     INSTR_BR: begin
       offset = immediate;
+
+      case(funct3)
+        BEQ,
+        BNE,
+        BLT,
+        BGE,
+        BLTU,
+        BGEU:
+          instr_valid  = 1'b1;
+      endcase // funct3
     end
-    INSTR_LOAD,
+    // --------------------------------
+    INSTR_LOAD: begin
+      base = rs1_data;
+      offset = immediate;
+
+      case(funct3)
+        3'b000, // LB
+        3'b001, // LH
+        3'b010, // LW
+        3'b100, // LBU
+        3'b101: // LHU 
+          instr_valid = 1'b1;
+      endcase // funct3
+    end
+    // --------------------------------
     INSTR_STORE: begin
       op2 = store_data;
       base = rs1_data;
       offset = immediate;
+
+      case(funct3)
+        3'b000, // SB
+        3'b001, // SH
+        3'b010: // SW
+          instr_valid = 1'b1;
+      endcase // funct3
     end
+    // --------------------------------
     INSTR_OPIMM: begin
       if (funct3 == 3'b001 || funct3 == 3'b101) aluop = {funct7[5], funct3};
       else aluop = {1'b0, funct3};
 
       op1 = rs1_data;
       op2 = immediate;
+
+      case(funct3)
+        3'b000, // ADDI
+        3'b010, // SLTI
+        3'b011, // SLTIU
+        3'b100, // XORI
+        3'b110, // ORI
+        3'b111: // ANDI
+          instr_valid = 1'b1;
+        3'b001: begin // SLLI
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b101: begin // SRLI/SRAI
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+          else if (funct7 == 7'd32) instr_valid = 1'b1;
+        end
+      endcase // funct3
     end
+    // --------------------------------
     INSTR_OP: begin
       aluop = {funct7[5], funct3};
       op1 = rs1_data;
       op2 = rs2_data;
+
+      case(funct3)
+        3'b000: begin // ADD/SUB
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+          else if (funct7 == 7'd32) instr_valid = 1'b1;
+        end
+        3'b001: begin // SLL
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b010: begin // SLT
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b011: begin // SLTU
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b100: begin // XOR
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b101: begin // SRL/SRA
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+          else if (funct7 == 7'd32) instr_valid = 1'b1;
+        end
+        3'b110: begin // OR
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+        3'b111: begin // AND
+          if (funct7 == 7'd0) instr_valid = 1'b1;
+        end
+      endcase // funct3
     end
+    // --------------------------------
     INSTR_MISC: begin
-      if (funct3 == 3'b001) begin
-        // implementing fence.i as `j f1` (jump to pc+4) 
-        // as this will flush the pipeline and cause a fresh 
-        // fetch of the instructions after the fence.i instruction
-        is_fencei = 1'b1;
-      end
+      case(funct3)
+        3'b000: begin // FENCE
+          // This is a NOP
+          if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) instr_valid = 1'b1;
+        end
+        3'b001: begin // FENCE.I
+          if (IR[31:20] == 12'b0 && rs1 == '0 && rd =='0) begin
+            // implementing fence.i as `j f1` (jump to pc+4) 
+            // as this will flush the pipeline and cause a fresh 
+            // fetch of the instructions after the fence.i instruction
+            is_fencei = 1'b1;
+            instr_valid = 1'b1;
+          end
+        end
+      endcase // funct3
     end
+    // --------------------------------
+    INSTR_SYS: begin
+      unique case(funct3)
+        3'b000: begin
+          if (rs1 == '0 && rd =='0) begin
+            if (IR[31:20] == 12'h000) begin // ECALL
+              sysop = ECALL;
+              instr_valid = 1'b1;
+            end
+            else if (IR[31:20] == 12'h001) begin // EBREAK
+              sysop = EBREAK;
+              instr_valid = 1'b1;
+            end
+            else if (IR[31:20] == 12'h302) begin // MRET
+              sysop = MRET;
+              instr_valid = 1'b1;
+            end
+            else if (IR[31:20] == 12'h105) begin // WFI
+              sysop = WFI;
+              instr_valid = 1'b1;
+            end
+          end
+        end
+        3'b001,       // CSRRW
+        3'b010,       // CSRRS
+        3'b011,       // CSRRC
+        3'b101,       // CSRRWI
+        3'b110,       // CSRRSI
+        3'b111: begin // CSRRCI
+            sysop = CSR;
+            instr_valid = 1'b1;
+        end
+      endcase // funct3
+    end
+    // --------------------------------
     default: begin
     end
   endcase // OP
   /* verilator lint_on CASEINCOMPLETE */
 end
+
+// Consolidate factors that deem an instruction as illegal
+assign illegal = CATCH_ILLEGAL_INSTR ? (~instr_valid | illegal_opcode) : 1'b0;
 
 // ============================================================
 // Address Generation Unit
@@ -257,9 +403,12 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.load <= OP == INSTR_LOAD; 
       decode.store <= OP == INSTR_STORE;
       decode.mask  <= mask;
+
+      decode.illegal   <= illegal;
       decode.misaligned <= misaligned;
 
-      decode.system <= misaligned || OP == INSTR_SYS;
+      decode.system <= misaligned || illegal || OP == INSTR_SYS;
+      decode.sysop <= sysop;
 
     end
     else if (decode_vld && decode_rdy) begin

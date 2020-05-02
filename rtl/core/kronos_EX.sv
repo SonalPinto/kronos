@@ -39,9 +39,13 @@ logic wb_rdy, lsu_rdy;
 logic [31:0] load_data;
 logic regwr_lsu;
 
-enum logic {
+enum logic [2:0] {
   STEADY,
-  TRAP
+  CSR,
+  TRAP,
+  RETURN,
+  WFI,
+  JUMP
 } state, next_state;
 
 // ============================================================
@@ -63,6 +67,8 @@ always_comb begin
   unique case (state)
     STEADY: if (decode_vld) begin
       if (decode.misaligned) next_state = TRAP;
+      else if (decode.system) begin
+      end 
     end
   endcase // state
   /* verilator lint_on CASEINCOMPLETE */
