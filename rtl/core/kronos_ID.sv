@@ -50,6 +50,7 @@ logic [31:0] op1, op2;
 logic [3:0] aluop;
 logic regwr_alu;
 logic branch;
+logic is_fencei;
 
 // Address generation
 logic [31:0] addr, base, offset;
@@ -104,6 +105,8 @@ assign rs2_data = rs2_forward ? regwr_data : regrd_rs2;
 // ============================================================
 // Operation Decoder
 always_comb begin
+  is_fencei = 1'b0;
+
   // Default ALU Operation is ADD
   aluop = ADD;
 
@@ -178,6 +181,14 @@ always_comb begin
       op1 = rs1_data;
       op2 = rs2_data;
     end
+    INSTR_MISC: begin
+      if (funct3 == 3'b001) begin
+        // implementing fence.i as `j f1` (jump to pc+4) 
+        // as this will flush the pipeline and cause a fresh 
+        // fetch of the instructions after the fence.i instruction
+        is_fencei = 1'b1;
+      end
+    end
     default: begin
     end
   endcase // OP
@@ -242,11 +253,13 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.op2 <= op2;
 
       decode.addr <= addr;
-      decode.branch <= (OP == INSTR_JAL || OP == INSTR_JALR) || (branch && OP == INSTR_BR);
+      decode.branch <= (OP == INSTR_JAL || OP == INSTR_JALR) || (branch && OP == INSTR_BR) || is_fencei;
       decode.load <= OP == INSTR_LOAD; 
       decode.store <= OP == INSTR_STORE;
       decode.mask  <= mask;
       decode.misaligned <= misaligned;
+
+      decode.system <= misaligned || OP == INSTR_SYS;
 
     end
     else if (decode_vld && decode_rdy) begin

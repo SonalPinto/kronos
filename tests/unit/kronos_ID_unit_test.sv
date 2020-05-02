@@ -205,7 +205,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
   store_data = '0;
 
   // generate scenario
-  op = $urandom_range(0,36);
+  op = $urandom_range(0,37);
   imm = $urandom();
   rs1 = $urandom();
   rs2 = $urandom();
@@ -515,6 +515,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
       decode.misaligned = decode.addr[1:0] != 0;
 
+      decode.system = decode.misaligned;
+
       write_back = rd != 0;
     end
 
@@ -532,6 +534,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.regwr_alu = rd != 0;
       decode.misaligned = decode.addr[1:0] != 0;
 
+      decode.system = decode.misaligned;
+
       write_back = rd != 0;
     end
 
@@ -546,6 +550,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] == REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     24: begin
@@ -559,6 +565,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] != REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     25: begin
@@ -572,6 +580,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = $signed(REG[rs1]) < $signed(REG[rs2]);
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     26: begin
@@ -585,6 +595,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = $signed(REG[rs1]) >= $signed(REG[rs2]);
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     27: begin
@@ -598,6 +610,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] < REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     28: begin
@@ -610,6 +624,8 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.addr = $signed(instr.pc) + $signed({imm[12:1], 1'b0});
       decode.branch = REG[rs1] >= REG[rs2];
       decode.misaligned = decode.addr[1:0] != 0;
+
+      decode.system = decode.misaligned;
     end
 
     29: begin
@@ -638,6 +654,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[0] != 0;
+      decode.system = decode.misaligned;
 
       write_back = rd != 0;
 
@@ -656,6 +673,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[1:0] != 0;
+      decode.system = decode.misaligned;
 
       write_back = rd != 0;
 
@@ -690,6 +708,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.load = 1;
 
       decode.misaligned = decode.addr[0] != 0;
+      decode.system = decode.misaligned;
 
       write_back = rd != 0;
 
@@ -724,6 +743,7 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.store = 1;
 
       decode.misaligned = decode.addr[0] != 0;
+      decode.system = decode.misaligned;
 
       decode.mask = 3 << (decode.addr[1] * 2);
 
@@ -742,21 +762,25 @@ task automatic rand_instr(output pipeIFID_t instr, output pipeIDEX_t decode,
       decode.store = 1;
 
       decode.misaligned = decode.addr[1:0] != 0;
+      decode.system = decode.misaligned;
 
       store_data = REG[rs2];
       store_data = store_data << (8 * decode.addr[1:0]);
       decode.op2 = store_data[31:0] | store_data[63:32];
     end
 
-    // 37: begin
-    //     optype = "FENCEI";
-    //     instr.ir = rv32_fencei();
+    37: begin
+        optype = "FENCEI";
+        instr.ir = rv32_fencei();
+        decode.ir = instr.ir;
 
-    //     decode.op3 = instr.pc;
-    //     decode.op4 = 4;
+        decode.op1 = instr.pc;
+        decode.op2 = 4;
 
-    //     decode.branch = 1;
-    // end
+        decode.addr = $signed(instr.pc) + 4;
+
+        decode.branch = 1;
+    end
 
     // 38: begin
     //     optype = "CSRRW";

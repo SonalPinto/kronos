@@ -21,6 +21,7 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  load: %b",          d.load);
     $display("  store: %b",         d.store);
     $display("  mask: %b",          d.mask);
+    $display("  system: %b",        d.system);
     $display("  misaligned: %b",    d.misaligned);
 endtask
 

@@ -26,6 +26,7 @@ typedef struct packed {
     logic        load;
     logic        store;
     logic [3:0]  mask;
+    logic        system;
     logic        misaligned;
 } pipeIDEX_t;
 

@@ -50,6 +50,8 @@ kronos_core u_dut (
     .external_interrupt(1'b0           )
 );
 
+`define REG u_dut.u_if.u_rf.REG
+
 logic [31:0] mem_addr;
 logic [31:0] mem_wdata;
 logic [31:0] mem_rdata;
@@ -81,7 +83,7 @@ always_comb begin
     mem_mask = data_req ? data_mask : 4'hF;
 end
 
-always_ff @(negedge clk) begin
+always_ff @(posedge clk) begin
     instr_ack <= instr_req & ~data_req & run;
     data_ack <= data_req;
 end
@@ -133,26 +135,22 @@ endclocking
 
         // ABI --------------------------------
         // Setup Return Address (ra/x1)
-        u_dut.u_id.REG1[x1] = 944;
-        u_dut.u_id.REG2[x1] = 944;
+        `REG[x1] = 944;
 
         // Store while(1); at 944
         // 944 = 0x3B0, word 236
         u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)
-        u_dut.u_id.REG1[x8] = 0;
-        u_dut.u_id.REG2[x8] = 0;
+        `REG[x8] = 0;
 
         // Setup Stack Pointer (sp/x2) to the end of the memory (4KB), 0x1000
-        u_dut.u_id.REG1[x2] = 4096;
-        u_dut.u_id.REG2[x2] = 4096;
+        `REG[x2] = 4096;
 
         // Setup Function Argument - "n" - at a0 (x10)
         n = $urandom_range(1,31);
         $display("\n\nARG: n = %0d", n);
-        u_dut.u_id.REG1[x10] = n;
-        u_dut.u_id.REG2[x10] = n;
+        `REG[x10] = n;
 
         // Run
         $display("\n\nEXEC\n\n");
@@ -215,26 +213,22 @@ endclocking
 
         // ABI --------------------------------
         // Setup Return Address (ra/x1)
-        u_dut.u_id.REG1[x1] = 944;
-        u_dut.u_id.REG2[x1] = 944;
+        `REG[x1] = 944;
 
         // Store while(1); at 944
         // 944 = 0x3B0, word 236
         u_mem.MEM[944>>2] = rv32_jal(x0, 0); // j 1b
 
         // Setup Frame Pointer (s0/x8)
-        u_dut.u_id.REG1[x8] = 0;
-        u_dut.u_id.REG2[x8] = 0;
+        `REG[x8] = 0;
 
         // Setup Stack Pointer (sp/x2) to the end of the memory (4KB)
-        u_dut.u_id.REG1[x2] = 1024;
-        u_dut.u_id.REG2[x2] = 1024;
+        `REG[x2] = 1024;
 
         // Setup Function Argument - "n" - at a0 (x10)
         n = $urandom_range(1,32);
         $display("\n\nARG: n = %0d", n);
-        u_dut.u_id.REG1[x10] = n;
-        u_dut.u_id.REG2[x10] = n;
+        `REG[x10] = n;
 
         // Run
         $display("\n\nEXEC\n\n");

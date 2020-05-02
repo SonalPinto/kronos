@@ -33,6 +33,7 @@ module kronos_EX
 
 logic [31:0] result;
 logic [4:0] rd;
+logic [3:0] funct3;
 
 logic wb_rdy, lsu_rdy;
 logic [31:0] load_data;
@@ -42,6 +43,12 @@ enum logic {
   STEADY,
   TRAP
 } state, next_state;
+
+// ============================================================
+// IR Segments
+assign OP = decode.ir[6:2];
+assign rd  = decode.ir[11:7];
+assign funct3 = decode.ir[14:12];
 
 // ============================================================
 // EX Sequencer
@@ -62,13 +69,10 @@ always_comb begin
 end
 
 // Direct write-back is always ready in continued steady state
-assign wb_rdy = state == STEADY && decode_vld && ~decode.misaligned;
+assign wb_rdy = state == STEADY && decode_vld && ~decode.system;
 
 // Next instructions
 assign decode_rdy = wb_rdy || lsu_rdy;
-
-// IR Segments
-assign rd  = decode.ir[11:7];
 
 // ============================================================
 // ALU
