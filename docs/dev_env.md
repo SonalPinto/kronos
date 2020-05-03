@@ -11,8 +11,6 @@ The Kronos core is entirely written in SystemVerilog. The development environmen
 - Linting - [Verilator](https://www.veripool.org/wiki/verilator)
 - Build System: CMake
 - RISC-V GNU toolchain configured for `rv32i`
-- Other: 
-    * [srec_cat](http://srecord.sourceforge.net/man/man1/srec_cat.html) : for converting compiled hex dumps into SV readable memory files
 
 This is my go-to development setup for digital design work. Linting with verilator, unit testing with vunit and seamless HDL dependency maintenance and build with cmake.
 

@@ -14,8 +14,6 @@ The lowest 7b of the RV32I instruction form the opcode. The two lowest bits are 
 
 Load-Upper Immediate. We store the **Type-U** immediate from the instruction into the register indexed by `rd` (also from the instruction). 
 
-> Well, "store" is an abstract concept here. What really needs to happen is that the Type-I immediate needs to get handed off to the Write Back stage  which is responsible for writing data in to the registers. In general, in pipelined architectures, though memory elements (registers) can have multiple readers, limiting the write access to a single owner can be an easy solution to avoid hazards. In Kronos, while it may seem trivial to write back the readily available immediate into the destination register, it would be chaos. There are two stages (and thus two instructions) ahead of the decode stage that are yet to be committed.
-
 
 #### AUIPC
 
@@ -56,36 +54,36 @@ Integer Register-Register instructions:
 - OR: `REG[rd] = REG[rs1] | REG[rs2]`, aluop: logical OR
 - AND: `REG[rd] = REG[rs1] & REG[rs2]`, aluop: logical AND
 
-For these instructions, both operands are sourced from the integer registers, else the execution sequence is the same as the `OP-IMM` instructions. Interesting thing to note that a `SUB` instruction is present here because the authors of the spec decided that they could use the `ADDI` to subtract an immediate from a register since the **Type-I** immediate is signed (in fact, all RV32I immediates are signed).
+For these instructions, both operands are sourced from the integer registers, else the execution sequence is the same as the `OP-IMM` instructions. Interesting thing to note that a `SUB` instruction is present here because the authors of the spec decided that they could use the `ADDI` to subtract an immediate from a register since the **Type-I** immediate is signed (in fact, all RV32I immediate are signed).
 
 
 #### JAL
 
-Jump and Link. `REG[rd] = PC + 4` and unconditional jump to a new address, `PC = PC + Imm` by adding a **Type-J** immediate to `PC`. So far, we have gotten away with a single track ALU, i.e. calculating a single result. This instruction needs to calculate the link data for the destination integer register _and_ the jump address for the Fetch stage. So we need at least two tracks at the Execute stage, with the second track being at least a 32b adder. The primary track needs to be feature rich enough to execute the OP and OP-IMM instructions.
+Jump and Link. `REG[rd] = PC + 4` and unconditional jump to a new address, `PC = PC + Imm` by adding a **Type-J** immediate to `PC`. So far, we have gotten away with a single track ALU, i.e. calculating a single result. This instruction needs to calculate the link data for the destination integer register _and_ the jump address for the Fetch stage. Thus, we need another 32b adder to generate the jump address. Let's call this the Address Generation Unit (`AGU`).
 
 
 #### JALR
 
-Jump and Link Register. `REG[rd] = PC + 4` and unconditional jump to a new 2B-aligned address, `PC = (REG[rs1] + Imm) & ~1` by adding register operand, `REG[rs1]` to a **Type-I** immediate. We need to use both tracks of the ALU, and the second track needs to blank the LSB of the result. Note, that this instruction needs **three** operands; the `PC`, register operand `REG[rs1]` and the **Type-I** immediate.
+Jump and Link Register. `REG[rd] = PC + 4` and unconditional jump to a new 2B-aligned address, `PC = (REG[rs1] + Imm) & ~1` by adding register operand, `REG[rs1]` to a **Type-I** immediate. The LSB of the address calculated needs to blanked. The operands for the the ALU are going to be the register operand `REG[rs1]` and the **Type-I** immediate.
 
 
 #### BRANCH
 
 Conditional Branch instructions. Jump to `PC = PC + Imm` (**Type-B** immediate) if conditional check using two register operands is true.
 
-- BEQ: jump if `condition = REG[rs1] == REG[rs2]`, aluop: equal
-- BNE: jump if `condition = REG[rs1] != REG[rs2]`, aluop: not equal
-- BLT: jump if `condition = REG[rs1] < REG[rs2]`, aluop: signed less than
-- BGE: jump if `condition = REG[rs1] >= REG[rs2]`, aluop: signed greater than or equal
-- BLTU: jump if `condition = REG[rs1] <u REG[rs2]`, aluop: unsigned less than
-- BGEU: jump if `condition = REG[rs1] >=u REG[rs2]`, aluop: unsigned greater than or equal
+- BEQ: jump if `condition = REG[rs1] == REG[rs2]`
+- BNE: jump if `condition = REG[rs1] != REG[rs2]`
+- BLT: jump if `condition = REG[rs1] < REG[rs2]`
+- BGE: jump if `condition = REG[rs1] >= REG[rs2]`
+- BLTU: jump if `condition = REG[rs1] <u REG[rs2]`
+- BGEU: jump if `condition = REG[rs1] >=u REG[rs2]`
 
-This class of instructions need **FOUR** operands! The jump address calculation needs the `PC` and the immediate, while the condition evaluation needs the two register operands, `REG[rs1]` and `REG[rs2]`. The primary track takes the task of evaluation the condition, and the secondary track generates the branch target.
+This class of instructions need **FOUR** operands! The jump address calculation needs the `PC` and the immediate, while the condition evaluation needs the two register operands, `REG[rs1]` and `REG[rs2]`. In order to branch quickly, the branch condition should be evaluated as early in the pipeline as possible. Hence, there's a Branch Compare Unit (`BCU`) alongside the AGU at the decode stage.
 
 
 #### LOAD
 
-Load data from memory into register. Read the data memory at a specific address and write the read data to the destination register. The read data size is specified in the instruction and can be either a byte (8b), halfword (16b) or word (32b) access. Non-word boundary access is considered a misaligned access, but that's a discussion for subsequent sections. The load instructions are described below:
+Load data from memory into register. Read the data memory at a specific address and write the read data to the destination register. The read data size is specified in the instruction and can be either a byte (8b), halfword (16b) or word (32b) access. The load instructions are described below:
 
 - LB: `REG[rd] = sext( MEM[ REG[rs1] + Imm ][7:0] )`, load a sign-extended byte
 - LBU: `REG[rd] = zext( MEM[ REG[rs1] + Imm ][7:0] )`, load a zero-extended byte
@@ -93,7 +91,7 @@ Load data from memory into register. Read the data memory at a specific address 
 - LHU: `REG[rd] = zext( MEM[ REG[rs1] + Imm ][15:0] )`, load a zero-extended halfword
 - LW: `REG[rd] = sext( MEM[ REG[rs1] + Imm ][31:0] )`, load a word
 
-The data memory read address is calculated using a register operand, `REG[rs1]` and a signed offset (**Type-I** immediate). The primary track of the ALU can care of this.
+The data memory read address is calculated using a register operand, `REG[rs1]` and a signed offset (**Type-I** immediate). The AGU takes care of this.
 
 
 #### STORE
@@ -104,7 +102,7 @@ Store register data into memory. The instruction defines the size of the data th
 - SH: `MEM[ REG[rs1] + Imm ][15:0] = REG[rs2][15:0]`, store a halfword
 - SW: `MEM[ REG[rs1] + Imm ][31:0] = REG[rs2][31:0]`, store a word
 
-The data memory write address is generated by adding a **Type-S** immediate to `REG[rs1]`. And, we also need to pass along the write data, `REG[rs2]` using the secondary track.
+The data memory write address is generated by adding a **Type-S** immediate to `REG[rs1]`. The write data, `REG[rs2]` is passed along to the Execute Stage.
 
 
 #### MISC

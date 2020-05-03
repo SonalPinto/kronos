@@ -96,7 +96,7 @@ Read/Write to the SPIM peripheral at the SPIM address, `0x800200`. The access sh
 
 ## Build using Radiant
 
-From the root of the kronos project, build the project for release. This does require having the riscv toolchain and srec_cat in your PATH.
+From the root of the kronos project, build the project for release. This does require having the riscv toolchain in your PATH.
 
 ```
 mkdir build

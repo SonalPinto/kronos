@@ -42,6 +42,4 @@ make RISCV_ISA=rv32Zicsr
 
 ```
 
-Note, that kronos will fail the `I-MISALIGN_LDST-012` test because it natively supports misaligned memory access, and does not except to the trap handler over such accesses.
-
 Output files (elf, bin, objdump and simulation results: output signature and waveform vcd) will be generated in the `work` directory for each of the above ISA test suites.

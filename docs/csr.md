@@ -56,3 +56,5 @@ The macros are executed in a single cycle, and forms the trap/return setup phase
 Two hardware performance counters are implemented as well! The `mcycle`, which ticks up on every cycle and the `minstret` which counts the number of instructions executed. There's a neat trick about how these 64b counters are designed for Kronos - which needs to run on the iCE40UP5K. The counter is made of two 32b counters splitting the critical path. The two words of the counter do not update together. When the lower word saturates, a tick event is registered. The next cycle, the upper word counts up. The count read is only valid when the tick update isn't pending. You'd almost never encounter this tick, but if you do, the read of the upper word is delayed merely by a cycle. 
 
 These counters are ripe for being optimized out or reduced to 32b, if the use case doesn't require a 64b counter.
+
+> `EN_COUNTERS` and `EN_COUNTERS64B` are a configurable parameters for Kronos. The former instances the counters (default 32b), and the sets their size as 64b.

@@ -89,7 +89,7 @@ always_comb begin
   unique case (state)
     STEADY: if (decode_vld) begin
       if (core_interrupt) next_state = TRAP;
-      else if (decode.misaligned || decode.illegal) next_state = TRAP;
+      else if (decode.except) next_state = TRAP;
       else if (decode.system) begin
         unique case (decode.sysop)
           ECALL,

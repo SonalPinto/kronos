@@ -17,7 +17,7 @@ Address | Section
 
 ## Build Using Radiant
 
-From the root of the kronos project, build the project for release. This does require having the riscv toolchain and srec_cat in your PATH.
+From the root of the kronos project, build the project for release. This does require having the riscv toolchain in your PATH.
 
 ```
 mkdir build

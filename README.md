@@ -1,6 +1,6 @@
 # Kronos RISC-V
 
-Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards FPGA implementations.
+Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards FPGA implementations.
 
 ![Kronos find primes](https://i.imgur.com/TlzIKzC.gif)
 
@@ -17,9 +17,8 @@ Kronos is a 4-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
   * Partial platform-specific implementation of the Privileged Architecture:
     - Machine-Level ISA, v1.11
 - Optimized for single cycle instruction execution.
-- Native support for misaligned data access.
 - Direct mode trap handler jumps.
-- Dual **Wishbone** master interface for instruction and data.
+- Dual **Wishbone** pipelined master interface for instruction and data.
 
 ![Kronos Architecture](docs/_images/kronos_arch.svg)
  

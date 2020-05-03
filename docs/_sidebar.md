@@ -1,13 +1,10 @@
 - Architecture
   - [Overview](arch_overview.md)
   - [RISC-V ISA Study](rv32_study.md)
-  - [Instruction Fetch](instr_fetch.md)
-  - [ALU Design](alu_design.md)
-  - [Instruction Decode](instr_decode.md)
-  - [Hazard Control](hazard_ctrl.md)
-  - [Load Store Unit](ldst_unit.md)
+  - [Fetch](instr_fetch.md)
+  - [Decode](instr_decode.md)
+  - [Execute](instr_execute.md)
   - [Control Status Registers](csr.md)
-  - [Write Back](write_back.md)
   - [Exceptions and Interrupts](excpt_intr.md)
 - Integration
   - [kronos_core](integration.md)
