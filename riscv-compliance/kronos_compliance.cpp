@@ -60,6 +60,11 @@ class Sim {
     }
 
     void tick(void) {
+      top->clk = 0;
+      top->eval();
+      trace->dump(ticks);
+      ticks++;
+
       top->clk = 1;
       top->eval();
       trace->dump(ticks);
@@ -95,12 +100,15 @@ class Sim {
 
         // The compliance tests writes a "1" to the tohost address to indicate
         // that the test is done.
-        if (top->data_ack && top->data_wr_en 
-          && top->data_addr == sim_end_addr && top->data_wr_data == 1) {
+        if (top->data_wr_en 
+          && top->data_addr == sim_end_addr 
+          && top->data_wr_data == 1) {
           done = true;
           break;
         }
       }
+
+      return done;
     }
 
     void print_signature(string resfile, string begin, string end) {

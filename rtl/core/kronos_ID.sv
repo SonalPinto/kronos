@@ -57,6 +57,10 @@ logic is_fencei;
 logic illegal;
 logic instr_valid;
 logic illegal_opcode;
+logic misaligned_jmp;
+logic misaligned_ldst;
+
+logic branch_vld;
 
 // Address generation
 logic [31:0] addr, base, offset;
@@ -357,6 +361,8 @@ kronos_agu u_agu (
   .misaligned(misaligned)
 );
 
+assign misaligned_ldst = (OP == INSTR_LOAD || OP == INSTR_STORE) & misaligned;
+
 // ============================================================
 // Branch Comparator
 kronos_branch u_branch (
@@ -365,6 +371,12 @@ kronos_branch u_branch (
   .rs2   (rs2_data),
   .branch(branch  )
 );
+
+assign branch_vld = (OP == INSTR_JAL || OP == INSTR_JALR) 
+                  || (OP == INSTR_BR && branch) 
+                  || is_fencei;
+
+assign misaligned_jmp = branch_vld & misaligned;
 
 // ============================================================
 // Hazard Control
@@ -414,7 +426,7 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.op2 <= op2;
 
       decode.addr <= addr;
-      decode.branch <= (OP == INSTR_JAL || OP == INSTR_JALR) || (branch && OP == INSTR_BR) || is_fencei;
+      decode.branch <= branch_vld;
       decode.load <= OP == INSTR_LOAD; 
       decode.store <= OP == INSTR_STORE;
       decode.mask  <= mask;
@@ -424,8 +436,8 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.sysop <= sysop;
 
       decode.illegal   <= illegal;
-      decode.misaligned <= misaligned;
-      decode.except <= misaligned || illegal;
+      decode.misaligned <= misaligned_jmp || misaligned_ldst;
+      decode.except <= misaligned_jmp || misaligned_ldst || illegal;
 
     end
     else if (decode_vld && decode_rdy) begin

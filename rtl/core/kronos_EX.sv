@@ -205,8 +205,16 @@ always_ff @(posedge clk) begin
       trap_cause <= {28'b0, ILLEGAL_INSTR};
       trap_value <= decode.ir;
     end
-    else if (decode.misaligned) begin
+    else if (decode.misaligned && decode.branch) begin
       trap_cause <= {28'b0, INSTR_ADDR_MISALIGNED};
+      trap_value <= decode.addr;
+    end
+    else if (decode.misaligned && decode.load) begin
+      trap_cause <= {28'b0, LOAD_ADDR_MISALIGNED};
+      trap_value <= decode.addr;
+    end
+    else if (decode.misaligned && decode.store) begin
+      trap_cause <= {28'b0, STORE_ADDR_MISALIGNED};
       trap_value <= decode.addr;
     end
     else if (decode.sysop == ECALL) begin

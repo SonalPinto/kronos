@@ -60,13 +60,13 @@ always_comb begin
   data_rd_data = mem_rd_data;
 end
 
-always_ff @(negedge clk) begin
+always_ff @(posedge clk) begin
   instr_ack <= instr_req & ~data_req;
   data_ack <= data_req;
 end
 
 generic_spram #(.KB(8)) u_mem (
-  .clk  (~clk       ),
+  .clk  (clk        ),
   .addr (mem_addr   ),
   .wdata(mem_wr_data),
   .rdata(mem_rd_data),

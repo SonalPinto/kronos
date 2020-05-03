@@ -27,7 +27,9 @@ logic data_wr_en;
 logic data_req;
 logic data_ack;
 
-kronos_core u_dut (
+kronos_core #(
+  .FAST_BRANCH(1)
+) u_dut (
   .clk               (clk         ),
   .rstz              (rstz        ),
   .instr_addr        (instr_addr  ),
@@ -53,7 +55,7 @@ logic mem_en, mem_wren;
 logic [3:0] mem_mask;
 
 spsram32_model #(.WORDS(2**(MEMSIZE-2))) u_mem (
-  .clk  (~clk     ),
+  .clk  ( clk     ),
   .addr (mem_addr ),
   .wdata(mem_wdata),
   .rdata(mem_rdata),
@@ -77,7 +79,7 @@ always_comb begin
   mem_mask = data_req ? data_mask : 4'hF;
 end
 
-always_ff @(negedge clk) begin
+always_ff @(posedge clk) begin
   instr_ack <= instr_req & ~data_req;
   data_ack <= data_req;
 end
@@ -129,7 +131,7 @@ endclocking
 
       // End triggered by writing to host
       forever @(cb) begin
-        if (data_wr_en && mem_addr == tohost && mem_wdata == 32'h1)
+        if (data_wr_en && mem_addr == tohost && mem_wdata == 1)
           break;
       end
     join_any

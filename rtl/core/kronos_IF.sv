@@ -94,7 +94,7 @@ end
 // Instruction Fetch
 always_ff @(posedge clk or negedge rstz) begin
   if (~rstz) state <= INIT;
-  else if (branch & !FAST_BRANCH) state <= INIT;
+  else if (branch) state <= FAST_BRANCH ? FETCH : INIT;
   else state <= next_state;
 end
 

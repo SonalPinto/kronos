@@ -63,13 +63,6 @@ add_hdl_source(kronos_EX.sv
     kronos_csr
 )
 
-add_hdl_source(kronos_WB.sv
-  DEPENDS
-    kronos_types
-    kronos_lsu
-    kronos_csr
-)
-
 add_hdl_source(kronos_core.sv
   DEPENDS
     kronos_types
