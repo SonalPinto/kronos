@@ -12,7 +12,10 @@ module kronos_core
   parameter logic [31:0]  BOOT_ADDR = 32'h0,
   parameter FAST_BRANCH = 1,
   parameter EN_COUNTERS = 1,
-  parameter EN_COUNTERS64B = 1
+  parameter EN_COUNTERS64B = 1,
+  parameter CATCH_ILLEGAL_INSTR = 1,
+  parameter CATCH_MISALIGNED_JMP = 1,
+  parameter CATCH_MISALIGNED_LDST = 1
 )(
   input  logic        clk,
   input  logic        rstz,
@@ -87,7 +90,11 @@ kronos_IF #(
 // ============================================================
 // Decode
 // ============================================================
-kronos_ID u_id (
+kronos_ID #(
+  .CATCH_ILLEGAL_INSTR(CATCH_ILLEGAL_INSTR),
+  .CATCH_MISALIGNED_JMP(CATCH_MISALIGNED_JMP),
+  .CATCH_MISALIGNED_LDST(CATCH_MISALIGNED_LDST)
+) u_id (
   .clk         (clk         ),
   .rstz        (rstz        ),
   .flush       (flush       ),

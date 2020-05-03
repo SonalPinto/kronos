@@ -14,7 +14,9 @@ Kronos RV32I Decoder
 module kronos_ID
   import kronos_types::*;
 #(
-  parameter CATCH_ILLEGAL_INSTR = 1
+  parameter CATCH_ILLEGAL_INSTR = 1,
+  parameter CATCH_MISALIGNED_JMP = 1,
+  parameter CATCH_MISALIGNED_LDST = 1
 )(
   input  logic        clk,
   input  logic        rstz,
@@ -361,7 +363,9 @@ kronos_agu u_agu (
   .misaligned(misaligned)
 );
 
-assign misaligned_ldst = (OP == INSTR_LOAD || OP == INSTR_STORE) & misaligned;
+assign misaligned_ldst = CATCH_MISALIGNED_LDST ? 
+                        (OP == INSTR_LOAD || OP == INSTR_STORE) & misaligned 
+                        : 1'b0;
 
 // ============================================================
 // Branch Comparator
@@ -376,7 +380,7 @@ assign branch_vld = (OP == INSTR_JAL || OP == INSTR_JALR)
                   || (OP == INSTR_BR && branch) 
                   || is_fencei;
 
-assign misaligned_jmp = branch_vld & misaligned;
+assign misaligned_jmp = CATCH_MISALIGNED_JMP ? branch_vld & misaligned : 1'b0;
 
 // ============================================================
 // Hazard Control

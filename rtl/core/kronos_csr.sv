@@ -139,7 +139,7 @@ always_comb begin
   /* verilator lint_on CASEINCOMPLETE */
 end
 
-always_ff @(posedge clk or posedge rstz) begin
+always_ff @(posedge clk or negedge rstz) begin
   if (~rstz) begin
     csr_wr_vld <= 1'b0;
     regwr_csr <= 1'b0;

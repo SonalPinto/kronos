@@ -91,7 +91,7 @@ end
 
 // ============================================================
 // Grant
-always_ff @(negedge clk or negedge rstz) begin
+always_ff @(posedge clk or negedge rstz) begin
   if (~rstz) begin
     mem_instr_ack <= 1'b0;
     mem_data_ack <= 1'b0;
