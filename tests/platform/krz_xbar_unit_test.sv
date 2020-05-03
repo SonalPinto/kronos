@@ -80,7 +80,7 @@ krz_xbar u_dut (
 );
 
 spsram32_model #(.WORDS(256), .AWIDTH(24), .MASK_WR_ONLY(1)) u_bootrom (
-    .clk  (~clk           ),
+    .clk  (clk            ),
     .addr (bootrom_addr   ),
     .wdata(32'b0          ),
     .rdata(bootrom_rd_data),
@@ -90,7 +90,7 @@ spsram32_model #(.WORDS(256), .AWIDTH(24), .MASK_WR_ONLY(1)) u_bootrom (
 );
 
 spsram32_model #(.WORDS(1024), .AWIDTH(24), .MASK_WR_ONLY(1)) u_mem0 (
-    .clk  (~clk        ),
+    .clk  (clk         ),
     .addr (mem0_addr   ),
     .wdata(mem0_wr_data),
     .rdata(mem0_rd_data),
@@ -100,7 +100,7 @@ spsram32_model #(.WORDS(1024), .AWIDTH(24), .MASK_WR_ONLY(1)) u_mem0 (
 );
 
 spsram32_model #(.WORDS(1024), .AWIDTH(24), .MASK_WR_ONLY(1)) u_mem1 (
-    .clk  (~clk        ),
+    .clk  (clk         ),
     .addr (mem1_addr   ),
     .wdata(mem1_wr_data),
     .rdata(mem1_rd_data),
@@ -182,9 +182,9 @@ endclocking
             cb.instr_addr <= addr;
             @(cb);
             cb.instr_req <= 1'b0;
-            $display("instr_data: %h", cb.instr_data);
-            assert(cb.instr_ack);
-            assert(cb.instr_data == check_data);
+            $display("instr_data: %h", instr_data);
+            assert(instr_ack);
+            assert(instr_data == check_data);
         end
 
         ##64;
@@ -239,7 +239,7 @@ endclocking
 
             @(cb);
             cb.data_req <= 1'b0;
-            assert(cb.data_ack);
+            assert(data_ack);
 
             if (choice == 0) begin
                 check_data = u_bootrom.MEM[word];
@@ -261,8 +261,8 @@ endclocking
                 assert(written_data == check_data);
             end
             else begin
-                $display("data_rd_data: %h", cb.data_rd_data);
-                assert(cb.data_rd_data == check_data);
+                $display("data_rd_data: %h", data_rd_data);
+                assert(data_rd_data == check_data);
             end
         end
 
@@ -372,24 +372,24 @@ endclocking
             // then both requests will go through
             if (Ichoice != Dchoice)  begin
                 $display("NO CONFLICT");
-                assert(cb.instr_ack);
-                assert(cb.data_ack);
+                assert(instr_ack);
+                assert(data_ack);
                 arb = 0;
             end
             else begin
                 $display("DATA WINS");
-                assert(~cb.instr_ack);
-                assert(cb.data_ack);
+                assert(~instr_ack);
+                assert(data_ack);
                 arb = 1;
             end
 
-            if (!arb) $display("GOT I RD: %h", cb.instr_data);
+            if (!arb) $display("GOT I RD: %h", instr_data);
 
             if (Dwrite) begin
                 $display("GOT D WR: %h", Dwr_check_data);
             end
             else begin
-                $display("GOT D RD: %h", cb.data_rd_data);
+                $display("GOT D RD: %h", data_rd_data);
             end
         end
     end
@@ -431,7 +431,7 @@ endclocking
 
             repeat ($urandom_range(1,7)) begin
                 $display("-");
-                assert(~cb.data_ack);
+                assert(~data_ack);
                 assert(sys_stb_o);
                 assert(sys_adr_o == addr);
                 assert(sys_dat_o == write_data);
@@ -448,11 +448,11 @@ endclocking
             cb.sys_ack_i <= 0;
             cb.sys_dat_i <= 'x;
             cb.data_req <= 1'b0;
-            assert(cb.data_ack);
+            assert(data_ack);
 
             if (~write) begin
-                $display("Data Read: %h", cb.data_rd_data);
-                assert(cb.data_rd_data == read_data);
+                $display("Data Read: %h", data_rd_data);
+                assert(data_rd_data == read_data);
             end
 
             @(cb);
