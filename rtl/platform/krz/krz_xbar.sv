@@ -4,7 +4,7 @@
 /*
 Primary Crossbar for the KRZ SoC
 
-- Presents dual wishbone slave buses to the Kronos Instruction and Data interface.
+- Presents dual wishbone pipelined slave buses to the Kronos Instruction and Data interface.
 - Arbitrates access to the all resources, at the individual resource level.
 - Multiplexes peripheral interfaces to the Kronos Data interface.
 
@@ -211,7 +211,7 @@ end
 // ============================================================
 
 // Instruction Grant Mux
-always_ff @(negedge clk or negedge rstz) begin
+always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         instr_gnt <= NONE;
     end
@@ -224,7 +224,7 @@ always_ff @(negedge clk or negedge rstz) begin
 end
 
 // Data Grant Mux
-always_ff @(negedge clk or negedge rstz) begin
+always_ff @(posedge clk or negedge rstz) begin
     if (~rstz) begin
         data_gnt <= NONE;
     end

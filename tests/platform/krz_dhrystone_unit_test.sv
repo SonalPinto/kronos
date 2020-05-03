@@ -37,7 +37,7 @@ logic [31:0] PROG [1024*128];
     RSTN = 1;
   end
 
-  `TEST_CASE("blinky") begin
+  `TEST_CASE("dhrystone") begin
     logic [31:0] instr;
 
     ##8;
@@ -49,7 +49,7 @@ logic [31:0] PROG [1024*128];
 
     // setup program: krz_blinky.c
     PROG = '{default: '0};
-    $readmemh("../../../data/krz_blinky.mem", PROG);
+    $readmemh("../../../data/dhrystone_sim.mem", PROG);
 
     foreach (PROG[i]) begin
       // $display("%h",PROG[i]);

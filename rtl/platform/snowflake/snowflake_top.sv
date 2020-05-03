@@ -87,9 +87,9 @@ kronos_core #(
   .FAST_BRANCH(1),
   .EN_COUNTERS(1),
   .EN_COUNTERS64B(0),
-  .CATCH_ILLEGAL_INSTR(0),
-  .CATCH_MISALIGNED_JMP(0),
-  .CATCH_MISALIGNED_LDST(0)
+  .CATCH_ILLEGAL_INSTR(1),
+  .CATCH_MISALIGNED_JMP(1),
+  .CATCH_MISALIGNED_LDST(1)
 ) u_core (
   .clk               (clk         ),
   .rstz              (rstz        ),

@@ -5,19 +5,34 @@ set(common_srcs common/crt0.S
   common/mini-printf.c
   common/util.c)
 
-add_riscv_executable(dhrystone_t/dhrystone_main.c
+add_riscv_executable(dhrystone/dhrystone_main.c
   SOURCES
     ${common_srcs}
-    dhrystone_t/dhrystone.c
+    dhrystone/dhrystone.c
   LINKER_SCRIPT
     common/link.ld
   INCLUDES
     common
-    dhrystone_t
+    dhrystone
   DEFINES
     HZ=24000000
   KRZ_APP TRUE
 )
+
+add_riscv_executable(dhrystone_sim/dhrystone_sim.c
+  SOURCES
+    ${common_srcs}
+    dhrystone/dhrystone.c
+  LINKER_SCRIPT
+    common/link.ld
+  INCLUDES
+    common
+    dhrystone
+  DEFINES
+    HZ=24000000
+  KRZ_APP TRUE
+)
+
 
 add_riscv_executable(median/median_main.c
   SOURCES
