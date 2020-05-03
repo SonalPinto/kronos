@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Rules to generate test data using the riscv toolchain
-# Needs riscv toolchain and srecord to translate the binary code
+# Needs riscv toolchain and python3 to translate the binary code
 # into SystemVerilog readable memory files
 
 if(NOT RISCV_FOUND)
@@ -70,7 +70,6 @@ function(add_riscv_executable source)
     list(APPEND defines "-D${def}")
   endforeach()
 
-  set(memfile "${name}.mem")
   set(elf "${name}.elf")
   set(objdump "${name}.objdump")
   set(binary "${name}.bin")
@@ -108,10 +107,10 @@ function(add_riscv_executable source)
     ARGS
       -O binary ${elf} ${binary}
     COMMAND
-      srec_cat
+      ${Python3_EXECUTABLE}
     ARGS
-      ${binary} -binary -byte-swap 4 
-      -o ${memfile} -vmem
+      ${UTILS}/bin2mem.py
+      --bin ${binary}
     WORKING_DIRECTORY
       ${TESTDATA_OUTPUT_DIR}
   )
@@ -126,7 +125,6 @@ function(add_riscv_executable source)
   if (${ARG_KRZ_APP})
     # If this is an application, then prepare binary to be flashed
     set(appfile "${TESTDATA_OUTPUT_DIR}/${name}.krz.bin")
-    set(appmemfile "${TESTDATA_OUTPUT_DIR}/${name}.krz.mem")
 
     set(outputs)
 
@@ -139,10 +137,10 @@ function(add_riscv_executable source)
         ${UTILS}/krzprog.py
         --bin ${TESTDATA_OUTPUT_DIR}/${binary}
       COMMAND
-        srec_cat
+        ${Python3_EXECUTABLE}
       ARGS
-        ${appfile} -binary -byte-swap 4 
-        -o ${appmemfile} -vmem
+        ${UTILS}/bin2mem.py
+        --bin ${appfile}
     )
 
     add_custom_target(krz-${target}

@@ -26,7 +26,7 @@ def convert_bin(ibinfile):
     OFILE.write((progsize).to_bytes(4, byteorder='little'))
     OFILE.write(progbytes);
 
-    IFILE.close();
+    IFILE.close()
     OFILE.close()
 
     print("Ready to Flash: {}".format(obinfile))
