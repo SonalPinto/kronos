@@ -111,8 +111,8 @@ assign regwr_alu = (rd != '0) && (OP == INSTR_LUI
 
 // ============================================================
 // Register Forwarding
-assign rs1_forward = regwr_en & regwr_sel == rs1;
-assign rs2_forward = regwr_en & regwr_sel == rs2;
+assign rs1_forward = regwr_en & (regwr_sel == rs1);
+assign rs2_forward = regwr_en & (regwr_sel == rs2);
 
 assign rs1_data = rs1_forward ? regwr_data : regrd_rs1;
 assign rs2_data = rs2_forward ? regwr_data : regrd_rs2;

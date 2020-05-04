@@ -14,3 +14,4 @@
 - Development
   - [Environment](dev_env.md)
   - [RISC-V Compliance](compliance.md)
+  - [RISC-V Tests](riscv_tests.md)

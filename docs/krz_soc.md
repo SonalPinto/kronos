@@ -2,6 +2,7 @@
 
 Kronos Zero Degree (KRZ) is the System-on-Chip packaged in this project to show-off the Kronos core. It is designed for the iCE40UP5K with the following features.
 
+  - 24MHz system clock.
   - 128KB of RAM as 2 contiguous banks of 64KB.
   - 1KB Bootrom for loading program from flash to RAM.
   - UART TX with 128B buffer.
@@ -19,6 +20,15 @@ The bootrom, and two 64KB banks of main memory are individually arbitrated. The 
 section.
 
 But, usually, most of the code should be run from bank0, while frequent data like the stack will be in bank1. In a design without cache, this setup will lead to optimal performance.
+
+KRZ SoC has the Kronos configured with:
+- BOOT_ADDR = 0x00
+- FAST_BRANCH = 1
+- EN_COUNTERS = 1
+- EN_COUNTERS64B = 0
+- CATCH_ILLEGAL_INSTR = 1
+- CATCH_MISALIGNED_JMP = 0
+- CATCH_MISALIGNED_LDST = 0
 
 
 ## Memory Map

@@ -17,11 +17,11 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
   * Partial platform-specific implementation of the Privileged Architecture:
     - Machine-Level ISA, v1.11
 - Optimized for single cycle instruction execution.
+- DMIPS/MHz of **0.7105** on the KRZ SoC.
 - Direct mode trap handler jumps.
 - Dual **Wishbone** pipelined master interface for instruction and data.
 
 ![Kronos Architecture](docs/_images/kronos_arch.svg)
- 
  
 # Documentation
 
@@ -39,6 +39,7 @@ Instantiation template and IO description at [docs/integration](https://sonalpin
 
 Kronos Zero Degree (KRZ) is the System-on-Chip packaged in this project to show-off the Kronos core. It is designed for the iCE40UP5K with the following features.
 
+  - 24MHz system clock.
   - 128KB of RAM as 2 contiguous banks of 64KB.
   - 1KB Bootrom for loading program from flash to RAM.
   - UART TX with 128B buffer.
@@ -53,6 +54,23 @@ Kronos Zero Degree (KRZ) is the System-on-Chip packaged in this project to show-
 ![KRZ SoC](docs/_images/krz_soc.svg)
 
 Read More - [KRZ SoC](https://sonalpinto.github.io/kronos/#/krz_soc.md)
+
+
+# Performance
+Kronos running on the KRZ SoC hits a DMIPS/MHz of **0.7105**. making it one of the fastest RISC-V cores to run on the the iCE40UP5K, an FPGA with 5280 LUTs. More details [here]((https://sonalpinto.github.io/kronos/#/riscv_tests.md)). 
+
+The following single-thread algorithm tests have been ported as well, and the `CPI` (Clocks Per Instructions). Yes, they all pass.
+
+
+| Test | Cycles | Instret | CPI
+| -----|--------|---------|----
+median   |7972  | 4152    | 1.92
+multiply |33442 | 20899   | 1.60
+qsort    |220435| 123505  | 1.78
+rsort    |291505| 171131  | 1.70
+spmv     |3143547| 1947328 | 1.61
+towers   |10847 | 6168    | 1.75
+vvadd    |14037 | 8026    | 1.74
 
 
 # Status
