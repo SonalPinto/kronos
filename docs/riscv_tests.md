@@ -107,7 +107,7 @@ Kronos on the KRZ SoC has a DMIPS/MHz of **0.7105**, making it one of the fastes
 
 ## Algorithms
 
-The following single-thread algorithm tests have been ported as well, and the `CPI` (Clocks Per Instructions). Yes, they all pass.
+The following single-thread algorithm tests have been ported as well, and the `CPI` (Clocks Per Instructions) is recorded. Yes, they all pass.
 
 ```
 make krz-riscv-median_main
