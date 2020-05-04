@@ -23,6 +23,7 @@ typedef struct packed {
     logic        basic;
     logic [3:0]  aluop;
     logic        regwr_alu;
+    logic        jump;
     logic        branch;
     logic        load;
     logic        store;
@@ -31,8 +32,8 @@ typedef struct packed {
     logic        system;
     logic [1:0]  sysop;
     logic        illegal;
-    logic        misaligned;
-    logic        except;
+    logic        misaligned_jmp;
+    logic        misaligned_ldst;
 } pipeIDEX_t;
 
 // ============================================================

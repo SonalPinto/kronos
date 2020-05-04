@@ -59,14 +59,11 @@ logic is_fencei;
 logic illegal;
 logic instr_valid;
 logic illegal_opcode;
-logic misaligned_jmp;
-logic misaligned_ldst;
-
-logic branch_vld;
 
 // Address generation
 logic [31:0] addr, base, offset;
-logic misaligned;
+logic misaligned_jmp;
+logic misaligned_ldst;
 
 // Memory Access
 logic [3:0] mask;
@@ -355,17 +352,17 @@ assign illegal = CATCH_ILLEGAL_INSTR ? (~instr_valid | illegal_opcode) : 1'b0;
 
 // ============================================================
 // Address Generation Unit
-kronos_agu u_agu (
-  .instr     (IR        ),
-  .base      (base      ),
-  .offset    (offset    ),
-  .addr      (addr      ),
-  .misaligned(misaligned)
+kronos_agu #(
+  .CATCH_MISALIGNED_JMP (CATCH_MISALIGNED_JMP),
+  .CATCH_MISALIGNED_LDST(CATCH_MISALIGNED_LDST)
+) u_agu (
+  .instr          (IR             ),
+  .base           (base           ),
+  .offset         (offset         ),
+  .addr           (addr           ),
+  .misaligned_jmp (misaligned_jmp ),
+  .misaligned_ldst(misaligned_ldst)
 );
-
-assign misaligned_ldst = CATCH_MISALIGNED_LDST ? 
-                        (OP == INSTR_LOAD || OP == INSTR_STORE) & misaligned 
-                        : 1'b0;
 
 // ============================================================
 // Branch Comparator
@@ -375,12 +372,6 @@ kronos_branch u_branch (
   .rs2   (rs2_data),
   .branch(branch  )
 );
-
-assign branch_vld = (OP == INSTR_JAL || OP == INSTR_JALR) 
-                  || (OP == INSTR_BR && branch) 
-                  || is_fencei;
-
-assign misaligned_jmp = CATCH_MISALIGNED_JMP ? branch_vld & misaligned : 1'b0;
 
 // ============================================================
 // Hazard Control
@@ -430,7 +421,8 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.op2 <= op2;
 
       decode.addr <= addr;
-      decode.branch <= branch_vld;
+      decode.jump <= OP == INSTR_JAL || OP == INSTR_JALR || is_fencei;
+      decode.branch <= branch && OP == INSTR_BR;
       decode.load <= OP == INSTR_LOAD; 
       decode.store <= OP == INSTR_STORE;
       decode.mask  <= mask;
@@ -439,9 +431,9 @@ always_ff @(posedge clk or negedge rstz) begin
       decode.system <= OP == INSTR_SYS && ~csr;
       decode.sysop <= sysop;
 
-      decode.illegal   <= illegal;
-      decode.misaligned <= misaligned_jmp || misaligned_ldst;
-      decode.except <= misaligned_jmp || misaligned_ldst || illegal;
+      decode.illegal <= illegal;
+      decode.misaligned_jmp <= misaligned_jmp;
+      decode.misaligned_ldst <= misaligned_ldst;
 
     end
     else if (decode_vld && decode_rdy) begin

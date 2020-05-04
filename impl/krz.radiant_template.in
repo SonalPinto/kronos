@@ -26,4 +26,4 @@ prj_set_impl_opt -impl krz_impl -append VERILOG_DIRECTIVES PROGRAM=output/data/k
 # top
 prj_set_impl_opt -impl krz_impl top krz_top
 
-prj_set_strategy_value -strategy Strategy1 par_place_iterator_start_pt=47
+prj_set_strategy_value -strategy Strategy1 par_place_iterator_start_pt=57

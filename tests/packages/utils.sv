@@ -18,6 +18,7 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  basic: %b",         d.basic);
     $display("  aluop: %b",         d.aluop);
     $display("  regwr_alu: %b",     d.regwr_alu);
+    $display("  jump: %b",          d.jump);
     $display("  branch: %b",        d.branch);
     $display("  load: %b",          d.load);
     $display("  store: %b",         d.store);
@@ -26,8 +27,8 @@ task automatic print_decode(input pipeIDEX_t d);
     $display("  system: %b",        d.system);
     $display("  sysop: %b",         d.sysop);
     $display("  illegal: %b",       d.illegal);
-    $display("  misaligned: %b",    d.misaligned);
-    $display("  except: %b",        d.except);
+    $display("  misaligned_jmp: %b", d.misaligned_jmp);
+    $display("  misaligned_ldst: %b", d.misaligned_ldst);
 endtask
 
 endpackage

@@ -8,12 +8,16 @@ Kronos Address Generation Unit
 
 module kronos_agu
   import kronos_types::*;
-(
+#(
+  parameter CATCH_MISALIGNED_JMP = 1,
+  parameter CATCH_MISALIGNED_LDST = 1
+)(
   input  logic [31:0] instr,
   input  logic [31:0] base,
   input  logic [31:0] offset,
   output logic [31:0] addr,
-  output logic        misaligned
+  output logic        misaligned_jmp,
+  output logic        misaligned_ldst
 );
 
 logic [4:0] OP;
@@ -45,33 +49,41 @@ assign byte_addr = addr[1:0];
 
 // ============================================================
 // Misaligned Detect
-always_comb begin
-  unique case(OP)
-    INSTR_JAL,
-    INSTR_JALR,
-    INSTR_BR: begin
-      // All jumps need to be word-aligned for RV32I
-      misaligned = byte_addr != 2'b00;
-    end
-    INSTR_LOAD,
-    INSTR_STORE: begin
-      // Memory access is misaligned if the access size
-      // doesn't land on a boundary divisible by that size.
-      if (data_size == WORD && byte_addr != 2'b00) misaligned = 1'b1;
-      else if (data_size == HALF && byte_addr[0] != 1'b0) misaligned = 1'b1;
-      else misaligned = 1'b0;
-    end
-    default : misaligned = 1'b0;
-  endcase
-end
 
+generate
+  if (CATCH_MISALIGNED_JMP) begin
+    assign misaligned_jmp = (OP == INSTR_JAL || OP == INSTR_JALR || OP == INSTR_BR)
+                        && byte_addr != 2'b00;
+  end
+  else begin
+    assign misaligned_jmp = 1'b0;
+  end
+endgenerate
+
+generate
+  if (CATCH_MISALIGNED_LDST) begin
+    always_comb begin
+      if (OP == INSTR_LOAD || OP == INSTR_STORE) begin
+        // Memory access is misaligned if the access size
+        // doesn't land on a boundary divisible by that size.
+        if (data_size == WORD && byte_addr != 2'b00) misaligned_ldst = 1'b1;
+        else if (data_size == HALF && byte_addr[0] != 1'b0) misaligned_ldst = 1'b1;
+        else misaligned_ldst = 1'b0;
+      end
+      else misaligned_ldst = 1'b0;
+    end
+  end
+  else begin
+    assign misaligned_ldst = 1'b0;
+  end
+endgenerate
 
 // ------------------------------------------------------------
 `ifdef verilator
 logic _unused = &{1'b0
-    , instr[31:14]
-    , instr[11:7]
-    , instr[1:0]
+  , instr[31:14]
+  , instr[11:7]
+  , instr[1:0]
 };
 `endif
 

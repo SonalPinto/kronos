@@ -43,7 +43,7 @@ logic [31:0] result;
 logic [4:0] rd;
 
 logic instr_vld;
-
+logic instr_jump;
 logic basic_rdy;
 
 logic lsu_vld, lsu_rdy;
@@ -56,6 +56,8 @@ logic regwr_csr;
 logic instret;
 logic core_interrupt;
 logic [3:0] core_interrupt_cause;
+
+logic exception;
 
 logic activate_trap, return_trap;
 logic [31:0] trap_cause, trap_handle, trap_value;
@@ -89,7 +91,7 @@ always_comb begin
   unique case (state)
     STEADY: if (decode_vld) begin
       if (core_interrupt) next_state = TRAP;
-      else if (decode.except) next_state = TRAP;
+      else if (exception) next_state = TRAP;
       else if (decode.system) begin
         unique case (decode.sysop)
           ECALL,
@@ -119,7 +121,7 @@ always_comb begin
 end
 
 // Decoded instruction valid
-assign instr_vld = decode_vld && state == STEADY && ~decode.except && ~core_interrupt;
+assign instr_vld = decode_vld && state == STEADY && ~exception && ~core_interrupt;
 
 // Basic instructions
 assign basic_rdy = instr_vld && decode.basic;
@@ -189,10 +191,13 @@ end
 // ============================================================
 // Jump and Branch
 assign branch_target = trap_jump ? trap_handle : decode.addr;
-assign branch = (instr_vld && decode.branch) || trap_jump;
+assign instr_jump =  decode.jump || decode.branch;
+assign branch = (instr_vld && instr_jump) || trap_jump;
 
 // ============================================================
 // Trap Handling
+
+assign exception = decode.illegal || decode.misaligned_ldst || (instr_jump && decode.misaligned_jmp);
 
 // setup for trap
 always_ff @(posedge clk) begin
@@ -205,15 +210,15 @@ always_ff @(posedge clk) begin
       trap_cause <= {28'b0, ILLEGAL_INSTR};
       trap_value <= decode.ir;
     end
-    else if (decode.misaligned && decode.branch) begin
+    else if (decode.misaligned_jmp && instr_jump) begin
       trap_cause <= {28'b0, INSTR_ADDR_MISALIGNED};
       trap_value <= decode.addr;
     end
-    else if (decode.misaligned && decode.load) begin
+    else if (decode.misaligned_ldst && decode.load) begin
       trap_cause <= {28'b0, LOAD_ADDR_MISALIGNED};
       trap_value <= decode.addr;
     end
-    else if (decode.misaligned && decode.store) begin
+    else if (decode.misaligned_ldst && decode.store) begin
       trap_cause <= {28'b0, STORE_ADDR_MISALIGNED};
       trap_value <= decode.addr;
     end

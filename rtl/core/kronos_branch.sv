@@ -13,27 +13,21 @@ module kronos_branch
   input  logic [31:0] rs2,
   output logic        branch
 );
-logic [1:0] result;
+
 logic uns;
+logic eq, lt;
 
 assign uns = op[1];
+assign eq = rs1 == rs2;
+assign lt = uns ? (rs1 < rs2) : ($signed(rs1) < $signed(rs2));
 
-always_comb begin
-  if (rs1 == rs2) result = 2'b00;
-  else if (uns && rs1 < rs2) result = 2'b01;
-  else if (~uns && $signed(rs1) < $signed(rs2)) result = 2'b01;
-  else result = 2'b10;
-end
-
-// ============================================================
-// Decode result
 always_comb begin
   unique case (op)
-    BEQ: branch = result == EQ;
-    BNE: branch = result != EQ;
+    BEQ: branch = eq;
+    BNE: branch = ~eq;
     BGE,
-    BGEU: branch = result != LT;
-    default: branch = result == LT; // BLT, BLTU
+    BGEU: branch = ~lt;
+    default: branch = lt; // BLT, BLTU
   endcase // op
 end
 
