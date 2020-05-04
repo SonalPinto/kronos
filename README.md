@@ -57,7 +57,7 @@ Read More - [KRZ SoC](https://sonalpinto.github.io/kronos/#/krz_soc.md)
 
 
 # Performance
-Kronos running on the KRZ SoC hits a DMIPS/MHz of **0.7105**. making it one of the fastest RISC-V cores to run on the the iCE40UP5K, an FPGA with 5280 LUTs. More details [here]((https://sonalpinto.github.io/kronos/#/riscv_tests.md)). 
+Kronos running on the KRZ SoC hits a DMIPS/MHz of **0.7105**. making it one of the fastest RISC-V cores to run on the the iCE40UP5K, an FPGA with 5280 LUTs. More details [here](https://sonalpinto.github.io/kronos/#/riscv_tests.md). 
 
 The following single-thread algorithm tests have been ported as well, and the `CPI` (Clocks Per Instructions). Yes, they all pass.
 
