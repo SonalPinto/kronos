@@ -6,8 +6,8 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 *Finding prime numbers ([sf_prime.c](src/snowflake/sf_prime.c)) with Kronos implemented on iCEBreaker (Demo [Snowflake SoC](https://sonalpinto.github.io/kronos/#/snowflake.md))*
 
-[![KRZ Arduboy](http://img.youtube.com/vi/nveWIcuFHzo/0.jpg)](https://www.youtube.com/embed/nveWIcuFHzo)
-*Arduboy2 on KRZ SoC*
+
+*Arduboy2 on KRZ SoC* - https://www.youtube.com/watch?v=nveWIcuFHzo
 
 
 # Features
