@@ -6,6 +6,9 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 
 *Finding prime numbers ([sf_prime.c](src/snowflake/sf_prime.c)) with Kronos implemented on iCEBreaker (Demo [Snowflake SoC](https://sonalpinto.github.io/kronos/#/snowflake.md))*
 
+[![KRZ Arduboy](http://img.youtube.com/vi/nveWIcuFHzo/0.jpg)](https://www.youtube.com/embed/nveWIcuFHzo)
+*Arduboy2 on KRZ SoC*
+
 
 # Features
 
@@ -21,7 +24,7 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 - Direct mode trap handler jumps.
 - Dual **Wishbone** pipelined master interface for instruction and data.
 
-![Kronos Architecture](docs/_images/kronos_arch.svg)
+![Kronos Architecture](https://raw.githubusercontent.com/SonalPinto/kronos/master/docs/_images/kronos_arch.svg)
  
 # Documentation
 
@@ -51,7 +54,7 @@ Kronos Zero Degree (KRZ) is the System-on-Chip packaged in this project to show-
       - Debounced inputs.
   - General Purpose registers
 
-![KRZ SoC](docs/_images/krz_soc.svg)
+![KRZ SoC](https://raw.githubusercontent.com/SonalPinto/kronos/master/docs/_images/krz_soc.svg)
 
 Read More - [KRZ SoC](https://sonalpinto.github.io/kronos/#/krz_soc.md)
 
