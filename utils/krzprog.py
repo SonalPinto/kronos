@@ -17,6 +17,13 @@ def convert_bin(ibinfile):
     print("processing {}".format(ibinfile))
     print("program size: {} bytes".format(progsize))
 
+    if (progsize & 0x3):
+        padding = 4 - progsize & 0x3;
+        print("[WARNING] program is not word-aligned, Padding {} bytes".format(padding))
+        progbytes += bytearray(padding)
+        progsize += padding;
+        print("New program size: {} bytes".format(progsize))
+
     if (progsize > MAX_PROG_SIZE):
         print("[ERROR] program is too large. Max program size = {}".format(MAX_PROG_SIZE))
 
