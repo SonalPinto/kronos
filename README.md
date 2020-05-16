@@ -7,7 +7,7 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 *Finding prime numbers ([sf_prime.c](src/snowflake/sf_prime.c)) with Kronos implemented on iCEBreaker (Demo [Snowflake SoC](https://sonalpinto.github.io/kronos/#/snowflake.md))*
 
 
-*Arduboy2 on KRZ SoC* - https://www.youtube.com/watch?v=nveWIcuFHzo
+*Arduboy on KRZ SoC* - https://www.youtube.com/watch?v=nveWIcuFHzo
 
 
 # Features
@@ -79,9 +79,10 @@ vvadd    |14037 | 8026    | 1.74
 # Status
 
 - The `kronos_core` is feature complete and RISC-V compliant.
-- Make the project yosys/nextpnr-ice40 friendly.
-- Kronos: Zero Degree, `KRZ`, a Kronos-powered SoC is ready (pending features needed for the Arduboy project).
-- Todo: rigorous verification of the core (riscv-torture, riscv-formal, etc).
+- Kronos: Zero Degree, `KRZ`, a Kronos-powered SoC is ready.
+- **Todo**:
+  * Make the project yosys/nextpnr-ice40 friendly.
+  * Rigorous verification of the core (riscv-torture, riscv-formal, etc).
 - **Goal**: Run Arduboy on the iCEBreaker. Custom loader to boot any game from a library on the onboard flash. Interface: 1 oled, 6 buttons and a piezo speaker.
 
 

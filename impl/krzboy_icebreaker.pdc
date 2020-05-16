@@ -1,0 +1,36 @@
+# HSOSC configured for 24MHz
+create_clock -name clk -period 41.6667 [get_pins {u_osc.osc_inst/CLKHF}] 
+
+set_false_path -from [get_ports {RSTN}]
+
+# -------------------------------------------------------------
+ldc_set_location -site {10} [get_ports RSTN]
+
+# UART TX
+ldc_set_location -site {9}  [get_ports TX]
+
+# FLASH SPI
+ldc_set_location -site {15} [get_ports SCLK]
+ldc_set_location -site {14} [get_ports MOSI]
+ldc_set_location -site {17} [get_ports MISO]
+ldc_set_location -site {16} [get_ports GPIO2]
+
+# LEDR/LEDG
+ldc_set_location -site {11} [get_ports GPIO0]
+ldc_set_location -site {37} [get_ports GPIO1]
+
+# PMOD1B
+ldc_set_location -site {43} [get_ports OLED_CLK]
+ldc_set_location -site {38} [get_ports OLED_DATA]
+ldc_set_location -site {34} [get_ports GPIO3]
+ldc_set_location -site {31} [get_ports GPIO4]
+ldc_set_location -site {42} [get_ports GPIO5]
+
+# PMOD1A
+ldc_set_location -site {4}  [get_ports GPIO6]
+ldc_set_location -site {2}  [get_ports GPIO7]
+ldc_set_location -site {47} [get_ports GPIO8]
+ldc_set_location -site {45} [get_ports GPIO9]
+ldc_set_location -site {3}  [get_ports GPIO10]
+ldc_set_location -site {48} [get_ports GPIO11]
+ldc_set_location -site {46} [get_ports SPK]
