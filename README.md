@@ -25,7 +25,17 @@ Kronos is a 3-stage in-order RISC-V `RV32I_Zicsr_Zifencei` core geared towards F
 - Dual **Wishbone** pipelined master interface for instruction and data.
 
 ![Kronos Architecture](https://raw.githubusercontent.com/SonalPinto/kronos/master/docs/_images/kronos_arch.svg)
- 
+
+# News
+
+- Officially listed - https://riscv.org/exchange/cores-socs/
+- Kronos makes the news! Article on Hackster.io - [LINK](https://www.hackster.io/news/sonal-pinto-recreates-the-arduboy-using-a-homebrew-risc-v-soc-the-kronos-zero-degree-fc03046a1fdd)
+- A group at Taiwan Tech (NTUST) compared their [work on IEEE Access](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9200617) against Kronos RISC-V. I am truly honored! I didn't think this day would evere come. As you can see, in single-issue comparisions, Kronos smashes the crowd favorite PicoRV32. A corrective note to add is that the utlization of 5280 is the entire size of the iCE40UP5K, out of which the Kronos takes up 1600 to 2100 LUTs (LUT-4) depending on bells and whistles added.
+- [arduboy-pmod v0.1](https://github.com/SonalPinto/arduboy-pmod) pcb has been layed out and fab'd.
+- [Native Arduboy port](https://github.com/SonalPinto/krz-arduboy2) is coming along well. Checkit out:
+
+![](https://github.com/SonalPinto/krz-arduboy2/blob/master/docs/arduboy-krz.png)
+
 # Documentation
 
 https://sonalpinto.github.io/kronos/
