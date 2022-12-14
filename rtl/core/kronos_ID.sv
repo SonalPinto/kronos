@@ -292,13 +292,11 @@ always_comb begin
           if (funct7[6:3] == '0 && rs1 == '0 && rd =='0) instr_valid = 1'b1;
         end
         3'b001: begin // FENCE.I
-          if (IR[31:20] == 12'b0 && rs1 == '0 && rd =='0) begin
-            // implementing fence.i as `j f1` (jump to pc+4) 
-            // as this will flush the pipeline and cause a fresh 
-            // fetch of the instructions after the fence.i instruction
-            is_fencei = 1'b1;
-            instr_valid = 1'b1;
-          end
+          // implementing fence.i as `j f1` (jump to pc+4) 
+          // as this will flush the pipeline and cause a fresh 
+          // fetch of the instructions after the fence.i instruction
+          is_fencei = 1'b1;
+          instr_valid = 1'b1;
         end
       endcase // funct3
     end
