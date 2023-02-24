@@ -20,9 +20,12 @@ module kronos_hcu
   input  logic        regrd_rs2_en,
   input  logic        fetch_vld,
   input  logic        fetch_rdy,
+  input  logic        decode_vld,
+  input  logic        decode_rdy,
   // REG Write
   input  logic [4:0]  regwr_sel,
   input  logic        regwr_en,
+  input  logic        regwr_pending,
   // Stall
   output logic        stall
 );
@@ -71,23 +74,11 @@ assign rs2_hazard = regrd_rs2_en & regwr_pending & rpend == rs2;
 
 // Stall condition if either operand has a hazard,
 // and register write back isn't ready
-assign stall = (rs1_hazard | rs2_hazard) & ~(regwr_en & rpend == regwr_sel);
+assign stall = (rs1_hazard | rs2_hazard) & ~(regwr_en & ~(decode_vld && decode_rdy));
 
 always_ff @(posedge clk or negedge rstz) begin
-  if (~rstz) begin
-    regwr_pending <= 1'b0;
-  end
-  else begin
-    if (flush) begin
-      regwr_pending <= 1'b0;
-    end
-    else if(fetch_vld && fetch_rdy) begin
-      regwr_pending <= is_reg_write;
-      rpend <= rd;
-    end
-    else if(regwr_pending) begin
-      regwr_pending <= ~(regwr_en & rpend == regwr_sel);
-    end
+  if(fetch_vld && fetch_rdy) begin
+    rpend <= rd;
   end
 end
 

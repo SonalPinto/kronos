@@ -22,6 +22,7 @@ module kronos_EX
   output logic [31:0] regwr_data,
   output logic [4:0]  regwr_sel,
   output logic        regwr_en,
+  output logic        regwr_pending,
   // Branch
   output logic [31:0] branch_target,
   output logic        branch,
@@ -62,6 +63,9 @@ logic exception;
 logic activate_trap, return_trap;
 logic [31:0] trap_cause, trap_handle, trap_value;
 logic trap_jump;
+
+// Feedback for hazard detection
+logic regwr_pending_firstcycle, regwr_pending_subsequent;
 
 enum logic [2:0] {
   STEADY,
@@ -158,22 +162,33 @@ kronos_lsu u_lsu (
 );
 
 // ============================================================
-// Register Write Back
+// Hazard detection
+assign regwr_pending_firstcycle = (decode_vld && decode_rdy) & (decode.regwr_alu | regwr_lsu | regwr_csr);
+assign regwr_pending = regwr_pending_firstcycle | (~(decode_vld && decode_rdy) && regwr_pending_subsequent);
+
+// ============================================================
+// Register Write Back and hazard detection
 
 always_ff @(posedge clk or negedge rstz) begin
   if (~rstz) begin
     regwr_en <= 1'b0;
+    regwr_pending_subsequent <= 1'b0;
   end
   else begin
     regwr_sel <= rd;
 
+    if (decode_vld && decode_rdy)
+      regwr_pending_subsequent <= (regwr_lsu && ~lsu_rdy) | (regwr_csr && ~csr_rdy);
+
     if (instr_vld && decode.regwr_alu) begin
       // Write back ALU result
+      regwr_pending_subsequent <= 1'b0;
       regwr_en <= 1'b1;
       regwr_data <= result;
     end
     else if (lsu_rdy && regwr_lsu) begin
       // Write back Load Data
+      regwr_pending_subsequent <= 1'b0;
       regwr_en <= 1'b1;
       regwr_data <= load_data;
     end

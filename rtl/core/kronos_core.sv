@@ -59,6 +59,8 @@ pipeIDEX_t decode;
 logic fetch_vld, fetch_rdy;
 logic decode_vld, decode_rdy;
 
+logic regwr_pending;
+
 // ============================================================
 // Fetch
 // ============================================================
@@ -95,23 +97,24 @@ kronos_ID #(
   .CATCH_MISALIGNED_JMP(CATCH_MISALIGNED_JMP),
   .CATCH_MISALIGNED_LDST(CATCH_MISALIGNED_LDST)
 ) u_id (
-  .clk         (clk         ),
-  .rstz        (rstz        ),
-  .flush       (flush       ),
-  .fetch       (fetch       ),
-  .immediate   (immediate   ),
-  .regrd_rs1   (regrd_rs1   ),
-  .regrd_rs2   (regrd_rs2   ),
-  .regrd_rs1_en(regrd_rs1_en),
-  .regrd_rs2_en(regrd_rs2_en),
-  .fetch_vld   (fetch_vld   ),
-  .fetch_rdy   (fetch_rdy   ),
-  .decode      (decode      ),
-  .decode_vld  (decode_vld  ),
-  .decode_rdy  (decode_rdy  ),
-  .regwr_data  (regwr_data  ),
-  .regwr_sel   (regwr_sel   ),
-  .regwr_en    (regwr_en    )
+  .clk           (clk          ),
+  .rstz          (rstz         ),
+  .flush         (flush        ),
+  .fetch         (fetch        ),
+  .immediate     (immediate    ),
+  .regrd_rs1     (regrd_rs1    ),
+  .regrd_rs2     (regrd_rs2    ),
+  .regrd_rs1_en  (regrd_rs1_en ),
+  .regrd_rs2_en  (regrd_rs2_en ),
+  .fetch_vld     (fetch_vld    ),
+  .fetch_rdy     (fetch_rdy    ),
+  .decode        (decode       ),
+  .decode_vld    (decode_vld   ),
+  .decode_rdy    (decode_rdy   ),
+  .regwr_data    (regwr_data   ),
+  .regwr_sel     (regwr_sel    ),
+  .regwr_en      (regwr_en     ),
+  .regwr_pending (regwr_pending)
 );
 
 // ============================================================
@@ -130,6 +133,7 @@ kronos_EX #(
   .regwr_data        (regwr_data        ),
   .regwr_sel         (regwr_sel         ),
   .regwr_en          (regwr_en          ),
+  .regwr_pending     (regwr_pending     ),
   .branch_target     (branch_target     ),
   .branch            (branch            ),
   .data_addr         (data_addr         ),

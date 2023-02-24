@@ -37,7 +37,8 @@ module kronos_ID
   // REG Write
   input  logic [31:0] regwr_data,
   input  logic [4:0]  regwr_sel,
-  input  logic        regwr_en
+  input  logic        regwr_en,
+  input  logic        regwr_pending
 );
 
 logic [31:0] IR, PC;
@@ -374,17 +375,20 @@ kronos_branch u_branch (
 // ============================================================
 // Hazard Control
 kronos_hcu u_hcu (
-  .clk         (clk         ),
-  .rstz        (rstz        ),
-  .flush       (flush       ),
-  .instr       (IR          ),
-  .regrd_rs1_en(regrd_rs1_en),
-  .regrd_rs2_en(regrd_rs2_en),
-  .fetch_vld   (fetch_vld   ),
-  .fetch_rdy   (fetch_rdy   ),
-  .regwr_sel   (regwr_sel   ),
-  .regwr_en    (regwr_en    ),
-  .stall       (stall       )
+  .clk          (clk          ),
+  .rstz         (rstz         ),
+  .flush        (flush        ),
+  .instr        (IR           ),
+  .regrd_rs1_en (regrd_rs1_en ),
+  .regrd_rs2_en (regrd_rs2_en ),
+  .fetch_vld    (fetch_vld    ),
+  .fetch_rdy    (fetch_rdy    ),
+  .decode_vld   (decode_vld   ),
+  .decode_rdy   (decode_rdy   ),
+  .regwr_sel    (regwr_sel    ),
+  .regwr_en     (regwr_en     ),
+  .regwr_pending(regwr_pending),
+  .stall        (stall        )
 );
 
 // ============================================================
