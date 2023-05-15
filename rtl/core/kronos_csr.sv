@@ -151,6 +151,9 @@ always_ff @(posedge clk or negedge rstz) begin
     // Cancel the CSR register writeback for rd == 0
     regwr_csr <= rd != '0;
   end
+  else if (state == WRITE) begin
+    regwr_csr <= 1'b0;
+  end
 end
 
 // CSR R/W ----------------------------------------------------
